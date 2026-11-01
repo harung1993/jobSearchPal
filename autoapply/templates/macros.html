@@ -1,0 +1,33 @@
+{# Weekly bar chart: series is [(week_start_date, value), ...]. floor draws a dashed reference line. #}
+{% macro week_bars(series, noun, label, floor=None, floor_label='', H=190, every=2) %}
+{% set W = 640 %}{% set pad = 30 %}{% set n = series|length %}
+{% set vmax = series|map(attribute=1)|max if n else 0 %}
+{% set top = [(floor or 0) + 1, vmax, 1]|max %}
+{% set step = [1, (top / 4)|round(0, 'ceil')|int]|max %}
+{% set top = ((top / step)|round(0, 'ceil')|int) * step %}
+{% set bw = (W - pad) / [n, 1]|max %}
+<svg class="chart" viewBox="0 -14 {{ W }} {{ H + 36 }}" role="img" aria-label="{{ label }}">
+ {% for t in range(step, top + 1, step) %}{% set y = H - H * t / top %}
+  <line class="grid" x1="{{ pad }}" x2="{{ W }}" y1="{{ y }}" y2="{{ y }}"/><text x="{{ pad - 8 }}" y="{{ y + 4 }}" text-anchor="end">{{ t }}</text>{% endfor %}
+ <line class="base" x1="{{ pad }}" x2="{{ W }}" y1="{{ H }}" y2="{{ H }}"/><text x="{{ pad - 8 }}" y="{{ H + 4 }}" text-anchor="end">0</text>
+ {% for wk, c in series %}{% set h = H * c / top %}{% set gap = [2, bw * 0.22]|max %}{% set x = pad + loop.index0 * bw + gap / 2 %}{% set w = bw - gap %}
+  <g data-tip="Week of {{ wk.strftime('%b %-d') }}: {{ c }} {{ noun }}{{ '' if c == 1 else 's' }}">
+   <rect class="hit" x="{{ pad + loop.index0 * bw }}" y="0" width="{{ bw }}" height="{{ H }}"/>
+   {% if c %}{% set r = [4, w / 2, h]|min %}<path class="bar {% if loop.last %}now{% endif %}" d="M{{ x }},{{ H }} V{{ H - h + r }} q0,-{{ r }} {{ r }},-{{ r }} h{{ w - 2 * r }} q{{ r }},0 {{ r }},{{ r }} V{{ H }} Z"/>{% endif %}</g>
+  {% if (n - 1 - loop.index0) % every == 0 %}<text x="{{ x + w / 2 }}" y="{{ H + 18 }}" text-anchor="middle">{{ wk.strftime('%-m/%-d') }}</text>{% endif %}{% endfor %}
+ {% if floor %}{% set fy = H - H * floor / top %}<line class="floor" x1="{{ pad }}" x2="{{ W }}" y1="{{ fy }}" y2="{{ fy }}"/>
+  <text class="flabel" x="{{ W - 2 }}" y="{{ fy - 6 }}" text-anchor="end">{{ floor_label }}</text>{% endif %}
+</svg>
+<details style="margin-top:8px"><summary>Table view</summary><table><thead><tr><th>Week of</th><th class="num">{{ noun|capitalize }}s</th></tr></thead><tbody>
+ {% for wk, c in series|reverse %}<tr><td>{{ wk.strftime('%b %-d, %Y') }}</td><td class="num">{{ c }}</td></tr>{% endfor %}</tbody></table></details>
+{% endmacro %}
+
+{# Horizontal bars: rows is [(label, value), ...]. conv shows each step as a share of the step above (funnels). #}
+{% macro hbars(rows, conv=False, suffix='') %}
+{% set m = [1, rows|map(attribute=1)|max if rows else 1]|max %}
+<div class="hbars">{% for label, v in rows %}
+ <div class="row" data-tip="{{ label }}: {{ v }}{{ suffix }}"><span class="ink2">{{ label }}{% if conv and not loop.first %}{% set prev = rows[loop.index0 - 1][1] %} <span class="conv">{{ ((100 * v / prev)|round|int) if prev else 0 }}%</span>{% endif %}</span>
+  <div class="track"><div class="fill" style="width:{{ (100 * v / m)|round }}%"></div></div><span class="v">{{ v }}{{ suffix }}</span></div>{% endfor %}</div>
+{% endmacro %}
+
+{% macro co(name) %}{{ name|title if name and name.islower() else name }}{% endmacro %}

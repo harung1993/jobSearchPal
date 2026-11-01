@@ -1,0 +1,33 @@
+[project]
+name = "autoapply"
+version = "0.2.0"
+description = "Self-hosted job application assistant: find, rank, tailor, fill, then you review and submit."
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.11"
+dependencies = [
+  "playwright>=1.45",
+  "httpx>=0.27",
+  "pyyaml>=6",
+  "fastapi>=0.110",
+  "uvicorn>=0.29",
+  "jinja2>=3.1",
+  "python-docx>=1.1",
+  "python-multipart>=0.0.9",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "httpx>=0.27"]
+
+[project.scripts]
+autoapply = "autoapply.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["autoapply*"]
+
+[tool.setuptools.package-data]
+autoapply = ["fillers/scan.js", "templates/*.html"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"

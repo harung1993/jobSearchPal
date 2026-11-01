@@ -1,0 +1,9 @@
+<!doctype html><html><head><meta charset="utf-8"></head><body><form onsubmit="event.preventDefault(); document.body.innerHTML='<h3>Application submitted!</h3>'">
+<ul><li class="application-question"><label><div class="application-label">Resume/CV ✱</div><div><input type="file" name="resume" class="visually-hidden" style="opacity:0;position:absolute"></div></label></li>
+<li class="application-question"><label><div class="application-label">Full name ✱</div><div><input name="name" required></div></label></li>
+<li class="application-question"><label><div class="application-label">Email ✱</div><div><input name="email" required></div></label></li>
+<li class="application-question"><label><div class="application-label">Current company</div><div><input name="org"></div></label></li>
+<li class="application-question"><div class="application-label">What is your expected base salary?</div><div><input name="cards[x][field0]"></div></li>
+<li class="application-question"><div class="application-label">Which of these tools have you used? ✱</div>
+ <ul><li><label><input type="checkbox" name="tools" value="dbt"> dbt</label></li><li><label><input type="checkbox" name="tools" value="sf"> Snowflake</label></li><li><label><input type="checkbox" name="tools" value="db"> Databricks</label></li></ul></li>
+</ul><button type="submit" id="btn-submit">Submit application</button></form></body></html>

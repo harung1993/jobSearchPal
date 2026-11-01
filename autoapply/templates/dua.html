@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% from "macros.html" import co %}
+{% block title %}{{ ws_label }}{% endblock %}
+{% block body %}
+<div class="ph"><div><h1>{{ ws_label }} log</h1>
+ <div class="sub">Sunday to Saturday weeks, in a work-search log's columns. Each zip has the week's CSV plus the original emails and submit screenshots.</div></div></div>
+{% for w in weeks %}
+<section class="card {% if not loop.first %}mt{% endif %}">
+ <h2><span>{{ w.start.strftime("%b %-d") }} – {{ w.end.strftime("%b %-d, %Y") }}{% if w.current %} <span class="pill filled" style="margin-left:6px">this week</span>{% endif %}
+   <span class="pill {{ 'submitted' if w.count >= floor else 'waiting' }}" style="margin-left:6px">{{ w.count }} / {{ floor }} activities</span></span>
+  <a class="btn sm" href="/dua/{{ w.start.isoformat() }}.zip">Download proof (.zip)</a></h2>
+ <table><thead><tr><th>Date</th><th class="hide-sm">Activity</th><th>Company</th><th class="hide-sm">Position</th><th>Result</th><th>Proof</th></tr></thead><tbody>
+ {% for r in w.rows %}<tr><td class="ink2" style="white-space:nowrap">{{ r.date.strftime("%a %-m/%-d") }}</td><td class="hide-sm">{{ r.type }}</td>
+  <td><b style="font-weight:600">{{ co(r.company) }}</b></td><td class="hide-sm ink2">{{ r.position }}</td><td><span class="pill {{ r.result|lower }}">{{ r.result }}</span></td>
+  <td>{% for p in r.proof %}<a href="/proof/{{ w.start.isoformat() }}/{{ p.split('/')[-1] }}" target="_blank">{{ 'screenshot' if p.endswith('.png') else 'email' }}</a>{% if not loop.last %}, {% endif %}{% else %}<span class="muted">none</span>{% endfor %}</td></tr>{% endfor %}
+ </tbody></table></section>
+{% else %}<p class="empty">No activities yet.</p>{% endfor %}
+{% endblock %}

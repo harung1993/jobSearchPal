@@ -1,0 +1,42 @@
+# Copy to profile.yaml. Deterministic answers the filler uses before asking Claude.
+first_name: Jane
+last_name: Doe
+email: jane.doe@example.com
+phone: "(555) 010-0000"
+location: Springfield, Illinois
+zip: "62701"
+linkedin: https://www.linkedin.com/in/jane-doe/
+github: https://github.com/janedoe
+website: https://janedoe.dev
+current_company: Example Corp
+work_authorized: "Yes"
+requires_sponsorship: "No"
+how_did_you_hear: Company website
+salary_expectation: "150000"
+willing_to_relocate: "No"
+
+# Label patterns (regex, case-insensitive) -> profile key or literal answer.
+# Checked in order, first match wins. kinds limits a rule to those field kinds.
+# Anything unmatched is left for the plan (Claude) to answer.
+rules:
+  - {match: "first name",                        key: first_name}
+  - {match: "last name",                         key: last_name}
+  - {match: "^name$|full name",                  value: "Jane Doe"}
+  - {match: "e-?mail",                           key: email}
+  - {match: "phone",                             key: phone}
+  - {match: "linkedin",                          key: linkedin}
+  - {match: "github",                            key: github}
+  - {match: "website|portfolio",                 key: website}
+  - {match: "relocat",                           key: willing_to_relocate}
+  - {match: "\\blocation\\b|\\bcity\\b",               key: location, kinds: [text, combobox]}
+  - {match: "zip|postal",                        key: zip}
+  - {match: "current (company|employer)|most recent employer", key: current_company}
+  - {match: "sponsor",                           key: requires_sponsorship}
+  - {match: "authori[sz]ed to work|legally (authorized|eligible)", key: work_authorized}
+  - {match: "how did you hear",                  key: how_did_you_hear}
+  - {match: "(expected|desired|expectation).*(salary|compensation|pay)|(salary|compensation|pay) expectation", key: salary_expectation, kinds: [text]}
+
+# Never answered by the bot. Shown in the review page for you to decide.
+hold_for_review:
+  - "consent|privacy|personal data|acknowledge|i agree|terms|ai policy|certify"
+  - "gender|race|ethnic|veteran|disabilit|sexual orientation|pronoun|hispanic"

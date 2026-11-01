@@ -1,0 +1,32 @@
+# Copy to config.yaml.
+data_dir: ./data                 # sqlite db, screenshots, generated PDFs
+
+# Boards to watch. slug is the company's board name in the ATS URL
+# (greenhouse, lever, ashby, workable, smartrecruiters). More live in boards.yaml,
+# which `autoapply board add` grows.
+boards_file: boards.yaml
+boards:
+  # Replace these with companies you want to watch.
+  - {ats: greenhouse, slug: gitlab}
+  - {ats: greenhouse, slug: airbnb}
+  - {ats: ashby,      slug: ramp}
+
+# Aggregator feeds. Their hits aren't apply-ready: Claude follows each to the real posting.
+feeds: [remoteok, remotive, hn_whos_hiring]
+
+search:
+  title_keywords: [analytics engineer, data engineer, data platform, head of data, ai engineer, semantic]
+  exclude_keywords: [intern, junior, sales engineer]
+  us_only: true                  # US locations, or Remote that names no other country
+
+review:
+  host: 127.0.0.1                # use your Tailscale IP to reach it from your phone
+  port: 8787
+
+browser:
+  headless: true
+
+# Weekly work-search log (e.g. for unemployment benefits). Weeks run Sunday to Saturday.
+work_search:
+  label: Work search          # e.g. DUA
+  weekly_minimum: 3

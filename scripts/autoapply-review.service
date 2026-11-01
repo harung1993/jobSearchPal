@@ -1,0 +1,15 @@
+# Review page as a systemd user service:
+#   cp scripts/autoapply-review.service ~/.config/systemd/user/
+#   systemctl --user enable --now autoapply-review
+#   loginctl enable-linger $USER   # keep it running when you're logged out
+[Unit]
+Description=autoapply review page
+
+[Service]
+WorkingDirectory=%h/auto-apply
+EnvironmentFile=-%h/auto-apply/.env
+ExecStart=%h/auto-apply/.venv/bin/autoapply serve
+Restart=on-failure
+
+[Install]
+WantedBy=default.target

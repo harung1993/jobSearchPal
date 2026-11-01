@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(autoapply find)",
+      "Bash(autoapply sync-email:*)",
+      "Bash(autoapply alerts:*)",
+      "Bash(autoapply board:*)",
+      "Bash(autoapply add:*)",
+      "Bash(autoapply list:*)",
+      "Bash(autoapply show:*)",
+      "Bash(autoapply skip:*)",
+      "Bash(autoapply scan:*)",
+      "Bash(autoapply fill:*)",
+      "Bash(soffice --headless --convert-to pdf:*)",
+      "Bash(python3:*)",
+      "Bash(mkdir:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "WebSearch",
+      "WebFetch"
+    ],
+    "deny": [
+      "Bash(autoapply serve:*)",
+      "Bash(sqlite3:*)",
+      "Edit(autoapply/**)",
+      "Write(autoapply/**)",
+      "Edit(.claude/**)",
+      "Write(.claude/**)"
+    ]
+  }
+}

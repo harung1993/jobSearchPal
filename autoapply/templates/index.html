@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% from "macros.html" import week_bars, hbars, co %}
+{% block body %}
+<div class="ph"><div><h1>Dashboard</h1>
+ <div class="sub">{{ s.today.strftime("%A, %B %-d") }} · {{ s.new_count }} new role{{ '' if s.new_count == 1 else 's' }} found · {{ s.ready|length }} ready for you</div></div>
+ <a class="btn" href="/stats">Detailed stats →</a></div>
+
+<section class="runs" aria-label="When things last ran">
+ {% for r in s.runs %}<span class="run {{ r.state }}" title="{{ r.summary }}"><i aria-hidden="true"></i><b>{{ r.label }}</b> {{ r.when }}{% if r.state == 'fail' %} · failed{% elif r.state == 'stale' %} · overdue{% endif %}</span>{% endfor %}
+</section>
+
+<section class="grid g4" aria-label="Headline numbers">
+ <div class="card tile"><div class="lbl">Applications</div><div class="num">{{ s.applied }}</div>
+  <div class="sub">{{ s.series[-1][1] }} this week · {{ s.series[-2][1] if s.series|length > 1 else 0 }} last week</div></div>
+ <div class="card tile"><div class="lbl">{{ ws_label }} this week</div><div class="num">{{ s.this_week }}<small> / {{ s.dua_floor }}</small></div>
+  <div class="meter {% if s.this_week >= s.dua_floor %}ok{% endif %}" role="img" aria-label="{{ s.this_week }} of {{ s.dua_floor }} activities"><span style="width:{{ [100, (100 * s.this_week / s.dua_floor)|round]|min }}%"></span></div>
+  <div class="sub">{% if s.this_week >= s.dua_floor %}Minimum met{% else %}{{ s.dua_floor - s.this_week }} more needed{% endif %} · week of {{ s.this_week_start.strftime("%b %-d") }}</div></div>
+ <div class="card tile"><div class="lbl">Response rate</div><div class="num">{{ s.response_rate }}%</div>
+  <div class="sub">{{ s.responded }} heard back{% if s.avg_days_to_reply is not none %} · ~{{ s.avg_days_to_reply }} days to reply{% endif %}</div></div>
+ <div class="card tile"><div class="lbl">Interviews</div><div class="num">{{ s.interviews }}</div>
+  <div class="sub">{{ s.rejected }} rejected · {{ s.waiting }} waiting · {{ s.no_reply }} no reply</div></div>
+</section>
+
+<section class="grid g2 mt">
+ <div class="card"><h2>Ready for you <span class="count">{{ s.ready|length }}</span></h2>
+  {% for j in s.ready %}<div class="ready"><div class="avatar" aria-hidden="true">{{ (j.company or '?')[:1]|upper }}</div>
+   <div class="body"><div class="t">{{ co(j.company) }} · {{ j.title }}</div>
+    <div class="m">{{ j.location or "Location not listed" }}{% if j.pay %} · {{ j.pay }}{% endif %}{% if j.error %} · <span style="color:var(--bad)">{{ j.error|truncate(80) }}</span>{% endif %}</div></div>
+   <a class="btn primary sm" href="/job/{{ j.id|urlencode }}">Review</a></div>
+  {% else %}<p class="empty">Nothing waiting. The next daily run prepares more.</p>{% endfor %}
+ </div>
+ <div class="card"><h2>Latest replies <span class="count">{{ s.events|length }}</span></h2>
+  <ul class="feed">{% for e in s.events %}<li><span class="pill {{ e.kind }}">{{ e.kind }}</span><span>{{ e.subject }}</span><span class="when">{{ e.at[5:10]|replace('-', '/') }}</span></li>
+  {% else %}<li class="empty">No replies synced yet. Run <code>autoapply sync-email</code> once the Gmail app password is set.</li>{% endfor %}</ul>
+ </div>
+</section>
+
+<section class="grid g2 mt">
+ <div class="card"><h2>Applications per week <a href="/stats">More</a></h2>
+  {{ week_bars(s.series, 'application', 'Applications submitted per Sunday-to-Saturday week, last ' ~ s.series|length ~ ' weeks, with the weekly minimum of ' ~ s.dua_floor, floor=s.dua_floor, floor_label='Minimum ' ~ s.dua_floor) }}
+ </div>
+ <div class="card"><h2>Recruiters <span class="count">{{ s.recruiter_count }}</span></h2>
+  <ul class="feed">{% for r in s.recruiters %}<li><div style="min-width:0"><div class="who">{{ r.sender.split(" <")[0] }}{% if r.count > 1 %} <span class="muted">· {{ r.count }} emails</span>{% endif %}</div><div class="ink2" style="font-size:12.5px">{{ r.subject|truncate(70) }}</div></div><span class="when">{{ r.last_at[5:10]|replace('-', '/') }}</span></li>
+  {% else %}<li class="empty">No recruiter emails synced yet.</li>{% endfor %}</ul>
+ </div>
+</section>
+
+<section class="card mt"><h2>Applications <span class="count">{{ s.applications|length }}</span></h2>
+ {% macro row(j) %}<tr><td><b style="font-weight:600">{{ co(j.company) }}</b></td>
+  <td>{% if not j.id.startswith('tracker:') %}<a href="/job/{{ j.id|urlencode }}">{{ j.title }}</a>{% else %}{{ j.title }}{% endif %}</td>
+  <td class="ink2" style="white-space:nowrap">{{ j.applied_label }}</td><td class="ink2 hide-sm">{{ j.pay or "" }}</td>
+  <td><span class="pill {{ j.state }}">{{ j.state }}</span></td></tr>{% endmacro %}
+ <table><thead><tr><th>Company</th><th>Role</th><th>Applied</th><th class="hide-sm">Pay</th><th>Status</th></tr></thead><tbody>
+ {% for j in s.applications[:10] %}{{ row(j) }}{% else %}<tr><td colspan="5" class="empty">No applications yet.</td></tr>{% endfor %}</tbody></table>
+ {% if s.applications|length > 10 %}<details style="margin-top:10px"><summary>Show {{ s.applications|length - 10 }} older</summary>
+  <table><tbody>{% for j in s.applications[10:] %}{{ row(j) }}{% endfor %}</tbody></table></details>{% endif %}
+</section>
+{% endblock %}

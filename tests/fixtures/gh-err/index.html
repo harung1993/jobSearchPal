@@ -1,0 +1,5 @@
+<!doctype html><html><head><meta charset="utf-8"></head><body>
+<form onsubmit="event.preventDefault(); const p=document.getElementById('phone'); p.setAttribute('aria-invalid','true'); document.getElementById('perr').textContent='Phone must be a valid number';">
+<div class="field"><label for="first_name">First Name</label><input id="first_name"></div>
+<div class="field"><label for="phone">Phone</label><input id="phone"><div id="perr" class="error"></div></div>
+<button type="submit">Submit application</button></form></body></html>

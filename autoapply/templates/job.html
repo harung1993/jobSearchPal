@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}{{ job.company }}{% endblock %}
+{% block body %}
+<p style="margin:0 0 10px"><a href="/">← Dashboard</a></p>
+<header class="top"><div><h1>{{ job.company|title if job.company.islower() else job.company }} · {{ job.title }}</h1>
+ <div class="ink2">{{ job.location or "" }}{% if job.pay %} · {{ job.pay }}{% endif %} · <a href="{{ job.url }}" target="_blank">posting</a></div></div>
+ <span class="pill {{ job.status }}">{{ job.status }}</span></header>
+{% if job.error %}<p class="notice">{{ job.error }}</p>{% endif %}
+{% if report.submitted %}<p class="notice" style="background:var(--good-soft)">Submitted {{ job.submitted_at }}. Confirmation: “{{ report.confirmation }}”</p>{% endif %}
+
+{% if handoff %}<section class="card" style="margin-bottom:16px;border-color:var(--accent)"><h2>Finish this one yourself</h2>
+ <p class="ink2" style="margin-top:0">{{ handoff }} Open the <a href="{{ job.apply_url or job.url }}" target="_blank">application form</a>, attach the files below, paste the answers, and press Submit there. Then press <b>I applied by hand</b>. Quicker: on your Mac run <code>autoapply-finish {{ job.id }}</code> and Chrome opens with all of this filled in.</p>
+ {% if files %}<p>{% for slot, name in files %}<a class="btn" href="/file/{{ slot }}/{{ job.id|urlencode }}" download="{{ name }}">{{ name }}</a> {% endfor %}</p>{% endif %}
+ <table>{% for f in report.filled if f.source != 'file' %}<tr><td class="ink2" style="width:40%">{{ f.label }}</td><td>{{ f.value }}</td><td><button type="button" class="btn" onclick="navigator.clipboard.writeText(this.dataset.v);this.textContent='Copied'" data-v="{{ f.value }}">Copy</button></td></tr>{% endfor %}</table>
+</section>{% endif %}
+
+<form method="post" action="/job/{{ job.id|urlencode }}">
+<div class="grid g2">
+<div>
+ {% if report.held %}<section class="card"><h2>Your call: consents and self-ID</h2>
+  <p class="ink2" style="margin-top:0">The bot never answers these. Pick an answer for each, or leave optional ones blank.</p>
+  <table>{% for h in report.held %}<tr><td>{{ h.label }}{% if h.required %} <b>*</b>{% endif %}</td><td style="width:45%">
+  {% if h.kind == 'checkbox_single' %}<label><input type="checkbox" name="held::{{ h.label }}" value="yes" {% if approved.get(h.label) %}checked{% endif %}> I agree</label>
+  {% elif h.options %}<select name="held::{{ h.label }}"><option value=""></option>{% for o in h.options %}<option {% if approved.get(h.label)==o %}selected{% endif %}>{{ o }}</option>{% endfor %}</select>
+  {% else %}<input type="text" name="held::{{ h.label }}" value="{{ approved.get(h.label,'') }}">{% endif %}</td></tr>{% endfor %}</table></section>{% endif %}
+
+ {% if report.unanswered %}<section class="card" style="margin-top:16px"><h2>Still unanswered</h2><table>{% for u in report.unanswered %}<tr><td>{{ u.label }}{% if u.required %} <b>*</b>{% endif %}</td><td style="width:45%">
+  {% if u.options %}<select name="ans::{{ u.label }}"><option value=""></option>{% for o in u.options %}<option>{{ o }}</option>{% endfor %}</select>
+  {% else %}<input type="text" name="ans::{{ u.label }}">{% endif %}</td></tr>{% endfor %}</table></section>{% endif %}
+ {% if report.errors %}<section class="card" style="margin-top:16px"><h2>Problems</h2><ul>{% for e in report.errors %}<li>{{ e.label }}: {{ e.error }}</li>{% endfor %}</ul></section>{% endif %}
+
+ <section class="card" style="margin-top:16px"><h2>Filled ({{ report.filled|length }})</h2>
+  <table>{% for f in report.filled %}<tr><td class="ink2" style="width:45%">{{ f.label }}</td><td>{{ f.value }}</td><td><span class="pill">{{ f.source }}</span></td></tr>{% endfor %}</table>
+  <details style="margin-top:12px"><summary>Edit all answers (JSON)</summary><textarea name="plan" rows="14" style="margin-top:8px">{{ plan_text }}</textarea></details>
+ </section>
+
+ {% if job.status != 'submitted' %}<section class="card" style="margin-top:16px"><h2>Decide</h2>
+  <p><label><input type="checkbox" name="approve" value="yes"> I reviewed this application, the files and my consent answers, and want it submitted.</label></p>
+  {% if report.submit_clicked and not report.submitted %}<p class="notice">Submit was already pressed once and no confirmation came back. Check your email for a confirmation first.<br>
+   <label><input type="checkbox" name="resubmit" value="yes"> I checked, it didn't go through: submit again</label></p>{% endif %}
+  <p style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn go" name="action" value="submit">Submit application</button>
+   <button class="btn" name="action" value="refill">Save and refill</button>
+   <button class="btn" name="action" value="manual">I applied by hand</button>
+   <button class="btn" name="action" value="skip">Not applying</button></p></section>{% endif %}
+</div>
+<div>
+ {% if files %}<section class="card"><h2>Documents</h2>
+  {% for slot, name in files %}<p style="margin:0 0 6px"><a href="/file/{{ slot }}/{{ job.id|urlencode }}" target="_blank">{{ name }}</a></p>
+  {% if name.lower().endswith('.pdf') %}<iframe class="doc" src="/file/{{ slot }}/{{ job.id|urlencode }}" title="{{ name }}" loading="lazy" style="margin-bottom:12px"></iframe>{% endif %}{% endfor %}
+ </section>{% endif %}
+ {% if notes %}<section class="card" style="margin-top:16px"><h2>Notes</h2><details open><summary>Fit, gaps and screen prep</summary><pre style="white-space:pre-wrap;font:13px/1.5 ui-monospace,monospace">{{ notes }}</pre></details></section>{% endif %}
+ {% if job.screenshot %}<section class="card" style="margin-top:16px"><h2>The form right now</h2><a href="/shot/{{ job.id|urlencode }}" target="_blank"><img class="shot" src="/shot/{{ job.id|urlencode }}" alt="Screenshot of the filled form"></a></section>{% endif %}
+</div>
+</div>
+</form>
+{% endblock %}
