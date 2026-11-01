@@ -52,8 +52,14 @@ class DB:
         for col, typ in MIGRATIONS.items():
             if col not in have:
                 self.conn.execute(f"alter table jobs add column {col} {typ}")
-        if "proof" not in {r[1] for r in self.conn.execute("pragma table_info(events)")}:
+        ecols = {r[1] for r in self.conn.execute("pragma table_info(events)")}
+        if "proof" not in ecols:
             self.conn.execute("alter table events add column proof text")
+        # guess: what the keyword rules said; reviewed: a model or you settled the kind; manual: you did.
+        for col, typ in {"body": "text", "guess": "text", "reviewed": "integer default 0", "manual": "integer default 0"}.items():
+            if col not in ecols:
+                self.conn.execute(f"alter table events add column {col} {typ}")
+        self.conn.execute("update events set reviewed = 1 where kind = 'applied'")
         self.conn.commit()
 
     def upsert_job(self, job: dict) -> bool:
@@ -86,14 +92,29 @@ class DB:
         return [dict(r) for r in self.conn.execute("select * from jobs order by found_at desc")]
 
     def add_event(self, ev: dict) -> bool:
+        ev = {"proof": None, "body": None, "guess": None, "reviewed": 1, "manual": 0, **ev}
         cur = self.conn.execute(
-            "insert or ignore into events (id, job_id, kind, at, sender, subject, proof)"
-            " values (:id, :job_id, :kind, :at, :sender, :subject, :proof)", {"proof": None, **ev})
+            "insert or ignore into events (id, job_id, kind, at, sender, subject, proof, body, guess, reviewed, manual)"
+            " values (:id, :job_id, :kind, :at, :sender, :subject, :proof, :body, :guess, :reviewed, :manual)", ev)
         self.conn.commit()
         return cur.rowcount == 1
 
-    def events(self) -> list[dict]:
-        return [dict(r) for r in self.conn.execute("select * from events order by at desc")]
+    def events(self, all: bool = False) -> list[dict]:
+        """Settled events, newest first. Unreviewed and ignored emails only come back with all=True."""
+        q = "select * from events" + ("" if all else " where reviewed = 1 and kind != 'ignored'") + " order by at desc"
+        return [dict(r) for r in self.conn.execute(q)]
+
+    def pending_events(self) -> list[dict]:
+        return [dict(r) for r in self.conn.execute("select * from events where reviewed = 0 order by at")]
+
+    def get_event(self, event_id: str) -> dict | None:
+        row = self.conn.execute("select * from events where id = ?", (event_id,)).fetchone()
+        return dict(row) if row else None
+
+    def set_event(self, event_id: str, **fields):
+        sets = ", ".join(f"{k} = :{k}" for k in fields)
+        self.conn.execute(f"update events set {sets} where id = :id", {**fields, "id": event_id})
+        self.conn.commit()
 
     def has_event(self, event_id: str) -> bool:
         return self.conn.execute("select 1 from events where id = ?", (event_id,)).fetchone() is not None

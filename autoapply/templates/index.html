@@ -29,7 +29,7 @@
    <a class="btn primary sm" href="/job/{{ j.id|urlencode }}">Review</a></div>
   {% else %}<p class="empty">Nothing waiting. The next daily run prepares more.</p>{% endfor %}
  </div>
- <div class="card"><h2>Latest replies <span class="count">{{ s.events|length }}</span></h2>
+ <div class="card"><h2>Latest replies <a href="/emails?show={{ 'waiting' if s.pending else 'all' }}">{% if s.pending %}{{ s.pending|length }} not sorted{% else %}All emails{% endif %}</a></h2>
   <ul class="feed">{% for e in s.events %}<li><span class="pill {{ e.kind }}">{{ e.kind }}</span><span>{{ e.subject }}</span><span class="when">{{ e.at[5:10]|replace('-', '/') }}</span></li>
   {% else %}<li class="empty">No replies synced yet. Run <code>autoapply sync-email</code> once the Gmail app password is set.</li>{% endfor %}</ul>
  </div>

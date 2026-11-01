@@ -27,6 +27,10 @@ RULES = [
     ("confirmed", r"thank(s| you) for (applying|your application|your interest)|application (was |has been )?"
                   r"(received|submitted)|we('ve| have) received your application|received your application"),
 ]
+# "We'll schedule interviews once we've reviewed resumes" is an acknowledgement, not an invite.
+NOT_YET = re.compile(r"if (there is|there's|we (see|find)) (a|an) (fit|match)|if (your|you|we)\b[^.]{0,80}(qualif|fit|match|move forward)"
+                     r"|once we('ve| have)? (been able to )?review|review (all|submitted|your) (applications|resumes|application|resume)"
+                     r"|(plan|hope) to schedule interviews|will (keep you posted|be in touch)", re.I)
 RANK = {"confirmed": 1, "interview": 2, "rejected": 3, "offer": 4}
 
 # Recruiter outreach arrives from anyone, so it's found by Gmail search rather than by sender.
@@ -87,6 +91,8 @@ def classify(subject: str, text: str) -> str | None:
         return None
     for kind, pat in RULES:
         if re.search(pat, blob, re.I):
+            if kind == "interview" and NOT_YET.search(blob):
+                return "confirmed"
             return kind
     return None
 
@@ -106,57 +112,107 @@ def match_job(jobs: list[dict], name: str, addr: str, subject: str, text: str) -
     return best
 
 
+KINDS = ["confirmed", "interview", "rejected", "offer", "recruiter", "ignored"]
+
+
 def apply_event(db: DB, jobs: list[dict], msg_id: str, name: str, addr: str, subject: str, when, text: str,
                 raw: bytes = b"", proof_root: Path | None = None) -> str | None:
+    """Files a candidate email as unreviewed, with the keyword rules' guess. Nothing counts (stats, outcomes,
+    the work-search log) until review_event settles it, either from the model (classify.py) or from you."""
+    old = db.get_event(msg_id)
+    if old and old["reviewed"]:
+        return None  # settled already; only a --rebuild (or you, on the Emails page) changes it
     from_ats = any(d in addr.lower() for d in ATS_SENDERS)
-    if subject.startswith("Job search brief"):
-        kind = None  # our own morning brief quotes other emails
+    if subject.startswith("Job search brief") or NOT_STATUS.search(subject):
+        guess, keep = None, False  # our own brief quotes other emails; sign-in links and codes aren't news
     else:
-        kind = classify(subject, text)
+        guess = classify(subject, text)
         recruiter = is_recruiter(name, addr, subject, text)
-        # A recruiter's "next steps" isn't an interview, but a confirmation or rejection is what it says.
-        if recruiter and not from_ats and kind not in ("confirmed", "rejected", "offer"):
-            kind = "recruiter"
-        elif not from_ats and not recruiter and kind and not match_job(jobs, name, addr, subject, text):
-            kind = None  # status words in an email about none of your applications: newsletters, banks, alerts
-    if not kind:
-        db.delete_event(msg_id)  # filed under older rules that no longer match
+        if recruiter and not from_ats and guess not in ("confirmed", "rejected", "offer"):
+            guess = "recruiter"
+        job = match_job(jobs, name, addr, subject, text)
+        # Worth a look: anything from an ATS, recruiter-looking mail, or status words about one of your applications.
+        keep = from_ats or recruiter or bool(guess and job)
+    if not keep:
+        if old:
+            db.delete_event(msg_id)
         return None
-    job = match_job(jobs, name, addr, subject, text)
-    at = when.strftime("%Y-%m-%d %H:%M")
-    old = db.event_kind(msg_id)
-    if old == kind:
-        return None  # seen before
     if old:
-        db.delete_event(msg_id)  # rules improved since it was filed: refile it
-    proof = save_proof(proof_root, when, job["company"] if job else (name or addr), kind, raw, text,
+        return None  # already waiting for review
+    job = match_job(jobs, name, addr, subject, text)
+    proof = save_proof(proof_root, when, job["company"] if job else (name or addr), guess or "email", raw, text,
                        f"From: {name} <{addr}>\nDate: {when:%Y-%m-%d %H:%M}\nSubject: {subject}")
-    db.add_event({"id": msg_id, "job_id": job["id"] if job else None, "kind": kind, "at": at,
-                  "sender": f"{name} <{addr}>" if name else addr, "subject": subject[:200], "proof": proof})
-    if kind == "recruiter":
-        return kind
-    if job:
-        cur = db.get(job["id"])
+    db.add_event({"id": msg_id, "job_id": job["id"] if job else None, "kind": guess or "unsure", "guess": guess,
+                  "at": when.strftime("%Y-%m-%d %H:%M"), "sender": f"{name} <{addr}>" if name else addr,
+                  "subject": subject[:200], "proof": proof, "body": text[:4000], "reviewed": 0})
+    return guess or "unsure"
+
+
+def review_event(db: DB, event_id: str, kind: str, job_id: str | None = "", manual: bool = False) -> dict:
+    """Settles an email's kind (and optionally which application it's about), then updates that job's outcome.
+    job_id "" keeps the current match; None clears it."""
+    if kind not in KINDS:
+        raise ValueError(f"kind must be one of {', '.join(KINDS)}")
+    ev = db.get_event(event_id)
+    if not ev:
+        raise KeyError(event_id)
+    if ev["manual"] and not manual:
+        return ev  # your correction wins over the model
+    old_job, old_kind = ev["job_id"], ev["kind"]
+    new_job = old_job if job_id == "" else job_id
+    if new_job and not db.get(new_job):
+        raise KeyError(new_job)
+    db.set_event(event_id, kind=kind, job_id=new_job, reviewed=1, manual=int(manual or ev["manual"]))
+    if kind == "ignored" and ev["proof"]:
+        _drop_proof(ev["proof"])  # not a job email, so it doesn't belong in the work-search proof
+        db.set_event(event_id, proof=None)
+    if old_job and (old_job != new_job or old_kind != kind):
+        _reset_outcome(db, old_job, {old_kind})
+    if new_job and kind in RANK:
+        cur = db.get(new_job)
+        at = ev["at"]
         if kind == "confirmed" and cur["status"] == "filled":
             # Submit was pressed but the page never confirmed; the ATS email settles it.
-            db.update(job["id"], status="submitted", submitted_at=at, error=None)
+            db.update(new_job, status="submitted", submitted_at=at, error=None)
         if RANK[kind] >= RANK.get(cur.get("outcome") or "", 0):
-            db.update(job["id"], outcome=kind, outcome_at=at)
-    return kind
+            db.update(new_job, outcome=kind, outcome_at=at)
+    return db.get_event(event_id)
+
+
+def _drop_proof(proof: str | None):
+    for p in (proof, proof[:-4] + ".txt" if proof and proof.endswith(".eml") else None):
+        if p:
+            Path(p).unlink(missing_ok=True)
+
+
+def _reset_outcome(db: DB, job_id: str, dropped: set[str]):
+    """After an event is removed or changed, an outcome that only it supported goes back to the best one left."""
+    cur = db.get(job_id)
+    if not cur or (cur.get("outcome") or "") not in dropped:
+        return
+    left = [e for e in db.events() if e["job_id"] == job_id and e["kind"] in RANK]
+    if any(e["kind"] == cur["outcome"] for e in left):
+        return
+    best = max(left, key=lambda e: (RANK[e["kind"]], e["at"] or ""), default=None)
+    db.update(job_id, outcome=best["kind"] if best else None, outcome_at=best["at"] if best else None)
 
 
 def rebuild(db: DB, days: int) -> int:
-    """Forgets email events from the last N days (and their proof copies) so the next sync refiles them."""
+    """Forgets email events from the last N days (and their proof copies) so the next sync refiles them.
+    Your own corrections from the Emails page are kept."""
     from datetime import timedelta
     cut = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d")
     n = 0
-    for e in db.events():
-        if e["kind"] != "applied" and (e["at"] or "") >= cut:
-            for p in (e["proof"], (e["proof"] or "")[:-4] + ".txt" if (e["proof"] or "").endswith(".eml") else None):
-                if p:
-                    Path(p).unlink(missing_ok=True)
+    dropped: dict[str, set[str]] = {}
+    for e in db.events(all=True):
+        if e["kind"] != "applied" and not e["manual"] and (e["at"] or "") >= cut:
+            if e["job_id"]:
+                dropped.setdefault(e["job_id"], set()).add(e["kind"])
+            _drop_proof(e["proof"])
             db.delete_event(e["id"])
             n += 1
+    for job_id, kinds in dropped.items():
+        _reset_outcome(db, job_id, kinds)
     return n
 
 

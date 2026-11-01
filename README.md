@@ -20,7 +20,7 @@ The screenshots use fictional demo data (`scripts/demo-data.py`).
 
 ```
 cron 6:30am ─► claude -p prompts/daily.md
-                 ├─ autoapply sync-email               replies, recruiters, proof copies
+                 ├─ autoapply sync-email               replies, recruiters, proof copies, sorted by a model
                  ├─ autoapply find / alerts / add      roles from job boards, feeds, alert emails
                  ├─ tailored resume + cover letter     python-docx + LibreOffice → PDF
                  ├─ autoapply scan <url>               the form's questions as JSON
@@ -40,6 +40,11 @@ you ───────► dashboard ─► review answers, decide consents �
 - **Work-search log:** if you claim unemployment benefits, every application and recruiter
   contact is grouped by Sunday-to-Saturday week, with the original emails and submit screenshots
   saved as proof and a weekly zip in work-search-log columns.
+- **Email sorting:** keyword rules only gather candidate emails. A model reads each one and files it as a
+  confirmation, interview, rejection, offer, recruiter contact or not job-related, and matches it to the
+  application. Pick the model in `config.yaml` (`email_classifier`): Claude Code on your subscription
+  (default, Haiku, no tools), any OpenRouter model, or a local Ollama model. Nothing counts until it's
+  sorted, and the **Emails** page lets you change any call; your choice survives rescans.
 - **Email:** reads Gmail over read-only IMAP with an app password (nothing is marked, moved or
   deleted), and sends you one morning summary over SMTP.
 
@@ -91,7 +96,9 @@ Updating later: `git pull && .venv/bin/pip install -e . && systemctl --user rest
 autoapply find                         new matching roles from boards and feeds
 autoapply board add ATS SLUG           watch another company's board (checked first)
 autoapply alerts [--days N]            job-alert emails as text
-autoapply sync-email [--days N] [--rebuild]   replies and recruiter emails → dashboard and proof
+autoapply sync-email [--days N] [--rebuild]   replies and recruiter emails → sorted → dashboard and proof
+autoapply review-emails                sort emails still waiting (see email_classifier)
+autoapply emails [--pending]           filed emails as JSON;  emails set ID KIND  settles one by hand
 autoapply import-history FILE.json     load past applications (tracker rows)
 autoapply add URL / list / show ID / skip ID
 autoapply scan URL                     a form's questions as JSON
@@ -107,7 +114,8 @@ autoapply finish JOB_ID                (laptop) open the filled form in Chrome f
 autoapply/cli.py         the commands Claude calls
 autoapply/fillers/       scan.js reads any form; base.py fills and submits per ATS
 autoapply/finder.py      job-board APIs and feeds
-autoapply/emailsync.py   reply and recruiter classification, proof copies
+autoapply/emailsync.py   gathers candidate emails, proof copies, applies a settled kind
+autoapply/classify.py    model review of waiting emails (Claude Code, OpenRouter, Ollama)
 autoapply/stats.py       dashboard and stats numbers
 autoapply/web.py         dashboard, review page, work-search log
 autoapply/templates/     HTML (no build step, no JavaScript framework)

@@ -73,6 +73,7 @@ def compute(db: DB, today: date | None = None, weeks: int = 12, floor: int = 3) 
         "ready": db.by_status("filled"),
         "new_count": sum(1 for j in jobs if j["status"] == "new"),
         "events": [e for e in db.events() if e["kind"] not in ("recruiter", "applied")][:8],
+        "pending": db.pending_events(),
         "recruiters": recruiters(db)[:6],
         "runs": freshness(db.runs()),
         "recruiter_count": len(recruiters(db)),
@@ -124,7 +125,7 @@ def recruiters(db: DB) -> list[dict]:
     return list(out.values())
 
 
-RUN_LABELS = [("daily", "Daily run", 26), ("find", "Job search", 26), ("sync-email", "Email sync", 26), ("fill", "Last form fill", None), ("brief", "Morning brief", None)]
+RUN_LABELS = [("daily", "Daily run", 26), ("find", "Job search", 26), ("sync-email", "Email sync", 26), ("fill", "Last form fill", None), ("classify", "Email sorting", None), ("brief", "Morning brief", None)]
 
 
 def freshness(runs: dict, now: datetime | None = None) -> list[dict]:

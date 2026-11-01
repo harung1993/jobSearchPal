@@ -4,7 +4,12 @@
   autoapply board add ATS SLUG        watch another company's job board (checked first)
   autoapply board list                boards being watched
   autoapply alerts [--days N]         recent job-alert emails as text, to pull roles from
-  autoapply sync-email [--days N] [--rebuild]  read ATS/recruiter replies into outcomes (--rebuild refiles them)
+  autoapply sync-email [--days N] [--rebuild] [--no-review]  gather ATS/recruiter emails, then have the
+                                      model sort them (--rebuild refiles; your corrections are kept)
+  autoapply review-emails             sort the emails still waiting (email_classifier in config.yaml)
+  autoapply emails [--pending]        filed emails with their kind, as JSON
+  autoapply emails set ID KIND [--job JOB_ID|none]  settle one by hand (confirmed, interview, rejected,
+                                      offer, recruiter, ignored)
   autoapply import-history FILE.json  load past applications (tracker rows) into the dashboard
   autoapply log-run KIND ok|fail [MSG]  record a run (daily.sh uses it) for the dashboard
   autoapply add URL [--company C --title T]   track a role found elsewhere
@@ -36,6 +41,32 @@ def _out(obj):
     print(json.dumps(obj, indent=1, default=str))
 
 
+def _review(s, db) -> dict:
+    """Model review of waiting emails; a failure leaves them waiting and is logged, not raised."""
+    from . import classify
+    try:
+        r = classify.review(db, s.raw)
+        db.log_run("classify", True, ", ".join(f"{v} {k}" for k, v in r.items()))
+        return r
+    except Exception as e:
+        db.log_run("classify", False, str(e)[:300])
+        return {"error": str(e)[:300], "left": len(db.pending_events())}
+
+
+def _summary(out: dict) -> str:
+    filed = sum(out["filed"].values())
+    r = out.get("reviewed") or {}
+    bits = [f"{filed} new email{'' if filed == 1 else 's'}"]
+    sorted_n = sum(v for k, v in r.items() if k not in ("left", "error"))
+    if sorted_n:
+        bits.append(f"{sorted_n} sorted")
+    if r.get("left"):
+        bits.append(f"{r['left']} waiting for review")
+    if r.get("error"):
+        bits.append("sorting failed: " + r["error"][:80])
+    return ", ".join(bits)
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="autoapply", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--config", default="config.yaml")
@@ -43,7 +74,10 @@ def main(argv=None):
     sub.add_parser("find")
     a = sub.add_parser("board"); a.add_argument("action", choices=["add", "list"]); a.add_argument("ats", nargs="?", choices=sorted(finder.FETCHERS)); a.add_argument("slug", nargs="?")
     a = sub.add_parser("alerts"); a.add_argument("--days", type=int, default=1)
-    a = sub.add_parser("sync-email"); a.add_argument("--days", type=int, default=60); a.add_argument("--rebuild", action="store_true")
+    a = sub.add_parser("sync-email"); a.add_argument("--days", type=int, default=60); a.add_argument("--rebuild", action="store_true"); a.add_argument("--no-review", action="store_true")
+    sub.add_parser("review-emails")
+    a = sub.add_parser("emails"); a.add_argument("action", nargs="?", choices=["set"]); a.add_argument("event_id", nargs="?")
+    a.add_argument("kind", nargs="?"); a.add_argument("--job", default=""); a.add_argument("--pending", action="store_true")
     a = sub.add_parser("import-history"); a.add_argument("file")
     a = sub.add_parser("log-run"); a.add_argument("kind"); a.add_argument("result", choices=["ok", "fail"]); a.add_argument("msg", nargs="?", default="")
     a = sub.add_parser("add"); a.add_argument("url"); a.add_argument("--company", default=""); a.add_argument("--title", default="")
@@ -92,8 +126,28 @@ def main(argv=None):
         except Exception as e:
             db.log_run("sync-email", False, str(e))
             raise
-        db.log_run("sync-email", True, ", ".join(f"{v} {k}" for k, v in counts.items()) or "nothing new")
-        _out(counts)
+        out = {"filed": counts}
+        if not args.no_review:
+            out["reviewed"] = _review(s, db)
+        db.log_run("sync-email", True, _summary(out))
+        _out(out)
+    elif args.cmd == "review-emails":
+        _out(_review(s, db))
+    elif args.cmd == "emails":
+        from . import emailsync
+        if args.action == "set":
+            if not (args.event_id and args.kind):
+                sys.exit("usage: autoapply emails set EVENT_ID KIND [--job JOB_ID|none]")
+            job = None if args.job == "none" else args.job
+            try:
+                ev = emailsync.review_event(db, args.event_id, args.kind, job_id=job, manual=True)
+            except (KeyError, ValueError) as e:
+                sys.exit(str(e))
+            _out({k: ev[k] for k in ("id", "kind", "job_id", "subject")})
+        else:
+            rows = db.pending_events() if args.pending else db.events(all=True)
+            _out([{k: e[k] for k in ("id", "at", "kind", "guess", "reviewed", "manual", "job_id", "sender", "subject")}
+                  for e in rows if e["kind"] != "applied"])
     elif args.cmd == "import-history":
         from . import history
         print(f"imported {history.import_file(db, Path(args.file))} past applications")

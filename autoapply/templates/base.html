@@ -85,6 +85,9 @@ header.top h1{font-size:24px;margin:0;letter-spacing:-.02em}
 .pill.interview,.pill.offer,.pill.submitted{background:var(--good-soft);color:var(--good)} .pill.interview::before,.pill.offer::before,.pill.submitted::before{background:var(--good-dot)}
 .pill.rejected,.pill.failed{background:var(--bad-soft);color:var(--bad)} .pill.rejected::before,.pill.failed::before{background:var(--bad-dot)}
 .pill.filled,.pill.confirmed,.pill.recruiter{background:var(--accent-soft);color:var(--accent-ink)} .pill.filled::before,.pill.confirmed::before,.pill.recruiter::before{background:var(--accent)}
+.pill.ignored,.pill.unsure{background:var(--surface-2);color:var(--ink-3)}
+.pill.guess{background:transparent;border:1px dashed var(--line-2)}
+.badge{margin-left:auto;font-size:11px;font-weight:700;background:var(--warn-soft);color:var(--warn);border-radius:999px;padding:1px 7px}
 .pill.waiting{background:var(--warn-soft);color:var(--warn)} .pill.waiting::before{background:var(--warn-dot)}
 
 /* run strip */
@@ -140,6 +143,7 @@ details summary{cursor:pointer;color:var(--ink-2);font-size:13px;font-weight:600
  <nav class="nav" aria-label="Main">
   <a href="/" {% if nav == 'dashboard' %}aria-current="page"{% endif %}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="2"/><rect x="14" y="3" width="7" height="5" rx="2"/><rect x="14" y="12" width="7" height="9" rx="2"/><rect x="3" y="16" width="7" height="5" rx="2"/></svg><span class="lbl">Dashboard</span></a>
   <a href="/stats" {% if nav == 'stats' %}aria-current="page"{% endif %}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg><span class="lbl">Stats</span></a>
+  <a href="/emails" {% if nav == 'emails' %}aria-current="page"{% endif %}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg><span class="lbl">Emails</span>{% if pending_count is defined and pending_count %}<span class="badge" aria-label="{{ pending_count }} waiting">{{ pending_count }}</span>{% endif %}</a>
   <a href="/dua" {% if nav == 'work' %}aria-current="page"{% endif %}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="4" y="4" width="16" height="17" rx="2"/><path d="M8 2v4M16 2v4M8 11h8M8 15h5"/></svg><span class="lbl">{{ ws_label|default('Work search') }}</span></a>
  </nav>
  <div class="foot">

@@ -28,6 +28,10 @@ def page(name: str, **ctx) -> HTMLResponse:
     return HTMLResponse(env.get_template(name).render(**ctx))
 
 
+KIND_LABELS = [("confirmed", "Confirmation"), ("interview", "Interview"), ("rejected", "Rejection"), ("offer", "Offer"),
+               ("recruiter", "Recruiter"), ("ignored", "Not job-related")]
+
+
 def work_search(settings) -> tuple[str, int]:
     """Label and weekly minimum for the work-search log, e.g. {label: DUA, weekly_minimum: 3}."""
     ws = settings.raw.get("work_search") or {}
@@ -60,6 +64,9 @@ def make_app(settings, db: DB) -> FastAPI:
 
     ws_label, floor = work_search(settings)
     env.globals["ws_label"] = ws_label
+
+    def page(name: str, **ctx) -> HTMLResponse:  # noqa: F811  every page shows the waiting-email badge
+        return HTMLResponse(env.get_template(name).render(pending_count=len(db.pending_events()), **ctx))
 
     @app.get("/")
     def index():
@@ -151,9 +158,49 @@ def make_app(settings, db: DB) -> FastAPI:
         try:
             counts = await run_in_threadpool(emailsync.sync, db, 7, settings.raw.get("recruiter_senders"), proof_root)
             db.log_run("sync-email", True, ", ".join(f"{v} {k}" for k, v in counts.items()) or "nothing new")
+            from .cli import _review
+            await run_in_threadpool(_review, settings, db)
         except Exception as e:  # shown on the strip; no traceback page
             db.log_run("sync-email", False, str(e))
-        return RedirectResponse("/", status_code=303)
+        return RedirectResponse("/emails" if db.pending_events() else "/", status_code=303)
+
+    @app.get("/emails")
+    def emails(show: str = "waiting"):
+        from . import classify
+        every = [e for e in db.events(all=True) if e["kind"] != "applied"]
+        groups = {"waiting": [e for e in every if not e["reviewed"]],
+                  "replies": [e for e in every if e["reviewed"] and e["kind"] in ("confirmed", "interview", "rejected", "offer")],
+                  "recruiter": [e for e in every if e["reviewed"] and e["kind"] == "recruiter"],
+                  "ignored": [e for e in every if e["reviewed"] and e["kind"] == "ignored"],
+                  "all": every}
+        show = show if show in groups else "waiting"
+        tabs = [("waiting", "Not sorted", len(groups["waiting"])), ("replies", "Replies", len(groups["replies"])),
+                ("recruiter", "Recruiters", len(groups["recruiter"])), ("ignored", "Not job-related", len(groups["ignored"])),
+                ("all", "All", len(every))]
+        c = classify.settings_of(settings.raw)
+        name = {"claude": "Claude", "none": "nobody"}.get(c["backend"], c.get("model") or "the model")
+        jobs = sorted(db.by_status("submitted", "filled"), key=lambda j: (j["company"] or "").lower())
+        return page("emails.html", rows=groups[show][:300], tabs=tabs, show=show, kinds=KIND_LABELS, jobs=jobs,
+                    classifier=name, nav="emails")
+
+    @app.post("/emails/{event_id:path}")
+    def set_email(event_id: str, kind: str = Form(""), job: str = Form(""), show: str = Form("waiting")):
+        from . import emailsync
+        ev = db.get_event(event_id)
+        if not ev:
+            raise HTTPException(404)
+        job_id = None if job == "none" else (job or "")
+        if not kind:  # only the application changed on an unsorted email
+            if ev["reviewed"]:
+                kind = ev["kind"]
+            else:
+                db.set_event(event_id, job_id=job_id or None)
+                return RedirectResponse(f"/emails?show={show}", status_code=303)
+        try:
+            emailsync.review_event(db, event_id, kind, job_id=job_id, manual=True)
+        except (KeyError, ValueError) as e:
+            raise HTTPException(400, str(e))
+        return RedirectResponse(f"/emails?show={show}", status_code=303)
 
     @app.get("/dua")
     def dua():

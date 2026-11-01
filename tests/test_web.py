@@ -122,3 +122,20 @@ def test_finish_fills_without_submitting(tmp_path, base_url, pdfs):
     plan = {"url": f"{base_url}/gh/", "ats": "greenhouse", "files": pdfs, "answers": {"Why do you want to work here?": "x"}}
     r = handoff(plan, PROFILE, wait=False)
     assert r.filled and not r.submit_clicked and not r.submitted
+
+
+def test_emails_page_sets_category_and_job(tmp_path, base_url, pdfs):
+    from datetime import datetime
+    from autoapply import emailsync
+    db, c, plan = setup(tmp_path, base_url, pdfs)
+    db.update("manual:gh", status="submitted", submitted_at="2026-10-28 10:00")
+    emailsync.apply_event(db, db.by_status("submitted"), "<m1>", "Acme", "no-reply@greenhouse.io", "Your application",
+                          datetime(2026, 10, 29, 9), "Thanks <b>for applying</b>.")
+    html = c.get("/emails").text
+    assert "Your application" in html and "Not sorted" in html and "&lt;b&gt;" in html  # escaped body
+    r = c.post("/emails/<m1>", data={"kind": "interview", "job": "manual:gh", "show": "waiting"}, follow_redirects=False)
+    assert r.status_code == 303
+    ev = db.get_event("<m1>")
+    assert ev["kind"] == "interview" and ev["manual"] == 1 and db.get("manual:gh")["outcome"] == "interview"
+    assert c.post("/emails/<m1>", data={"kind": "bogus"}).status_code == 400
+    assert c.post("/emails/<nope>", data={"kind": "ignored"}).status_code == 404
