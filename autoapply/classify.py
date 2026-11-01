@@ -21,6 +21,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
 import subprocess
 import tempfile
 import urllib.request
@@ -87,7 +88,8 @@ NO_TOOLS = ["--disallowedTools", "Bash,Edit,Write,Read,Glob,Grep,WebFetch,WebSea
 
 def _ask_claude(prompt: str, model: str) -> str:
     # Empty working dir, no tools, no MCP servers: the email text can't reach the project's files or commands.
-    base = ["claude", "-p", "--model", model, "--output-format", "text", "--strict-mcp-config"]
+    exe = shutil.which("claude") or os.path.expanduser("~/.local/bin/claude")  # systemd's PATH skips ~/.local/bin
+    base = [exe, "-p", "--model", model, "--output-format", "text", "--strict-mcp-config"]
     with tempfile.TemporaryDirectory() as d:
         r = subprocess.run(base + ["--tools", ""] + NO_TOOLS, input=prompt, capture_output=True, text=True, cwd=d, timeout=300)
         if r.returncode and "unknown option" in (r.stderr or "").lower():  # older Claude Code without --tools
