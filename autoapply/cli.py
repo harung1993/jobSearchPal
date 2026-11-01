@@ -6,7 +6,8 @@
   autoapply alerts [--days N]         recent job-alert emails as text, to pull roles from
   autoapply sync-email [--days N] [--rebuild] [--no-review]  gather ATS/recruiter emails, then have the
                                       model sort them (--rebuild refiles; your corrections are kept)
-  autoapply review-emails             sort the emails still waiting (email_classifier in config.yaml)
+  autoapply review-emails             sort the emails still waiting (sources and order: Settings page)
+  autoapply daily-model               the Claude model picked for the daily run (blank = default)
   autoapply emails [--pending]        filed emails with their kind, as JSON
   autoapply emails set ID KIND [--job JOB_ID|none]  settle one by hand (confirmed, interview, rejected,
                                       offer, recruiter, ignored)
@@ -44,9 +45,13 @@ def _out(obj):
 def _review(s, db) -> dict:
     """Model review of waiting emails; a failure leaves them waiting and is logged, not raised."""
     from . import classify
+    from .prefs import Prefs
     try:
-        r = classify.review(db, s.raw)
-        db.log_run("classify", True, ", ".join(f"{v} {k}" for k, v in r.items()))
+        r = classify.review(db, Prefs(s.data_dir, s.raw))
+        summary = ", ".join(f"{v} {k}" for k, v in r.items() if k != "errors")
+        if r.get("errors"):
+            summary += " · failed: " + ", ".join(r["errors"])
+        db.log_run("classify", not r.get("errors") or r.get("left", 0) == 0, summary)
         return r
     except Exception as e:
         db.log_run("classify", False, str(e)[:300])
@@ -57,13 +62,15 @@ def _summary(out: dict) -> str:
     filed = sum(out["filed"].values())
     r = out.get("reviewed") or {}
     bits = [f"{filed} new email{'' if filed == 1 else 's'}"]
-    sorted_n = sum(v for k, v in r.items() if k not in ("left", "error"))
+    sorted_n = sum(v for k, v in r.items() if k not in ("left", "error", "errors"))
     if sorted_n:
         bits.append(f"{sorted_n} sorted")
     if r.get("left"):
         bits.append(f"{r['left']} waiting for review")
     if r.get("error"):
         bits.append("sorting failed: " + r["error"][:80])
+    for src, err in (r.get("errors") or {}).items():
+        bits.append(f"{src} failed")
     return ", ".join(bits)
 
 
@@ -76,6 +83,7 @@ def main(argv=None):
     a = sub.add_parser("alerts"); a.add_argument("--days", type=int, default=1)
     a = sub.add_parser("sync-email"); a.add_argument("--days", type=int, default=60); a.add_argument("--rebuild", action="store_true"); a.add_argument("--no-review", action="store_true")
     sub.add_parser("review-emails")
+    sub.add_parser("daily-model")
     a = sub.add_parser("emails"); a.add_argument("action", nargs="?", choices=["set"]); a.add_argument("event_id", nargs="?")
     a.add_argument("kind", nargs="?"); a.add_argument("--job", default=""); a.add_argument("--pending", action="store_true")
     a = sub.add_parser("import-history"); a.add_argument("file")
@@ -131,6 +139,9 @@ def main(argv=None):
             out["reviewed"] = _review(s, db)
         db.log_run("sync-email", True, _summary(out))
         _out(out)
+    elif args.cmd == "daily-model":
+        from .prefs import Prefs
+        print(Prefs(s.data_dir, s.raw).data.get("daily_model") or "")
     elif args.cmd == "review-emails":
         _out(_review(s, db))
     elif args.cmd == "emails":

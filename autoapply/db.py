@@ -34,6 +34,10 @@ create table if not exists runs (
   kind text primary key,           -- find, sync-email, fill, daily
   at text, ok integer, summary text
 );
+create table if not exists usage (   -- one row per call to an email-sorting model source
+  at text default (datetime('now', 'localtime')), source text, model text,
+  emails integer, sorted integer, cost real, ms integer, error text
+);
 """
 
 # Columns added after v0.1; ALTERed into older databases on open.
@@ -56,7 +60,8 @@ class DB:
         if "proof" not in ecols:
             self.conn.execute("alter table events add column proof text")
         # guess: what the keyword rules said; reviewed: a model or you settled the kind; manual: you did.
-        for col, typ in {"body": "text", "guess": "text", "reviewed": "integer default 0", "manual": "integer default 0"}.items():
+        for col, typ in {"body": "text", "guess": "text", "reviewed": "integer default 0", "manual": "integer default 0",
+                         "sorted_by": "text", "confidence": "real"}.items():
             if col not in ecols:
                 self.conn.execute(f"alter table events add column {col} {typ}")
         self.conn.execute("update events set reviewed = 1 where kind = 'applied'")
@@ -126,6 +131,23 @@ class DB:
     def delete_event(self, event_id: str):
         self.conn.execute("delete from events where id = ?", (event_id,))
         self.conn.commit()
+
+    def log_usage(self, source: str, model: str, emails: int, sorted_n: int, cost: float, ms: int, error: str | None):
+        self.conn.execute("insert into usage (source, model, emails, sorted, cost, ms, error) values (?, ?, ?, ?, ?, ?, ?)",
+                          (source, model, emails, sorted_n, cost, ms, error))
+        self.conn.commit()
+
+    def usage_summary(self, days: int = 30) -> dict[str, dict]:
+        """Per source over the last N days: calls, emails sorted, cost, average time, last error."""
+        q = ("select source, count(*) calls, sum(sorted) sorted, sum(emails) emails, sum(cost) cost, avg(ms) ms,"
+             " sum(error is not null) failures, max(at) last from usage where at >= datetime('now', 'localtime', ?)"
+             " group by source")
+        out = {r["source"]: dict(r) for r in self.conn.execute(q, (f"-{days} days",))}
+        for src, row in out.items():
+            e = self.conn.execute("select error, at from usage where source = ? and error is not null order by at desc limit 1",
+                                  (src,)).fetchone()
+            row["last_error"] = dict(e) if e else None
+        return out
 
     def log_run(self, kind: str, ok: bool, summary: str = ""):
         """Keeps the latest run of each kind, for the dashboard's freshness strip."""

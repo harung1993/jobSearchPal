@@ -31,18 +31,6 @@ work_search:
   label: Work search          # e.g. DUA
   weekly_minimum: 3
 
-# Who sorts new job emails (confirmation, interview, rejection, offer, recruiter, not job-related).
-# Keyword rules only gather candidates; a model reads each one. Fix any call on the Emails page.
-email_classifier:
-  backend: claude             # Claude Code on your subscription, run with no tools
-  model: haiku
-  # OpenRouter (set OPENROUTER_API_KEY in .env; pick a model id from openrouter.ai/models):
-  # backend: openai
-  # base_url: https://openrouter.ai/api/v1
-  # model: google/gemini-2.0-flash-001
-  # A local model through Ollama (nothing leaves the server):
-  # backend: openai
-  # base_url: http://localhost:11434/v1
-  # model: llama3.1:8b
-  # Rules only; emails wait for you on the Emails page:
-  # backend: none
+
+# Email sorting sources, their order and models, and the daily run's model are set on the
+# dashboard's Settings page (saved in data/settings.json).

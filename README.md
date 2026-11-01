@@ -42,9 +42,12 @@ you ───────► dashboard ─► review answers, decide consents �
   saved as proof and a weekly zip in work-search-log columns.
 - **Email sorting:** keyword rules only gather candidate emails. A model reads each one and files it as a
   confirmation, interview, rejection, offer, recruiter contact or not job-related, and matches it to the
-  application. Pick the model in `config.yaml` (`email_classifier`): Claude Code on your subscription
-  (default, Haiku, no tools), any OpenRouter model, or a local Ollama model. Nothing counts until it's
-  sorted, and the **Emails** page lets you change any call; your choice survives rescans.
+  application. The **Settings** page sets which sources sort them and in what order, with a model
+  picker, a Test button and 30-day usage and cost for each: your Claude subscription (Claude Code,
+  no tools), your ChatGPT subscription (Codex CLI, read-only), TypeSafe's Jev decision model or any
+  chat model on OpenRouter, or a local Ollama model. If one fails or isn't sure, the next one gets the
+  email. Nothing counts until it's sorted, and the **Emails** page lets you change any call; your
+  choice survives rescans. The Settings page also picks the Claude model for the daily run.
 - **Email:** reads Gmail over read-only IMAP with an app password (nothing is marked, moved or
   deleted), and sends you one morning summary over SMTP.
 
@@ -115,7 +118,8 @@ autoapply/cli.py         the commands Claude calls
 autoapply/fillers/       scan.js reads any form; base.py fills and submits per ATS
 autoapply/finder.py      job-board APIs and feeds
 autoapply/emailsync.py   gathers candidate emails, proof copies, applies a settled kind
-autoapply/classify.py    model review of waiting emails (Claude Code, OpenRouter, Ollama)
+autoapply/classify.py    model review of waiting emails (Claude Code, Codex, Jev, OpenRouter, Ollama)
+autoapply/prefs.py       Settings page choices (data/settings.json) and saved API keys
 autoapply/stats.py       dashboard and stats numbers
 autoapply/web.py         dashboard, review page, work-search log
 autoapply/templates/     HTML (no build step, no JavaScript framework)

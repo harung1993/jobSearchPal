@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+{% block body %}
+<div class="ph"><div><h1>Settings</h1>
+ <div class="sub">Which models sort your job emails, in what order, and which Claude model runs the daily pass.</div></div></div>
+{% if msg %}<p class="notice" role="status">{{ msg }}</p>{% endif %}
+
+<form method="post" action="/settings">
+<button name="action" value="save" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px">Save</button>
+<section class="card mt">
+ <h2>Email sorting <span class="count">tried top to bottom</span></h2>
+ <p class="muted" style="font-size:13px;margin:-4px 0 14px">Each new email goes to the first source that's on. If it fails, or isn't
+  sure, the email goes to the next one. Anything no source can sort waits for you on the <a href="/emails">Emails</a> page.
+  {% if pending %}<b>{{ pending }} waiting now.</b>{% endif %}</p>
+
+ <ol class="srcs">
+ {% for name in p.order %}{% set meta = providers[name] %}{% set st = status[name] %}{% set u = usage.get(name) %}{% set t = (p.tests or {}).get(name) %}
+  {% set on = name in p.enabled %}
+  <li class="src {% if on %}on{% endif %}" id="src-{{ name }}">
+   <div class="rank" aria-hidden="true">{{ loop.index }}</div>
+   <div class="main-col">
+    <div class="top">
+     <label class="switch"><input type="checkbox" name="on::{{ name }}" value="1" {% if on %}checked{% endif %} onchange="this.form.requestSubmit()">
+      <span><b>{{ meta.name }}</b> <span class="ink2">· {{ meta.via }}</span></span></label>
+     <span class="dot {{ 'ok' if st.ready else 'no' }}">{{ st.note }}</span>
+    </div>
+    <div class="row2">
+     <label class="fld"><span>Model</span>
+     {% if name == 'claude' %}
+      <select name="model::claude">{% for m in meta.models %}<option value="{{ m }}" {% if prefs.model('claude') == m %}selected{% endif %}>{{ m|capitalize }}{% if m == 'haiku' %} (fastest, lightest on limits){% endif %}</option>{% endfor %}</select>
+     {% elif name == 'jev' %}
+      <select name="model::jev">{% for m in meta.models %}<option value="{{ m }}" {% if prefs.model('jev') == m %}selected{% endif %}>{{ m }}</option>{% endfor %}</select>
+     {% elif name == 'codex' %}
+      <input type="text" name="model::codex" value="{{ p.models.get('codex', '') }}" placeholder="blank = Codex's default" list="codex-models">
+      <datalist id="codex-models"><option value="gpt-5-mini"><option value="gpt-5"><option value="gpt-5-codex"></datalist>
+     {% elif name == 'openrouter' %}
+      {% if or_models %}<select name="model::openrouter"><option value="">Pick a model…</option>
+       {% for m in or_models %}<option value="{{ m.id }}" {% if p.models.get('openrouter') == m.id %}selected{% endif %}>{{ m.name }} · {% if m['in'] == 0 and m.out == 0 %}free{% else %}${{ '%g'|format(m['in']) }} in / ${{ '%g'|format(m.out) }} out per M{% endif %}</option>{% endfor %}</select>
+      {% else %}<input type="text" name="model::openrouter" value="{{ p.models.get('openrouter', '') }}" placeholder="model id, e.g. google/gemini-2.0-flash-001">{% endif %}
+     {% elif name == 'ollama' %}
+      {% if st.models %}<select name="model::ollama"><option value="">Pick a model…</option>{% for m in st.models %}<option value="{{ m }}" {% if p.models.get('ollama') == m %}selected{% endif %}>{{ m }}</option>{% endfor %}</select>
+      {% else %}<input type="text" name="model::ollama" value="{{ p.models.get('ollama', '') }}" placeholder="e.g. llama3.1:8b">{% endif %}
+     {% endif %}</label>
+     <div class="btns">
+      <button class="btn sm" name="action" value="test:{{ name }}">Test</button>
+      <button class="btn sm icon" name="action" value="up:{{ name }}" {% if loop.first %}disabled{% endif %} aria-label="Move {{ meta.name }} up">↑</button>
+      <button class="btn sm icon" name="action" value="down:{{ name }}" {% if loop.last %}disabled{% endif %} aria-label="Move {{ meta.name }} down">↓</button>
+     </div>
+    </div>
+    <div class="facts">
+     {% if u %}<span>Last 30 days: <b>{{ u.sorted or 0 }}</b> of {{ u.emails or 0 }} emails sorted</span>
+      <span>{{ u.calls }} call{{ '' if u.calls == 1 else 's' }}, ~{{ ((u.ms or 0) / 1000)|round(1) }}s each</span>
+      <span>{% if u.cost %}${{ '%.4f'|format(u.cost) }}{% else %}no API cost{% endif %}</span>
+      {% if u.failures %}<span class="bad">{{ u.failures }} failed{% if u.last_error %}: {{ u.last_error.error|truncate(90) }}{% endif %}</span>{% endif %}
+     {% else %}<span class="muted">Not used in the last 30 days.</span>{% endif %}
+    </div>
+    {% if t %}<div class="test {{ 'ok' if t.ok else 'bad' }}">Test {{ t.at }}{% if t.model %} ({{ t.model }}){% endif %}:
+      {% if t.ok %}sorted the sample interview email correctly{% if t.confidence %}, {{ (100 * t.confidence)|round|int }}% sure{% endif %}{% else %}{{ t.error }}{% endif %}
+      · {{ ((t.ms or 0) / 1000)|round(1) }}s{% if t.cost %} · ${{ '%.5f'|format(t.cost) }}{% endif %}</div>{% endif %}
+   </div>
+  </li>
+ {% endfor %}
+ </ol>
+ <div class="grid g2 mt">
+  <label class="fld"><span>Jev: minimum confidence</span>
+   <input type="text" name="min_confidence" value="{{ p.min_confidence }}" inputmode="decimal">
+   <small class="muted">Jev returns a probability with each answer. Below this, the email goes to the next source.</small></label>
+  <label class="fld"><span>Ollama address</span>
+   <input type="text" name="ollama_url" value="{{ p.ollama_url }}">
+   <small class="muted">Where Ollama runs, from this server.</small></label>
+ </div>
+ <div class="actions"><button class="btn primary" name="action" value="save">Save</button>
+  {% if pending %}<button class="btn" name="action" value="sort">Sort the {{ pending }} waiting now</button>{% endif %}</div>
+</section>
+
+<section class="card mt">
+ <h2>OpenRouter key <span class="count">for Jev and OpenRouter</span></h2>
+ <div class="grid g2">
+  <label class="fld"><span>API key</span>
+   <input type="password" name="openrouter_key" autocomplete="off" placeholder="sk-or-…">
+   <small class="muted">Currently {{ key_hint }}. Saved keys go to data/secrets.json on this server (owner-only) and are never shown again.
+    A key in .env takes priority.</small></label>
+  <div class="fld"><span>&nbsp;</span>{% if key_hint != 'not set' and 'saved here' in key_hint %}<label class="switch"><input type="checkbox" name="forget_key" value="1"> <span>Forget the saved key</span></label>{% endif %}
+   <small class="muted">Get one at openrouter.ai/keys. Emails sent to Jev or OpenRouter leave your server; Claude and Codex
+    runs use your subscriptions, and Ollama stays local.</small></div>
+ </div>
+ <div class="actions"><button class="btn primary" name="action" value="save">Save</button></div>
+</section>
+
+<section class="card mt">
+ <h2>Daily run</h2>
+ <label class="fld" style="max-width:360px"><span>Claude model for the 6:30 pass</span>
+  <select name="daily_model">{% for m in daily_models %}<option value="{{ m }}" {% if p.daily_model == m %}selected{% endif %}>{{ m|capitalize if m else "Claude Code's default" }}</option>{% endfor %}</select>
+  <small class="muted">Finding roles, tailoring and filling forms need Claude Code's tools, so this stays on your Claude subscription.
+   Opus writes the best cover letters; Sonnet is lighter on usage limits.</small></label>
+ <div class="actions"><button class="btn primary" name="action" value="save">Save</button></div>
+</section>
+</form>
+
+<style>
+.srcs{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.src{display:grid;grid-template-columns:32px minmax(0,1fr);gap:12px;border:1px solid var(--line-2);border-radius:14px;padding:14px;opacity:.72}
+.src.on{opacity:1;border-color:color-mix(in srgb,var(--accent) 35%,var(--line-2))}
+.rank{width:28px;height:28px;border-radius:8px;background:var(--surface-2);display:grid;place-items:center;font-weight:700;color:var(--ink-2)}
+.src.on .rank{background:var(--accent-soft);color:var(--accent-ink)}
+.src .top{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.switch{display:flex;gap:8px;align-items:center;cursor:pointer}.switch input{width:18px;height:18px;accent-color:var(--accent)}
+.dot{font-size:12.5px;color:var(--ink-2);display:inline-flex;align-items:center;gap:6px}
+.dot::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--ink-3)}.dot.ok::before{background:var(--good-dot)}.dot.no::before{background:var(--warn-dot)}
+.row2{display:flex;gap:10px;align-items:flex-end;margin-top:10px;flex-wrap:wrap}.row2 .fld{flex:1;min-width:220px}
+.btns{display:flex;gap:6px}.btn.icon{width:34px;justify-content:center;padding-left:0;padding-right:0}.btn:disabled{opacity:.4;cursor:default}
+.fld{display:grid;gap:5px}.fld>span{font-size:12.5px;font-weight:600;color:var(--ink-2)}.fld small{font-size:12px;line-height:1.45}
+.facts{display:flex;gap:6px 16px;flex-wrap:wrap;margin-top:10px;font-size:12.5px;color:var(--ink-2)}.facts .bad{color:var(--bad)}
+.test{margin-top:8px;font-size:12.5px;padding:7px 10px;border-radius:9px}.test.ok{background:var(--good-soft);color:var(--good)}.test.bad{background:var(--bad-soft);color:var(--bad)}
+.actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.notice{margin:12px 0 0}
+</style>
+{% endblock %}

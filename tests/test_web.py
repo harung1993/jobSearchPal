@@ -139,3 +139,27 @@ def test_emails_page_sets_category_and_job(tmp_path, base_url, pdfs):
     assert ev["kind"] == "interview" and ev["manual"] == 1 and db.get("manual:gh")["outcome"] == "interview"
     assert c.post("/emails/<m1>", data={"kind": "bogus"}).status_code == 400
     assert c.post("/emails/<nope>", data={"kind": "ignored"}).status_code == 404
+
+
+def test_settings_page_order_enable_test_and_key(tmp_path, base_url, pdfs, monkeypatch):
+    from autoapply import classify
+    from autoapply.prefs import Prefs
+    db, c, plan = setup(tmp_path, base_url, pdfs)
+    monkeypatch.setattr(classify, "openrouter_models", lambda cache: [{"id": "cheap/model", "name": "Cheap", "in": 0.1, "out": 0.4, "ctx": 1}])
+    monkeypatch.setattr(classify, "ollama_models", lambda url: None)
+    html = c.get("/settings").text
+    assert "Claude subscription" in html and "OpenAI subscription" in html and "Jev" in html and "Ollama" in html
+    data = {"on::claude": "1", "on::openrouter": "1", "model::claude": "sonnet", "model::openrouter": "cheap/model",
+            "min_confidence": "0.8", "daily_model": "opus", "ollama_url": "http://localhost:11434",
+            "openrouter_key": "sk-or-abcd9999", "action": "up:openrouter"}
+    assert c.post("/settings", data=data, follow_redirects=False).status_code == 303
+    pr = Prefs(tmp_path / "data")
+    assert pr.chain() == ["claude", "openrouter"] and pr.data["order"].index("openrouter") == 2
+    assert pr.model("claude") == "sonnet" and pr.data["daily_model"] == "opus" and pr.data["min_confidence"] == 0.8
+    html = c.get("/settings").text
+    assert "sk-or-abcd9999" not in html and "ends 9999" in html and "Cheap · $0.1 in / $0.4 out per M" in html
+    monkeypatch.setattr(classify, "_ask_claude", lambda prompt, model: '[{"id": "sample-1", "kind": "interview", "job": "sample:acme"}]')
+    c.post("/settings", data={**data, "openrouter_key": "", "action": "test:claude"})
+    assert "sorted the sample interview email correctly" in c.get("/settings").text
+    c.post("/settings", data={"daily_model": "rm -rf", "action": "save"})
+    assert Prefs(tmp_path / "data").data["daily_model"] == "opus" and Prefs(tmp_path / "data").chain() == []

@@ -177,8 +177,9 @@ def make_app(settings, db: DB) -> FastAPI:
         tabs = [("waiting", "Not sorted", len(groups["waiting"])), ("replies", "Replies", len(groups["replies"])),
                 ("recruiter", "Recruiters", len(groups["recruiter"])), ("ignored", "Not job-related", len(groups["ignored"])),
                 ("all", "All", len(every))]
-        c = classify.settings_of(settings.raw)
-        name = {"claude": "Claude", "none": "nobody"}.get(c["backend"], c.get("model") or "the model")
+        from .prefs import PROVIDERS, Prefs
+        chain = Prefs(settings.data_dir, settings.raw).chain()
+        name = " then ".join(PROVIDERS[p]["name"] for p in chain[:2]) if chain else "Nobody (no model source is on)"
         jobs = sorted(db.by_status("submitted", "filled"), key=lambda j: (j["company"] or "").lower())
         return page("emails.html", rows=groups[show][:300], tabs=tabs, show=show, kinds=KIND_LABELS, jobs=jobs,
                     classifier=name, nav="emails")
@@ -201,6 +202,66 @@ def make_app(settings, db: DB) -> FastAPI:
         except (KeyError, ValueError) as e:
             raise HTTPException(400, str(e))
         return RedirectResponse(f"/emails?show={show}", status_code=303)
+
+    @app.get("/settings")
+    def settings_page(msg: str = ""):
+        from . import classify
+        from .prefs import DAILY_MODELS, PROVIDERS, Prefs
+        pr = Prefs(settings.data_dir, settings.raw)
+        st = classify.status(pr)
+        orm = classify.openrouter_models(settings.data_dir / "openrouter-models.json") if (
+            "openrouter" in pr.data["enabled"] or pr.key("OPENROUTER_API_KEY")) else []
+        return page("settings.html", p=pr.data, prefs=pr, providers=PROVIDERS, status=st, usage=db.usage_summary(30),
+                    or_models=orm, daily_models=DAILY_MODELS, key_hint=pr.key_hint("OPENROUTER_API_KEY"),
+                    pending=len(db.pending_events()), msg=msg, nav="settings")
+
+    @app.post("/settings")
+    async def save_settings(request: Request):
+        from . import classify
+        from .prefs import DAILY_MODELS, PROVIDERS, Prefs
+        f = await request.form()
+        pr = Prefs(settings.data_dir, settings.raw)
+        d = pr.data
+        d["enabled"] = [p for p in d["order"] if f.get(f"on::{p}")]
+        for p in PROVIDERS:
+            if f"model::{p}" in f:
+                d["models"][p] = str(f.get(f"model::{p}") or "").strip()[:120]
+        try:
+            d["min_confidence"] = max(0.0, min(1.0, float(f.get("min_confidence") or d["min_confidence"])))
+        except ValueError:
+            pass
+        if f.get("daily_model", "") in DAILY_MODELS:
+            d["daily_model"] = f.get("daily_model", "")
+        url = str(f.get("ollama_url") or "").strip()
+        if url.startswith(("http://", "https://")):
+            d["ollama_url"] = url.rstrip("/")
+        key = str(f.get("openrouter_key") or "").strip()
+        if key:
+            pr.set_key("OPENROUTER_API_KEY", key)
+        if f.get("forget_key"):
+            pr.set_key("OPENROUTER_API_KEY", "")
+        action, msg = str(f.get("action") or "save"), "Saved."
+        verb, _, name = action.partition(":")
+        if name in d["order"] and verb in ("up", "down"):
+            i = d["order"].index(name)
+            j = i - 1 if verb == "up" else i + 1
+            if 0 <= j < len(d["order"]):
+                d["order"][i], d["order"][j] = d["order"][j], d["order"][i]
+            msg = f"Moved {PROVIDERS[name]['name']} {verb}."
+        pr.save()
+        if verb == "test" and name in PROVIDERS:
+            r = await run_in_threadpool(classify.test_source, name, pr)
+            d.setdefault("tests", {})[name] = {**r, "at": datetime.now().strftime("%b %-d, %-I:%M %p"), "model": pr.model(name)}
+            pr.save()
+            msg = ""
+        elif verb == "sort":
+            from .cli import _review
+            r = await run_in_threadpool(_review, settings, db)
+            n = sum(v for k, v in r.items() if k not in ("left", "errors", "error"))
+            msg = f"Sorted {n} email{'' if n == 1 else 's'}; {r.get('left', 0)} still waiting." + (
+                " Failed: " + "; ".join(f"{k}: {v[:80]}" for k, v in r["errors"].items()) if r.get("errors") else "")
+        from urllib.parse import quote
+        return RedirectResponse(f"/settings?msg={quote(msg)}" + (f"#src-{name}" if name else ""), status_code=303)
 
     @app.get("/dua")
     def dua():

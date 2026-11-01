@@ -8,7 +8,9 @@ source .venv/bin/activate
 mkdir -p data/daily
 
 # Headless Claude Code run using your Claude subscription login (run `claude` once to sign in).
-if summary=$(claude -p "$(cat prompts/daily.md)" \
+# The model is picked on the dashboard's Settings page (blank = Claude Code's default).
+model=$(autoapply daily-model 2>/dev/null || true)
+if summary=$(claude -p "$(cat prompts/daily.md)" ${model:+--model "$model"} \
   --permission-mode acceptEdits \
   --max-turns 120 \
   --output-format text | tail -n 1); then
