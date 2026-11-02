@@ -92,6 +92,14 @@
    <div class="meter {% if costs.month_spend < p.monthly_api_budget %}ok{% endif %}"><span style="width:{{ [100, (100 * costs.month_spend / (p.monthly_api_budget or 1))|round]|min }}%"></span></div>
    <div class="sub">{% if costs.month_spend >= p.monthly_api_budget %}Budget reached: paid sources are skipped{% else %}paid sources stop at the budget{% endif %}</div></div>
  </div>
+ {% if costs.by_stage %}<h3 class="sub3">Daily run by step <span class="muted">(last 30 days)</span></h3>
+ <table><thead><tr><th>Step</th><th>Model</th><th class="num">Sessions</th><th class="num">Tokens</th><th class="num">Tokens per session</th><th class="num">At API prices</th><th class="num">Billed</th></tr></thead><tbody>
+ {% for r in costs.by_stage %}<tr><td>{{ {'rank': 'Find and rank', 'apply': 'Applications', 'prep': 'Prep packs', 'drafts': 'Follow-up drafts'}.get(r.stage, 'Whole run (before steps)') }}</td>
+  <td class="ink2">{{ r.models or '' }}</td><td class="num">{{ r.n }}</td><td class="num">{{ '{:,}'.format(r.tokens|int) }}</td>
+  <td class="num">{{ '{:,}'.format((r.tokens / (r.n or 1))|int) }}</td><td class="num">${{ '%.2f'|format(r.est) }}</td><td class="num">${{ '%.2f'|format(r.cost) }}</td></tr>{% endfor %}
+ </tbody></table>
+ <p class="muted" style="font-size:12.5px;margin:6px 0 0">Tokens include cached re-reads of the conversation, which are most of the count and are cheap.
+  Each step starts fresh, so a long step doesn't make the next one heavier.</p>{% endif %}
  {% if costs.by_day %}<details class="mt"><summary>By day</summary><table><thead><tr><th>Day</th><th class="num">Runs</th><th class="num">Tokens</th><th class="num">At API prices</th><th class="num">Billed</th></tr></thead><tbody>
   {% for r in costs.by_day|reverse %}<tr><td>{{ r.day }}</td><td class="num">{{ r.runs }}</td><td class="num">{{ '{:,}'.format((r.tokens or 0)|int) }}</td><td class="num">${{ '%.2f'|format(r.est or 0) }}</td><td class="num">${{ '%.4f'|format(r.cost or 0) }}</td></tr>{% endfor %}
  </tbody></table></details>{% endif %}
@@ -128,6 +136,8 @@
 {% endif %}{% if tab == 'daily' %}
 <section class="card mt">
  <h2>Daily run <span class="count">finds roles, tailors, fills forms</span></h2>
+ <p class="muted" style="font-size:13px;margin:-4px 0 10px">Runs as short steps, each in a fresh session: email sync and job search (no AI), then
+  prep packs, follow-up drafts, find and rank (light model), then one session per application (main model).</p>
  <p class="muted" style="font-size:13px;margin:-4px 0 14px">This needs an agent that can run commands and write files, so it runs on a
   subscription CLI. Both follow the same rules (AGENTS.md) and neither can submit: the tool has no submit command.</p>
  <div class="agents">
@@ -154,6 +164,9 @@
    <datalist id="or-daily">{% for m in or_models if (p.daily_agent != 'claude' or m.id.startswith('anthropic/')) %}<option value="{{ m.id }}">{{ m.name }} · ${{ '%g'|format(m['in']) }} in / ${{ '%g'|format(m.out) }} out per M</option>{% endfor %}</datalist>
    <small class="muted">{% if p.daily_agent == 'claude' %}Claude Code through OpenRouter works only with Anthropic models
     (OpenRouter's own guidance). Blank uses {{ or_default.claude }}.{% else %}Codex can use most models; use the full id with its prefix, e.g. openai/… or anthropic/….{% endif %}</small></label>
+  <label class="fld"><span>OpenRouter model for the light steps</span>
+   <input type="text" name="daily_or_light_model" value="{{ p.daily_or_light_model }}" list="or-daily" placeholder="blank = same as above">
+   <small class="muted">Finding and ranking, prep packs, drafts. A cheaper model here saves the most.</small></label>
   <div class="fld"><span>What a run costs</span>
    <small class="muted">A run reads job pages, writes a resume and cover letter per pick and fills forms, so it uses a lot of tokens:
     often a few dollars with a large model, far less with a small one. Each run's real cost is read from your key's usage and shown on
@@ -163,12 +176,28 @@
  <div class="grid g2 mt">
   <label class="fld"><span>Claude model</span>
    <select name="daily_model">{% for m in daily_models %}<option value="{{ m }}" {% if p.daily_model == m %}selected{% endif %}>{{ m|capitalize if m else "Claude Code's default" }}</option>{% endfor %}</select>
-   <small class="muted">Opus writes the best cover letters; Sonnet is lighter on usage limits.</small></label>
+   <small class="muted">For each application: tailoring, cover letter, form answers. Opus writes the best letters.</small></label>
+  <label class="fld"><span>Claude model for the light steps</span>
+   <select name="daily_light_model">{% for m in daily_models %}<option value="{{ m }}" {% if p.daily_light_model == m %}selected{% endif %}>{{ m|capitalize if m else "same as above" }}</option>{% endfor %}</select>
+   <small class="muted">Finding and ranking roles, prep packs, follow-up drafts. Sonnet is plenty and much lighter on limits.</small></label>
   <label class="fld"><span>Codex model</span>
    <input type="text" name="daily_codex_model" value="{{ p.daily_codex_model }}" placeholder="blank = Codex's default">
    <small class="muted">Runs with writes limited to the JobSearchPal folder and network on, so it can reach job boards.</small></label>
+  <label class="fld"><span>Codex model for the light steps</span>
+   <input type="text" name="daily_codex_light_model" value="{{ p.daily_codex_light_model }}" placeholder="blank = same as above"></label>
  </div>
  {% endif %}
+ <div class="grid g2 mt">
+  <label class="fld"><span>Quick pick with a cheap OpenRouter model</span>
+   <input type="text" name="quick_pick_model" value="{{ p.quick_pick_model }}" list="or-quick" placeholder="blank = off (the agent picks)">
+   <datalist id="or-quick">{% for m in or_models %}<option value="{{ m.id }}">{{ m.name }} · ${{ '%g'|format(m['in']) }} in / ${{ '%g'|format(m.out) }} out per M</option>{% endfor %}</datalist>
+   <small class="muted">Picks the day's roles in one call, usually well under a cent, instead of an agent session. Any model works here,
+    e.g. google/gemini-2.5-flash or deepseek/deepseek-chat. Uses your OpenRouter key and budget. It skips job-alert emails
+    (LinkedIn, Indeed), which need a lookup, and the agent still picks on the day it looks for new companies.</small></label>
+  <label class="fld"><span>Look for new companies to watch</span>
+   <select name="discover_weekday">{% for v, l in [(0, 'Never'), (1, 'Mondays'), (2, 'Tuesdays'), (3, 'Wednesdays'), (4, 'Thursdays'), (5, 'Fridays')] %}<option value="{{ v }}" {% if p.discover_weekday == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select>
+   <small class="muted">Once a week the run searches the web for about 10 companies hiring for roles like yours and starts watching their boards. It's the heaviest light step.</small></label>
+ </div>
  <div class="actions"><button class="btn primary" name="action" value="save">Save</button></div>
 </section>
 {% endif %}

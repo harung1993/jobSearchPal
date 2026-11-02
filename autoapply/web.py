@@ -256,7 +256,7 @@ def make_app(settings, db: DB) -> FastAPI:
         costs = {"daily_runs": daily.get("calls") or 0, "daily_tokens": daily.get("tokens") or 0, "daily_est": daily.get("est") or 0,
                  "sort_est": sum(v.get("est") or 0 for v in sorting),
                  "sort_cost": sum(v.get("cost") or 0 for v in sorting) + (daily.get("cost") or 0),
-                 "month_spend": db.spend_this_month(), "by_day": db.usage_by_day(14)}
+                 "month_spend": db.spend_this_month(), "by_day": db.usage_by_day(14), "by_stage": db.usage_by_stage(30)}
         return page("settings.html", p=pr.data, prefs=pr, providers=PROVIDERS, status=st, usage=u30, costs=costs,
                     or_models=orm, daily_models=DAILY_MODELS, daily_agents=DAILY_AGENTS, key_hint=pr.key_hint("OPENROUTER_API_KEY"),
                     pending=len(db.pending_events()), msg=msg, nav="settings", tab=tab,
@@ -282,6 +282,18 @@ def make_app(settings, db: DB) -> FastAPI:
             d["daily_model"] = f.get("daily_model", "")
         if f.get("daily_agent") in DAILY_AGENTS:
             d["daily_agent"] = f.get("daily_agent")
+        if "daily_light_model" in f and f.get("daily_light_model", "") in DAILY_MODELS:
+            d["daily_light_model"] = f.get("daily_light_model", "")
+        for k in ("daily_codex_light_model", "daily_or_light_model", "quick_pick_model"):
+            if k in f:
+                v = str(f.get(k) or "").strip()
+                if re.fullmatch(r"[A-Za-z0-9._:/~\[\]-]{0,120}", v):
+                    d[k] = v
+        if "discover_weekday" in f:
+            try:
+                d["discover_weekday"] = max(0, min(7, int(f.get("discover_weekday"))))
+            except (TypeError, ValueError):
+                pass
         if f.get("daily_via") in ("subscription", "openrouter"):
             d["daily_via"] = f.get("daily_via")
         if "daily_or_model" in f:

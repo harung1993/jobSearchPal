@@ -32,6 +32,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -87,9 +88,14 @@ def main(argv=None):
     a = sub.add_parser("alerts"); a.add_argument("--days", type=int, default=1)
     a = sub.add_parser("sync-email"); a.add_argument("--days", type=int, default=60); a.add_argument("--rebuild", action="store_true"); a.add_argument("--no-review", action="store_true")
     sub.add_parser("review-emails")
-    sub.add_parser("daily-model"); sub.add_parser("daily-agent")
+    sub.add_parser("daily-model")
+    a = sub.add_parser("daily-agent"); a.add_argument("--stage", default="apply")
+    sub.add_parser("daily-stages"); sub.add_parser("daily-picks")
+    a = sub.add_parser("daily-prompt"); a.add_argument("stage"); a.add_argument("job_id", nargs="?", default="")
+    a = sub.add_parser("candidates"); a.add_argument("--limit", type=int, default=12)
+    sub.add_parser("quick-pick")
     a = sub.add_parser("log-daily"); a.add_argument("agent"); a.add_argument("model", nargs="?", default="")
-    a.add_argument("via", nargs="?", default="subscription")
+    a.add_argument("via", nargs="?", default="subscription"); a.add_argument("--stage", default="")
     sub.add_parser("daily-env")
     a = sub.add_parser("emails"); a.add_argument("action", nargs="?", choices=["set"]); a.add_argument("event_id", nargs="?")
     a.add_argument("kind", nargs="?"); a.add_argument("--job", default=""); a.add_argument("--pending", action="store_true")
@@ -166,7 +172,7 @@ def main(argv=None):
         # daily.sh reads "agent model via" ("-" for no model); via is subscription, openrouter or blocked.
         from .prefs import Prefs
         pr = Prefs(s.data_dir, s.raw)
-        d = pr.daily(db.spend_this_month())
+        d = pr.daily(db.spend_this_month(), getattr(args, "stage", "apply"))
         if args.cmd == "daily-model":
             print(d["model"])
         else:
@@ -178,6 +184,68 @@ def main(argv=None):
             print(f"{d['agent']} {d['model'] or '-'} {d['via']}")
             if d["why"]:
                 print(d["why"], file=sys.stderr)
+    elif args.cmd == "daily-stages":
+        # Which agent stages today's run needs, in order (apply stages come from daily-picks afterwards).
+        from . import nudges, prep
+        from .prefs import Prefs
+        lim = Prefs(s.data_dir, s.raw).limits()
+        stages = []
+        if lim["prep_per_day"] and prep.needed(db, s.data_dir, lim["prep_per_day"]):
+            stages.append("prep")
+        if lim["drafts_per_day"] and nudges.for_agent(db, s.data_dir, lim["drafts_per_day"]):
+            stages.append("drafts")
+        if lim["picks_per_day"]:
+            stages.append("rank")
+        print(" ".join(stages))
+    elif args.cmd == "daily-picks":
+        from .prefs import Prefs
+        try:
+            picks = json.loads((s.data_dir / "daily" / "picks.json").read_text())
+        except (OSError, ValueError):
+            picks = []
+        n = Prefs(s.data_dir, s.raw).limits()["picks_per_day"]
+        ids = [p["id"] for p in picks if isinstance(p, dict) and p.get("id") and db.get(p["id"])][:n]
+        print("\n".join(ids))
+    elif args.cmd == "daily-prompt":
+        # The stage's prompt with today's details filled in; daily.sh pipes it to the agent.
+        from .prefs import Prefs
+        root = Path(__file__).resolve().parent.parent / "prompts" / "stages"
+        if not re.fullmatch(r"[a-z]+", args.stage) or not (root / f"{args.stage}.md").exists():
+            sys.exit(f"no stage {args.stage}")
+        text = (root / f"{args.stage}.md").read_text()
+        day = Prefs(s.data_dir, s.raw).data.get("discover_weekday", 1)
+        text = text.replace("{{DISCOVER}}", (root / "discover.md").read_text() if day and datetime.now().isoweekday() == day else "")
+        if args.job_id and not db.get(args.job_id):
+            sys.exit(f"no job {args.job_id}")
+        print(text.replace("{{JOB_ID}}", args.job_id))
+    elif args.cmd == "quick-pick":
+        # Picks today's roles with one cheap OpenRouter call. Exits 2 when it's off (daily.sh then runs the rank agent).
+        from . import rank
+        from .prefs import Prefs
+        pr = Prefs(s.data_dir, s.raw)
+        model, key = pr.data.get("quick_pick_model") or "", pr.key("OPENROUTER_API_KEY")
+        day = pr.data.get("discover_weekday", 1)
+        if not model or not key or (day and datetime.now().isoweekday() == day):
+            sys.exit(2)  # off, no key, or discovery day (that needs the agent's web search)
+        if db.spend_this_month() >= float(pr.data.get("monthly_api_budget") or 0):
+            sys.exit(2)
+        n = pr.limits()["picks_per_day"]
+        try:
+            picks, u = rank.quick_pick(db, s, n, model, key)
+            err = None
+        except Exception as e:
+            picks, u, err = [], {"tokens": 0, "cost": 0.0}, str(e)[:300]
+        db.log_usage("daily", f"openrouter:{model}:rank (openrouter)", 0, 0, u["cost"], 0, err, u["cost"], u["tokens"])
+        if err:
+            print(f"quick pick failed: {err}", file=sys.stderr)
+            sys.exit(1)
+        (s.data_dir / "daily").mkdir(exist_ok=True)
+        (s.data_dir / "daily" / "picks.json").write_text(json.dumps(picks, indent=1))
+        names = [f"{j['company']} ({j['title']})" for j in (db.get(p["id"]) for p in picks) if j]
+        print("Picked: " + ", ".join(names) if names else "No good matches today")
+    elif args.cmd == "candidates":
+        from . import rank
+        _out(rank.candidates(db, s, args.limit))
     elif args.cmd == "daily-env":
         # Environment for running the daily agent on an OpenRouter key; daily.sh evals it. Prints nothing otherwise.
         import shlex
@@ -185,7 +253,7 @@ def main(argv=None):
         pr = Prefs(s.data_dir, s.raw)
         d = pr.daily(db.spend_this_month())
         if d["via"] == "openrouter":
-            key = pr.key("OPENROUTER_API_KEY")
+            key = pr.key("OPENROUTER_API_KEY")  # the stage's model is passed on the command line
             env_out = {"OPENROUTER_API_KEY": key}
             if d["agent"] == "claude":  # OpenRouter's Anthropic-compatible endpoint (its Claude Code guide)
                 env_out.update({"ANTHROPIC_BASE_URL": "https://openrouter.ai/api", "ANTHROPIC_AUTH_TOKEN": key,
@@ -218,6 +286,8 @@ def main(argv=None):
             after = classify.openrouter_spent(Prefs(s.data_dir, s.raw).key("OPENROUTER_API_KEY") or "")
             cost = max(0.0, after - before) if (after is not None and before is not None) else est
         label = f"{args.agent}:{args.model}" if args.model else args.agent
+        if args.stage:
+            label = f"{args.agent}:{args.model or 'default'}:{args.stage}"
         db.log_usage("daily", label + (" (openrouter)" if via == "openrouter" else ""), 0, 0, cost, 0, err, est, tokens)
         lines = [l for l in text.strip().splitlines() if l.strip()]
         print(lines[-1] if lines else "")

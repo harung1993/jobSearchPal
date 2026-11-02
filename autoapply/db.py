@@ -172,10 +172,25 @@ class DB:
         return float(r[0] or 0)
 
     def usage_by_day(self, days: int = 30) -> list[dict]:
-        q = ("select substr(at, 1, 10) day, sum(case when source = 'daily' then 1 else 0 end) runs,"
+        q = ("select substr(at, 1, 10) day, max(case when source = 'daily' then 1 else 0 end) runs,"
              " sum(tokens) tokens, sum(cost) cost, sum(est) est from usage where at >= datetime('now', 'localtime', ?)"
              " group by day order by day")
         return [dict(r) for r in self.conn.execute(q, (f"-{days} days",))]
+
+    def usage_by_stage(self, days: int = 30) -> list[dict]:
+        """Daily-run usage per stage (rank, apply, prep, drafts), from the model label agent:model:stage."""
+        q = ("select model, count(*) n, sum(tokens) tokens, sum(est) est, sum(cost) cost from usage"
+             " where source = 'daily' and at >= datetime('now', 'localtime', ?) group by model")
+        by: dict[str, dict] = {}
+        for r in self.conn.execute(q, (f"-{days} days",)):
+            parts = (r["model"] or "").split(":")
+            stage = parts[-1].split(" ")[0] if len(parts) >= 3 else "whole run"  # model ids can hold ':' (…:free)
+            b = by.setdefault(stage, {"stage": stage, "n": 0, "tokens": 0, "est": 0.0, "cost": 0.0, "models": set()})
+            b["n"] += r["n"]; b["tokens"] += r["tokens"] or 0; b["est"] += r["est"] or 0; b["cost"] += r["cost"] or 0
+            if len(parts) >= 2:
+                b["models"].add(":".join(parts[1:-1]) if len(parts) >= 3 else parts[1])
+        order = {"rank": 0, "apply": 1, "prep": 2, "drafts": 3, "whole run": 4}
+        return sorted(({**b, "models": ", ".join(sorted(b["models"]))} for b in by.values()), key=lambda b: order.get(b["stage"], 9))
 
     def usage_summary(self, days: int = 30) -> dict[str, dict]:
         """Per source over the last N days: calls, emails sorted, cost, average time, last error."""
@@ -184,6 +199,11 @@ class DB:
              " sum(error is not null) failures, max(at) last from usage where at >= datetime('now', 'localtime', ?)"
              " group by source")
         out = {r["source"]: dict(r) for r in self.conn.execute(q, (f"-{days} days",))}
+        if "daily" in out:  # a run is several stage sessions now: count mornings, not sessions
+            out["daily"]["sessions"] = out["daily"]["calls"]
+            out["daily"]["calls"] = self.conn.execute(
+                "select count(distinct substr(at, 1, 10)) from usage where source = 'daily' and at >= datetime('now', 'localtime', ?)",
+                (f"-{days} days",)).fetchone()[0]
         for src, row in out.items():
             e = self.conn.execute("select error, at from usage where source = ? and error is not null order by at desc limit 1",
                                   (src,)).fetchone()

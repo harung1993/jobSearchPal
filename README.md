@@ -22,15 +22,14 @@ The screenshots use fictional demo data (`scripts/demo-data.py`).
 ## How it works
 
 ```
-6:30am weekdays (cron or the Docker scheduler) ─► scripts/daily.sh
-  agent: Claude Code or Codex CLI, picked on the Settings page, following AGENTS.md + prompts/daily.md
-    ├─ autoapply sync-email      gather job emails ─► a model sorts them ─► replies, recruiters, proof
-    ├─ autoapply list --prep     interviews ─► prep pack: reported questions with sources, your stories
-    ├─ autoapply find / alerts   new roles from job boards, feeds and your alert emails
-    ├─ rank, pick the best 1-2   fit first, then freshness, then pay
-    ├─ tailor                    resume + cover letter (python-docx, LibreOffice → PDF)
-    ├─ autoapply scan <url>      the form's questions as JSON
-    └─ autoapply fill plan.json  Playwright fills it and uploads the PDFs, then stops
+6:30am weekdays (cron or the Docker scheduler) ─► scripts/daily.sh, in short steps:
+  no AI:     autoapply sync-email (a small model sorts the emails) · autoapply find (boards, job sites)
+  light model, one fresh session each (prompts/stages/):
+    ├─ prep      interviews ─► prep pack: reported questions with sources, your stories
+    ├─ drafts    follow-up reminders ─► drafted replies
+    └─ rank      autoapply candidates (pre-ranked in Python) + alert emails ─► today's picks
+  main model, one fresh session per pick:
+    └─ apply     tailor resume + cover letter ─► autoapply scan ─► plan.json ─► autoapply fill (stops before Submit)
   ─► autoapply brief --send      morning email: what's ready, new replies, where everything stands
 you ─► dashboard ─► check answers, decide consents ─► Submit
    or: autoapply-finish <job> on your laptop ─► a real Chrome window, filled in, you submit
@@ -140,6 +139,17 @@ page shows both:
   daily run on OpenRouter is skipped until the 1st.
 - **Usage, last 30 days:** daily runs and tokens, what that would cost at API prices (a gauge of how heavy
   each step is, since your subscription covers it), and what OpenRouter actually billed, by day.
+
+**Why the run is split into steps.** An agent session re-reads its whole conversation on every turn, so one
+long morning session gets heavier with each step (one run used about 6.8M tokens, mostly these re-reads).
+Each step now starts fresh, roles are pre-ranked in Python so the agent reads only the top 12 with trimmed
+descriptions, and the light steps use a lighter model. Costs & limits shows tokens per step.
+
+**Quick pick.** With an OpenRouter key, set *Quick pick* on Settings > Daily run to any cheap model
+(e.g. `google/gemini-2.5-flash`). The day's roles are then picked in one chat call, usually well under a cent,
+instead of an agent session. It only chooses among the pre-ranked candidates, skips job-alert emails (they need
+a lookup), and falls back to the agent if the reply is bad or on the weekly discovery day. Tailoring and form
+filling stay with the agent and its main model, since they need many tool turns and good writing.
 
 To spend less: choose Sonnet or Haiku for the daily run, tailor one role a day, and keep email sorting on
 Haiku or a local model.
@@ -311,7 +321,7 @@ autoapply/nudges.py      follow-up reminders from sorted emails and your Sent ma
 autoapply/stats.py       dashboard and stats numbers
 autoapply/web.py         dashboard, review page, work-search log
 autoapply/templates/     HTML (no build step, no JavaScript framework)
-prompts/daily.md         the daily instructions for the agent
+prompts/stages/          the daily run's steps (rank, apply, prep, drafts), one agent session each
 AGENTS.md                standing rules for the agent (CLAUDE.md imports it; personal facts go in CLAUDE.local.md)
 tests/                   local fixture forms and tests
 ```

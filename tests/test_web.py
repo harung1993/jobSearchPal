@@ -267,7 +267,8 @@ def test_daily_run_on_openrouter(tmp_path, base_url, pdfs, capsys, monkeypatch):
     cli.main(["--config", str(cfg), "daily-agent"])
     assert capsys.readouterr().out.strip() == "claude ~anthropic/claude-sonnet-latest blocked"  # no key yet
     html = c.get("/settings?tab=daily").text
-    assert "no OpenRouter key" in html and 'value="anthropic/claude-sonnet-4.6"' in html and "gpt-5.6-luna" not in html
+    assert "no OpenRouter key" in html and 'value="anthropic/claude-sonnet-4.6"' in html and "gpt-5.6-luna" not in html.split('id="or-daily"')[1].split("</datalist>")[0]
+    assert "gpt-5.6-luna" in html.split('id="or-quick"')[1].split("</datalist>")[0]  # quick pick takes any model
 
     Prefs(tmp_path / "data").set_key("OPENROUTER_API_KEY", "sk-or-test-1234")
     c.post("/settings", data={"tab": "daily", "daily_or_model": "anthropic/claude-sonnet-4.6; rm -rf ~", "action": "save"})
