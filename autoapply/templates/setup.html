@@ -1,19 +1,20 @@
 {% extends "base.html" %}
-{% block title %}Setup{% endblock %}
+{% block title %}Setup · Settings{% endblock %}
 {% block body %}
 {% set s = st.steps %}
 {% set req_done = 4 - st.left|length %}
-<div class="ph"><div><h1>Setup</h1>
- <div class="sub">Everything JobSearchPal needs to know about you, in one place. You can come back and change any of it.</div></div>
- <div class="prog" aria-label="{{ req_done }} of 4 required steps done"><b>{{ req_done }}</b> of 4 required done
-  <div class="meter {{ 'ok' if st.ready }}"><span style="width:{{ (100 * req_done / 4)|round }}%"></span></div></div></div>
-{% if msg %}<p class="notice" role="status">{{ msg }}</p>{% endif %}
+{% set tab_sub = "Everything JobSearchPal needs to know about you and your search. Come back and change any of it." %}
+{% include "_tabs.html" %}
 
+<div class="setup-top">
+<div class="prog" aria-label="{{ req_done }} of 4 required steps done"><b>{{ req_done }}</b> of 4 required done
+  <div class="meter {{ 'ok' if st.ready }}"><span style="width:{{ (100 * req_done / 4)|round }}%"></span></div></div>
 <nav class="rail" aria-label="Setup steps">
  {% for key, label, req in [('resume','Resume',1),('profile','Contact',1),('interests','Job interests',1),('about','About you',0),('agent','Agent',1),('gmail','Gmail',0),('token','Password',0)] %}
  <a href="#{{ key }}" class="{{ 'done' if s[key].done }}"><i aria-hidden="true">{{ '✓' if s[key].done else loop.index }}</i>{{ label }}{% if not req %}<small>optional</small>{% endif %}</a>
  {% endfor %}
 </nav>
+</div>
 
 {% if st.ready %}
 <section class="card mt good">
@@ -23,7 +24,7 @@
   Consent and self-ID questions are always left for you.</p>
  <p class="muted">Runs weekdays at 6:30 by default (<code>DAILY_AT</code> in <code>.env</code> with Docker). To try one now:
   <code>docker compose exec scheduler bash scripts/daily.sh</code> or <code>bash scripts/daily.sh</code>.
-  Models, limits and costs are on <a href="/settings">Settings</a>.</p>
+  Email sorting, the daily-run agent, limits and costs are in the other tabs above.</p>
 </section>
 {% endif %}
 
@@ -148,7 +149,7 @@
   <div class="opt"><div><b>ChatGPT subscription</b> (Plus or Pro)</div>
    <pre>docker compose run --rm web codex login</pre>
    <small class="muted">On a server with no browser, sign in on your laptop and copy <code>~/.codex/auth.json</code> over
-    (see the README). Then pick Codex on <a href="/settings">Settings</a>.</small></div>
+    (see the README). Then pick Codex on the <a href="/settings?tab=daily">Daily run</a> tab.</small></div>
  </div>
  <p class="muted" style="font-size:12.5px">Reload this page after signing in.</p>
 </section>
@@ -187,7 +188,8 @@
 </section>
 
 <style>
-.prog{min-width:200px;font-size:13px;color:var(--ink-2)} .prog b{color:var(--ink);font-size:15px}
+.setup-top{display:flex;gap:12px 24px;align-items:center;flex-wrap:wrap;margin-top:14px}
+.prog{min-width:180px;font-size:13px;color:var(--ink-2)} .prog b{color:var(--ink);font-size:15px} .prog .meter{margin-top:6px}
 .rail{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 0}
 .rail a{display:inline-flex;align-items:center;gap:8px;padding:6px 12px 6px 6px;border-radius:999px;background:var(--surface);border:1px solid var(--line);color:var(--ink-2);font-size:13px;font-weight:600}
 .rail a:hover{text-decoration:none;background:var(--surface-2)}

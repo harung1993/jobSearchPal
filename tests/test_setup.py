@@ -143,3 +143,14 @@ def test_job_sites_feeds_and_keys(fresh, tmp_path, monkeypatch):
     assert os.environ["ADZUNA_APP_KEY"] == "secretkey123"
     page = c.get("/setup").text
     assert "HigherEdJobs: IR | https://www.higheredjobs.com" in page and "secretkey123" not in page
+
+
+def test_settings_tabs(fresh):
+    _, c = fresh
+    html = c.get("/setup").text
+    for label in ("Setup", "Email sorting", "Daily run", "Costs &amp; limits"):
+        assert label in html
+    assert 'href="/setup" aria-current="page"' in html  # the Settings menu item opens Setup
+    r = c.post("/settings", data={"tab": "daily", "daily_agent": "claude", "action": "save"}, follow_redirects=False)
+    assert r.headers["location"].startswith("/settings?tab=daily")
+    assert c.get("/settings?tab=setup", follow_redirects=False).headers["location"] == "/setup"

@@ -162,7 +162,8 @@ def test_settings_page_order_enable_test_and_key(tmp_path, base_url, pdfs, monke
     c.post("/settings", data={**data, "openrouter_key": "", "action": "test:claude"})
     assert "sorted the sample interview email correctly" in c.get("/settings").text
     c.post("/settings", data={"daily_model": "rm -rf", "action": "save"})
-    assert Prefs(tmp_path / "data").data["daily_model"] == "opus" and Prefs(tmp_path / "data").chain() == []
+    # a save from another tab leaves the sorting sources alone
+    assert Prefs(tmp_path / "data").data["daily_model"] == "opus" and Prefs(tmp_path / "data").chain() == ["claude", "openrouter"]
 
 
 def test_daily_agent_setting(tmp_path, base_url, pdfs, capsys):
@@ -170,7 +171,8 @@ def test_daily_agent_setting(tmp_path, base_url, pdfs, capsys):
     from autoapply import cli
     from autoapply.prefs import Prefs
     db, c, plan = setup(tmp_path, base_url, pdfs)
-    assert "Codex CLI (ChatGPT subscription)" in c.get("/settings").text
+    assert "Codex CLI (ChatGPT subscription)" in c.get("/settings?tab=daily").text
+    assert "Codex CLI (ChatGPT subscription)" not in c.get("/settings").text  # other tabs don't show it
     c.post("/settings", data={"daily_agent": "codex", "daily_codex_model": "gpt-5; rm -rf ~", "action": "save"})
     assert Prefs(tmp_path / "data").data["daily_agent"] == "codex" and Prefs(tmp_path / "data").data["daily_codex_model"] == ""
     c.post("/settings", data={"daily_agent": "codex", "daily_codex_model": "gpt-5-mini", "action": "save"})
@@ -223,7 +225,7 @@ def test_cost_limits_budget_and_daily_log(tmp_path, base_url, pdfs, capsys, monk
     u = _DB(tmp_path / "data" / "autoapply.db").usage_summary()["daily"]
     db.log_usage("daily", "claude:opus", 0, 0, 0.0, 0, None, 1.25, 21500)  # the dashboard's own db in this test
     assert u["calls"] == 1 and u["tokens"] == 21500 and abs(u["est"] - 1.25) < 1e-9 and (u["cost"] or 0) == 0
-    html = c.get("/settings").text
+    html = c.get("/settings?tab=costs").text
     assert "Costs and limits" in html and "$1.25" in html and "21,500 tokens" in html
     cli.main(["--config", str(cfg), "list", "--limits"])
     assert '"picks_per_day": 1' in capsys.readouterr().out

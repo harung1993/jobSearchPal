@@ -145,10 +145,13 @@ Haiku or a local model.
 
 ### Settings page
 
-| Section | What you set |
+Four tabs. The menu's Settings item opens **Setup** first, with a badge while a required step is missing.
+
+| Tab | What you set |
 |---|---|
+| Setup | resume, contact details, job interests and job sites, notes about you, agent sign-in, Gmail, dashboard password (see Docker below). |
 | Email sorting | which sources are on, their order (↑ ↓), the model for each (OpenRouter's list comes with live prices), Jev's minimum confidence, the Ollama address. Each source has a **Test** button that sorts a sample email and shows the answer, time and cost, plus 30-day counts of emails sorted, cost and failures. |
-| OpenRouter key | for Jev and OpenRouter. It's stored in `data/secrets.json` (owner-only) and never shown again. A key in `.env` wins. |
+| Email sorting: OpenRouter key | for Jev and OpenRouter. It's stored in `data/secrets.json` (owner-only) and never shown again. A key in `.env` wins. |
 | Costs and limits | daily caps for tailoring, prep packs and drafts; the monthly budget for paid APIs; 30-day usage and cost by day. |
 | Daily run | the agent (Claude Code or Codex CLI, with what's installed and signed in) and its model. Opus writes the best cover letters; Sonnet or Haiku go easier on usage limits. |
 
@@ -161,8 +164,7 @@ Choices are saved in `data/settings.json`. Nothing on the page needs a restart.
 - **Stats:** response and interview rates, median time to reply, funnels, results by application
   platform, reply-time buckets, weeks at your work-search minimum, and pipeline trends.
 - **Emails:** see above.
-- **Setup:** resume, contact details, job interests, notes about you, agent sign-in, Gmail and the
-  dashboard password. Shown in the menu while a required step is missing.
+- **Settings:** Setup, Email sorting, Daily run, and Costs & limits tabs (above).
 - **Work-search log:** if you claim unemployment benefits, every application and recruiter contact
   is grouped by Sunday-to-Saturday week, with the original emails and submit screenshots saved as
   proof and a weekly zip in work-search-log columns.

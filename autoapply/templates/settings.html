@@ -1,12 +1,16 @@
 {% extends "base.html" %}
 {% block title %}Settings{% endblock %}
 {% block body %}
-<div class="ph"><div><h1>Settings</h1>
- <div class="sub">Which models sort your job emails, what the daily pass may do and with which agent, and what it all costs. Your resume, contact details and job interests are on <a href="/setup">Setup</a>.</div></div></div>
-{% if msg %}<p class="notice" role="status">{{ msg }}</p>{% endif %}
+{% set tab_sub = {'sorting': 'Each job email goes to the first source that is on; if it fails or is unsure, to the next.',
+                  'daily': 'The morning pass: finds roles, tailors your materials and fills forms. It never submits.',
+                  'costs': 'What the daily pass may do each day, and what it all costs.'}[tab] %}
+{% include "_tabs.html" %}
 
 <form method="post" action="/settings">
+<input type="hidden" name="tab" value="{{ tab }}">
 <button name="action" value="save" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px">Save</button>
+{% if tab == 'sorting' %}
+<input type="hidden" name="sources_form" value="1">
 <section class="card mt">
  <h2>Email sorting <span class="count">tried top to bottom</span></h2>
  <p class="muted" style="font-size:13px;margin:-4px 0 14px">Each new email goes to the first source that's on. If it fails, or isn't
@@ -73,6 +77,7 @@
   {% if pending %}<button class="btn" name="action" value="sort">Sort the {{ pending }} waiting now</button>{% endif %}</div>
 </section>
 
+{% endif %}{% if tab == 'costs' %}
 <section class="card mt" id="costs">
  <h2>Costs and limits <span class="count">last 30 days</span></h2>
  <input type="hidden" name="limits_form" value="1">
@@ -105,6 +110,7 @@
  <div class="actions"><button class="btn primary" name="action" value="save">Save</button></div>
 </section>
 
+{% endif %}{% if tab == 'sorting' %}
 <section class="card mt">
  <h2>OpenRouter key <span class="count">for Jev and OpenRouter</span></h2>
  <div class="grid g2">
@@ -119,6 +125,7 @@
  <div class="actions"><button class="btn primary" name="action" value="save">Save</button></div>
 </section>
 
+{% endif %}{% if tab == 'daily' %}
 <section class="card mt">
  <h2>Daily run <span class="count">finds roles, tailors, fills forms</span></h2>
  <p class="muted" style="font-size:13px;margin:-4px 0 14px">This needs an agent that can run commands and write files, so it runs on a
@@ -139,6 +146,7 @@
  </div>
  <div class="actions"><button class="btn primary" name="action" value="save">Save</button></div>
 </section>
+{% endif %}
 </form>
 
 <style>

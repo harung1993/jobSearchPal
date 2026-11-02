@@ -240,7 +240,10 @@ def make_app(settings, db: DB) -> FastAPI:
         return page("prep.html", job=job, row=row, body=body, nav="dashboard")
 
     @app.get("/settings")
-    def settings_page(msg: str = ""):
+    def settings_page(msg: str = "", tab: str = "sorting"):
+        if tab == "setup":
+            return RedirectResponse("/setup", status_code=303)
+        tab = tab if tab in ("sorting", "daily", "costs") else "sorting"
         from . import classify
         from .prefs import DAILY_AGENTS, DAILY_MODELS, PROVIDERS, Prefs
         pr = Prefs(settings.data_dir, settings.raw)
@@ -255,7 +258,7 @@ def make_app(settings, db: DB) -> FastAPI:
                  "month_spend": db.spend_this_month(), "by_day": db.usage_by_day(14)}
         return page("settings.html", p=pr.data, prefs=pr, providers=PROVIDERS, status=st, usage=u30, costs=costs,
                     or_models=orm, daily_models=DAILY_MODELS, daily_agents=DAILY_AGENTS, key_hint=pr.key_hint("OPENROUTER_API_KEY"),
-                    pending=len(db.pending_events()), msg=msg, nav="settings")
+                    pending=len(db.pending_events()), msg=msg, nav="settings", tab=tab)
 
     @app.post("/settings")
     async def save_settings(request: Request):
@@ -264,7 +267,8 @@ def make_app(settings, db: DB) -> FastAPI:
         f = await request.form()
         pr = Prefs(settings.data_dir, settings.raw)
         d = pr.data
-        d["enabled"] = [p for p in d["order"] if f.get(f"on::{p}")]
+        if "sources_form" in f or any(k.startswith("on::") for k in f):  # only the Email sorting tab has these
+            d["enabled"] = [p for p in d["order"] if f.get(f"on::{p}")]
         for p in PROVIDERS:
             if f"model::{p}" in f:
                 d["models"][p] = str(f.get(f"model::{p}") or "").strip()[:120]
@@ -272,7 +276,7 @@ def make_app(settings, db: DB) -> FastAPI:
             d["min_confidence"] = max(0.0, min(1.0, float(f.get("min_confidence") or d["min_confidence"])))
         except ValueError:
             pass
-        if f.get("daily_model", "") in DAILY_MODELS:
+        if "daily_model" in f and f.get("daily_model", "") in DAILY_MODELS:
             d["daily_model"] = f.get("daily_model", "")
         if f.get("daily_agent") in DAILY_AGENTS:
             d["daily_agent"] = f.get("daily_agent")
@@ -320,7 +324,9 @@ def make_app(settings, db: DB) -> FastAPI:
             msg = f"Sorted {n} email{'' if n == 1 else 's'}; {r.get('left', 0)} still waiting." + (
                 " Failed: " + "; ".join(f"{k}: {v[:80]}" for k, v in r["errors"].items()) if r.get("errors") else "")
         from urllib.parse import quote
-        return RedirectResponse(f"/settings?msg={quote(msg)}" + (f"#src-{name}" if name else ""), status_code=303)
+        tab = str(f.get("tab") or "sorting")
+        tab = tab if tab in ("sorting", "daily", "costs") else "sorting"
+        return RedirectResponse(f"/settings?tab={tab}&msg={quote(msg)}" + (f"#src-{name}" if name else ""), status_code=303)
 
     # ---- first-run setup: writes profile.yaml, config.yaml, materials/ and data/secrets.json ----
     def _back(msg: str, anchor: str = "") -> RedirectResponse:
@@ -352,7 +358,7 @@ def make_app(settings, db: DB) -> FastAPI:
         except (OSError, ValueError):
             src_stats = {}
         pr = Prefs(settings.data_dir, settings.raw)
-        return page("setup.html", nav="setup", st=st, prof=prof, fields=setup.PROFILE_FIELDS, yes_no=setup.YES_NO,
+        return page("setup.html", nav="settings", tab="setup", st=st, prof=prof, fields=setup.PROFILE_FIELDS, yes_no=setup.YES_NO,
                     titles=", ".join(search.get("title_keywords") or []), exclude=", ".join(search.get("exclude_keywords") or []),
                     us_only=search.get("us_only", True), boards=boards, rss=rss, rss_presets=RSS_PRESETS, src_stats=src_stats,
                     keys={k: pr.key_hint(k) for k in ("ADZUNA_APP_ID", "ADZUNA_APP_KEY", "USAJOBS_API_KEY", "USAJOBS_EMAIL")}, feeds=setup.FEED_LABELS,
