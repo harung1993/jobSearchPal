@@ -71,7 +71,9 @@ def make_app(settings, db: DB) -> FastAPI:
 
     @app.get("/")
     def index():
-        return page("index.html", s=stats.compute(db, floor=floor), nav="dashboard")
+        from . import prep
+        return page("index.html", s=stats.compute(db, floor=floor), interviews=prep.interviews(db, settings.data_dir)[:6],
+                    nav="dashboard")
 
     @app.get("/stats")
     def stats_page():
@@ -203,6 +205,17 @@ def make_app(settings, db: DB) -> FastAPI:
         except (KeyError, ValueError) as e:
             raise HTTPException(400, str(e))
         return RedirectResponse(f"/emails?show={show}", status_code=303)
+
+    @app.get("/prep/{job_id:path}")
+    def prep_page(job_id: str):
+        from . import prep
+        job = db.get(job_id)
+        if not job:
+            raise HTTPException(404)
+        row = next((r for r in prep.interviews(db, settings.data_dir) if r["job"]["id"] == job_id), None)
+        p = prep.prep_path(settings.data_dir, job)
+        body = prep.render(p.read_text()) if p.exists() else ""
+        return page("prep.html", job=job, row=row, body=body, nav="dashboard")
 
     @app.get("/settings")
     def settings_page(msg: str = ""):

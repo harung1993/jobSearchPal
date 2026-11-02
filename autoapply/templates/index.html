@@ -21,6 +21,15 @@
   <div class="sub">{{ s.rejected }} rejected · {{ s.waiting }} waiting · {{ s.no_reply }} no reply</div></div>
 </section>
 
+{% if interviews %}<section class="card mt"><h2>Interviews <span class="count">{{ interviews|length }}</span></h2>
+ {% for r in interviews %}<div class="ready"><div class="avatar" aria-hidden="true">{{ (r.job.company or '?')[:1]|upper }}</div>
+  <div class="body"><div class="t">{{ co(r.job.company) }} · {{ r.job.title }}</div>
+   <div class="m">{{ r.emails[0].subject|truncate(80) }} · {{ r.latest[5:10]|replace('-', '/') }}</div></div>
+  {% if r.state == 'ready' %}<a class="btn primary sm" href="/prep/{{ r.job.id|urlencode }}">Prep pack</a>
+  {% elif r.state == 'update' %}<a class="btn sm" href="/prep/{{ r.job.id|urlencode }}">Prep (updating next run)</a>
+  {% else %}<span class="pill waiting">prep next run</span>{% endif %}</div>{% endfor %}
+</section>{% endif %}
+
 <section class="grid g2 mt">
  <div class="card"><h2>Ready for you <span class="count">{{ s.ready|length }}</span></h2>
   {% for j in s.ready %}<div class="ready"><div class="avatar" aria-hidden="true">{{ (j.company or '?')[:1]|upper }}</div>

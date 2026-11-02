@@ -181,3 +181,20 @@ def test_daily_agent_setting(tmp_path, base_url, pdfs, capsys):
     c.post("/settings", data={"daily_agent": "claude", "daily_model": "sonnet", "action": "save"})
     cli.main(["--config", str(cfg), "daily-agent"])
     assert capsys.readouterr().out.strip() == "claude sonnet"
+
+
+def test_prep_page_and_dashboard_card(tmp_path, base_url, pdfs):
+    from autoapply import prep
+    db, c, plan = setup(tmp_path, base_url, pdfs)
+    db.update("manual:gh", status="submitted", submitted_at="2026-10-28 10:00")
+    db.add_event({"id": "i1", "job_id": "manual:gh", "kind": "interview", "at": "2026-10-30 09:00", "sender": "Acme",
+                  "subject": "Schedule your recruiter screen", "body": "Pick a time"})
+    assert "prep next run" in c.get("/").text
+    assert "No prep pack yet" in c.get("/prep/manual:gh").text
+    p = prep.prep_path(tmp_path / "data", db.get("manual:gh"))
+    p.parent.mkdir(parents=True)
+    p.write_text("## What candidates report\n- Asked about dbt tests ([Reddit](https://reddit.com/r/x))\n<img src=x onerror=alert(1)>")
+    html = c.get("/prep/manual:gh").text
+    assert "<h3>What candidates report</h3>" in html and 'href="https://reddit.com/r/x"' in html and "<img" not in html
+    assert "Prep pack" in c.get("/").text
+    assert c.get("/prep/nope").status_code == 404

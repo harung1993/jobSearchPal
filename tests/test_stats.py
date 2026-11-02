@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from datetime import date, datetime
 
 from autoapply import emailsync, history, stats
@@ -276,3 +277,33 @@ def test_rebuild_forgets_recent_email_events(tmp_path):
     db.add_event({"id": "b", "job_id": "j", "kind": "applied", "at": now, "sender": "s", "subject": "s"})
     assert emailsync.rebuild(db, 60) == 1
     assert not db.has_event("a") and db.has_event("b") and not proof.exists() and not (tmp_path / "x.txt").exists()
+
+
+def test_interview_prep_packs(tmp_path):
+    import time as _t
+    from autoapply import brief, prep
+    db = DB(tmp_path / "t.db")
+    history.import_rows(db, ROWS)
+    cobalt = next(j for j in db.by_status("submitted") if j["company"] == "Cobalt Labs")
+    db.add_event({"id": "i1", "job_id": cobalt["id"], "kind": "interview", "at": "2026-10-29 09:00", "sender": "Cobalt <t@cobalt.example>",
+                  "subject": "Schedule your recruiter screen", "body": "Pick a 30 minute slot with Dana."})
+    db.add_event({"id": "i2", "job_id": cobalt["id"], "kind": "interview", "at": "2026-10-29 10:00", "sender": "x", "subject": "x",
+                  "reviewed": 0})  # unsorted: doesn't count
+    need = prep.needed(db, tmp_path)
+    assert len(need) == 1 and need[0]["company"] == "Cobalt Labs" and not need[0]["update"]
+    assert need[0]["interview_emails"][0]["text"].startswith("Pick a 30") and need[0]["prep_path"].endswith(".md")
+    p = Path(need[0]["prep_path"]); p.parent.mkdir(parents=True); p.write_text("# Prep\n- one")
+    assert prep.needed(db, tmp_path) == [] and prep.interviews(db, tmp_path)[0]["state"] == "ready"
+    _, text, html = brief.compose(db, "http://srv", today=date(2026, 11, 2), data_dir=tmp_path)
+    assert "INTERVIEWS (1)" in text and f"http://srv/prep/{cobalt['id']}" in text
+    # A later stage makes the pack due for an update.
+    _t.sleep(0.01)
+    import os as _os
+    _os.utime(p, (_t.time() - 10**7, _t.time() - 10**7))
+    db.add_event({"id": "i3", "job_id": cobalt["id"], "kind": "interview", "at": "2026-11-01 09:00", "sender": "x",
+                  "subject": "Onsite loop", "body": ""})
+    assert prep.needed(db, tmp_path)[0]["update"] is True
+    # Pack text from the web is escaped; only http(s) links survive.
+    out = prep.render("## Q\n- **Tell me** about [docs](https://ex.com/a?b=1&c=2)\n<script>alert(1)</script>\n[x](javascript:alert(1))")
+    assert "<script>" not in out and "&lt;script&gt;" in out and 'href="https://ex.com/a?b=1&amp;c=2"' in out
+    assert 'href="javascript' not in out and "</ul>\n<p>" in out and "<h3>Q</h3>" in out and "<b>Tell me</b>" in out

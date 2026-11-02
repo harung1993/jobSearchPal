@@ -25,6 +25,7 @@ The screenshots use fictional demo data (`scripts/demo-data.py`).
 6:30am weekdays (cron or the Docker scheduler) ─► scripts/daily.sh
   agent: Claude Code or Codex CLI, picked on the Settings page, following AGENTS.md + prompts/daily.md
     ├─ autoapply sync-email      gather job emails ─► a model sorts them ─► replies, recruiters, proof
+    ├─ autoapply list --prep     interviews ─► prep pack: reported questions with sources, your stories
     ├─ autoapply find / alerts   new roles from job boards, feeds and your alert emails
     ├─ rank, pick the best 1-2   fit first, then freshness, then pay
     ├─ tailor                    resume + cover letter (python-docx, LibreOffice → PDF)
@@ -41,16 +42,18 @@ you ─► dashboard ─► check answers, decide consents ─► Submit
    IMAP. Keyword rules only pick the candidates. A model then reads each one and files it as a
    confirmation, interview, rejection, offer, recruiter contact or not job-related, and matches it to
    the application it's about (see [Email sorting](#email-sorting)).
-2. **Find roles** from the sources below. Anything already tracked or applied to is skipped.
-3. **Rank and pick** the best one or two, and skip the clear misses with a reason (the Stats page
+2. **Interview prep.** Any application with a new interview email gets a prep pack (see
+   [Interview prep](#interview-prep)).
+3. **Find roles** from the sources below. Anything already tracked or applied to is skipped.
+4. **Rank and pick** the best one or two, and skip the clear misses with a reason (the Stats page
    shows why roles were skipped).
-4. **Tailor** a resume and cover letter from your base resume and `CLAUDE.local.md`, plus a
+5. **Tailor** a resume and cover letter from your base resume and `CLAUDE.local.md`, plus a
    `notes.md` with the fit/gap table, form answers and pay ask.
-5. **Fill the real form.** Playwright answers the questions, uploads both PDFs, takes a screenshot
+6. **Fill the real form.** Playwright answers the questions, uploads both PDFs, takes a screenshot
    and stops before Submit. Consent and self-ID questions are left blank for you.
-6. **Brief.** One email (sent to yourself over Gmail SMTP) with what's ready, new replies, your work-search count for the week, and
-   the status of every application.
-7. **You decide.** Open the dashboard, read the answers, tick the review box and press Submit, or
+7. **Brief.** One email (sent to yourself over Gmail SMTP) with what's ready, interview prep
+   packs, new replies, your work-search count for the week, and the status of every application.
+8. **You decide.** Open the dashboard, read the answers, tick the review box and press Submit, or
    finish on your laptop when a site wants a code. Then the confirmation email arrives and the next
    morning's sync files it.
 
@@ -85,6 +88,23 @@ Hybrid". Send them to the inbox the sync reads. Each alert you add shows up in t
   Recruiters, Not job-related, All), with the text, the keyword guess and who sorted it. Change the
   category or the application from a dropdown. Your choice survives rescans and later model runs.
 
+### Interview prep
+
+When an email is sorted as an interview, the next morning's run writes a prep pack for that company
+and stage (recruiter screen, hiring manager, technical, onsite). It's shown on the dashboard's
+**Interviews** card and in the morning brief, and you can print it.
+
+- **What candidates report:** the interview process and questions others have shared for that company
+  and role, from public pages only (Glassdoor and Indeed pages readable without signing in, Reddit,
+  Blind, levels.fyi, the company's own blog and handbook). Every item links its source, and the pack
+  says so when little is public instead of making questions up.
+- **Likely questions** drawn from the posting, labeled as such.
+- **Your stories:** STAR answers built only from your materials, with your real numbers.
+- **About them**, **questions to ask**, and **pay** (your ask and the posted range).
+
+When a later interview email arrives (the next stage), the pack is updated for it.
+`autoapply list --prep` shows what's due.
+
 ### Settings page
 
 | Section | What you set |
@@ -97,7 +117,7 @@ Choices are saved in `data/settings.json`. Nothing on the page needs a restart.
 
 ### Dashboard pages
 
-- **Dashboard:** what's ready for you, latest replies, recruiters, applications per week, the full
+- **Dashboard:** what's ready for you, interviews with their prep packs, latest replies, recruiters, applications per week, the full
   application list, and when each job (search, email sync, sorting, brief) last ran.
 - **Stats:** response and interview rates, median time to reply, funnels, results by application
   platform, reply-time buckets, weeks at your work-search minimum, and pipeline trends.
@@ -198,6 +218,7 @@ autoapply review-emails                sort emails still waiting, through the Se
 autoapply emails [--pending]           filed emails as JSON;  emails set ID KIND  settles one by hand
 autoapply import-history FILE.json     load past applications (tracker rows)
 autoapply add URL / list / show ID / skip ID
+autoapply list --prep                  interviews that need a prep pack
 autoapply scan URL                     a form's questions as JSON
 autoapply fill PLAN.json [--job ID]    fill, upload, screenshot, stop before Submit
 autoapply brief [--send]               the morning summary
@@ -215,6 +236,7 @@ autoapply/finder.py      job-board APIs and feeds
 autoapply/emailsync.py   gathers candidate emails, proof copies, applies a settled kind
 autoapply/classify.py    model review of waiting emails (Claude Code, Codex, Jev, OpenRouter, Ollama)
 autoapply/prefs.py       Settings page choices (data/settings.json) and saved API keys
+autoapply/prep.py        interview prep packs: what's due, where they live, safe rendering
 autoapply/stats.py       dashboard and stats numbers
 autoapply/web.py         dashboard, review page, work-search log
 autoapply/templates/     HTML (no build step, no JavaScript framework)

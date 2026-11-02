@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% from "macros.html" import co %}
+{% block title %}Prep · {{ job.company }}{% endblock %}
+{% block body %}
+<p style="margin:0 0 10px"><a href="/">← Dashboard</a></p>
+<div class="ph"><div><h1>Interview prep · {{ co(job.company) }}</h1>
+ <div class="sub">{{ job.title }}{% if row and row.made %} · written {{ row.made }}{% endif %}{% if job.url %} · <a href="{{ job.url }}" target="_blank">posting</a>{% endif %}</div></div>
+ <button class="btn" onclick="window.print()">Print</button></div>
+{% if row and row.state == 'update' %}<p class="notice">A newer interview email arrived ({{ row.latest }}). The next daily run updates this pack for that stage.</p>{% endif %}
+{% if row %}<section class="card mt"><h2>Interview emails</h2><ul class="feed">{% for e in row.emails %}<li><span class="pill interview">interview</span><span>{{ e.subject }}</span><span class="when">{{ e.at[5:10]|replace('-', '/') }}</span></li>{% endfor %}</ul></section>{% endif %}
+<section class="card mt prep">
+{% if body %}{{ body|safe }}{% else %}<p class="empty">No prep pack yet. The next daily run writes one: reported questions for this company with sources, likely technical questions from the posting, your best matching stories, and questions to ask.</p>{% endif %}
+</section>
+<style>
+.prep{line-height:1.6;font-size:14.5px}.prep h2{font-size:18px;margin:22px 0 8px}.prep h2:first-child{margin-top:0}.prep h3{font-size:15px;margin:16px 0 6px}
+.prep h4{font-size:14px;margin:12px 0 4px;color:var(--ink-2)}.prep ul,.prep ol{padding-left:22px;margin:6px 0}.prep li{margin:4px 0}
+.prep blockquote{margin:8px 0;padding:8px 12px;border-left:3px solid var(--accent);background:var(--surface-2);border-radius:0 8px 8px 0}
+.prep .trow{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:10px;padding:6px 0;border-bottom:1px solid var(--line-2);font-size:13.5px}
+.prep code{background:var(--surface-2);padding:1px 5px;border-radius:5px}
+@media print{.side,.btn,.ph a{display:none}.app{display:block}.card{border:0;box-shadow:none}}
+</style>
+{% endblock %}

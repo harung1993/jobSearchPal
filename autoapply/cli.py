@@ -15,6 +15,7 @@
   autoapply log-run KIND ok|fail [MSG]  record a run (daily.sh uses it) for the dashboard
   autoapply add URL [--company C --title T]   track a role found elsewhere
   autoapply list [--status S]         show tracked roles
+  autoapply list --prep               interviews that need a prep pack, with where to write it
   autoapply show JOB_ID               full posting text, for tailoring
   autoapply skip JOB_ID [--reason R]  mark a role not worth applying to
   autoapply scan URL [--ats A]        list the form's questions as JSON
@@ -89,7 +90,7 @@ def main(argv=None):
     a = sub.add_parser("import-history"); a.add_argument("file")
     a = sub.add_parser("log-run"); a.add_argument("kind"); a.add_argument("result", choices=["ok", "fail"]); a.add_argument("msg", nargs="?", default="")
     a = sub.add_parser("add"); a.add_argument("url"); a.add_argument("--company", default=""); a.add_argument("--title", default="")
-    a = sub.add_parser("list"); a.add_argument("--status")
+    a = sub.add_parser("list"); a.add_argument("--status"); a.add_argument("--prep", action="store_true")
     a = sub.add_parser("show"); a.add_argument("job_id")
     a = sub.add_parser("skip"); a.add_argument("job_id"); a.add_argument("--reason", default="")
     a = sub.add_parser("scan"); a.add_argument("url"); a.add_argument("--ats")
@@ -170,6 +171,9 @@ def main(argv=None):
         db.upsert_job({"id": jid, "ats": detect(args.url).name, "company": args.company, "title": args.title,
                        "location": "", "url": args.url, "apply_url": args.url, "description": ""})
         print(jid)
+    elif args.cmd == "list" and args.prep:
+        from . import prep
+        _out(prep.needed(db, s.data_dir))
     elif args.cmd == "list":
         rows = db.by_status(args.status) if args.status else db.all()
         _out([{k: r[k] for k in ("id", "status", "company", "title", "location", "found_at")} for r in rows])
@@ -196,7 +200,8 @@ def main(argv=None):
         from . import brief
         from .web import work_search
         label, floor = work_search(s)
-        subject, text, html = brief.compose(db, os.environ.get("REVIEW_URL", ""), label=label, floor=floor)
+        subject, text, html = brief.compose(db, os.environ.get("REVIEW_URL", ""), label=label, floor=floor,
+                                          data_dir=s.data_dir)
         if args.send:
             to = brief.send(subject, text, html)
             db.log_run("brief", True, f"sent to {to}")

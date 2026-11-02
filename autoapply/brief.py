@@ -34,7 +34,7 @@ def _co(name: str) -> str:
 
 
 def compose(db: DB, review_url: str = "", today: date | None = None, label: str = "Work search",
-            floor: int = 3) -> tuple[str, str, str]:
+            floor: int = 3, data_dir=None) -> tuple[str, str, str]:
     """Returns (subject, text, html)."""
     s = stats.compute(db, today, floor=floor)
     ready, news = s["ready"], _recent_events(db)
@@ -50,6 +50,15 @@ def compose(db: DB, review_url: str = "", today: date | None = None, label: str 
         t.append(f"  review: {base}/job/{j['id']}   finish on Mac: autoapply-finish {j['id']}")
     if not ready:
         t.append("- nothing new today")
+    from . import prep
+    recent = ((today or date.today()) - timedelta(days=30)).isoformat()
+    ivs = [r for r in prep.interviews(db, data_dir) if r["latest"] >= recent][:5] if data_dir else []
+    if ivs:
+        t += ["", f"INTERVIEWS ({len(ivs)})"]
+        for r in ivs:
+            st = {"ready": f"prep pack: {base}/prep/{r['job']['id']}", "update": "prep pack updating next run",
+                  "due": "prep pack next run"}[r["state"]]
+            t.append(f"- {_co(r['job']['company'])} · {r['job']['title']} · {st}")
     t += ["", f"NEW REPLIES ({len(news)})"]
     t += [f"- {e['kind']}: {e['sender'].split(' <')[0]} · {e['subject']}" for e in news] or ["- none"]
     t += ["", f"APPLICATIONS: {s['applied']} sent · {s['interviews']} interviews · {s['rejected']} rejected · "
@@ -70,6 +79,11 @@ def compose(db: DB, review_url: str = "", today: date | None = None, label: str 
     h.append(li([f"<b>{escape(_co(j['company']))}</b> · {escape(j['title'])}{' · ' + escape(j['pay']) if j['pay'] else ''}<br>"
                  f"<a href='{escape(base)}/job/{escape(j['id'])}'>Review</a> · finish on Mac: <code>autoapply-finish {escape(j['id'])}</code>"
                  for j in ready]) or "<li>Nothing new today</li>")
+    if ivs:
+        h.append(f"</ul><h3>Interviews ({len(ivs)})</h3><ul>")
+        h.append(li([f"<b>{escape(_co(r['job']['company']))}</b> · {escape(r['job']['title'])} · " + (
+            f"<a href='{escape(base)}/prep/{escape(r['job']['id'])}'>Prep pack</a>" if r["state"] == "ready" else
+            ("prep pack updating next run" if r["state"] == "update" else "prep pack next run")) for r in ivs]))
     h.append(f"</ul><h3>New replies ({len(news)})</h3><ul>")
     h.append(li([f"<b>{escape(e['kind'])}</b>: {escape(e['sender'].split(' <')[0])} · {escape(e['subject'])}" for e in news]) or "<li>None</li>")
     h.append(f"</ul><h3>Applications</h3><p>{s['applied']} sent · {s['interviews']} interviews · {s['rejected']} rejected · "
