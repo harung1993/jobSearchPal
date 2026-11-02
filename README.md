@@ -107,6 +107,30 @@ can also use an OpenRouter key or a local Ollama model.
 
 Updating later: `git pull && .venv/bin/pip install -e . && systemctl --user restart autoapply-review`.
 
+## Docker (alternative to steps 1, 4 and 6)
+
+One image has Python, Playwright's Chromium, LibreOffice and both agent CLIs, so nothing else gets
+installed on the host. Your files stay in the repo folder, which is mounted into the containers.
+
+```
+git clone https://github.com/harung1993/jobSearchPal.git ~/auto-apply && cd ~/auto-apply
+cp config.example.yaml config.yaml; cp profile.example.yaml profile.yaml; cp .env.example .env   # fill these in
+docker compose run --rm web claude          # sign in to Claude Code and trust /app (or: codex login)
+docker compose up -d --build                # dashboard + the daily scheduler
+```
+
+- **Dashboard:** port 8787 on `127.0.0.1` by default. Add `BIND=<your Tailscale IP>` to `.env` to
+  reach it from your phone.
+- **Schedule:** `DAILY_AT=06:30`, `DAILY_DAYS=1-5` and `TZ=America/New_York` in `.env` (these are
+  the defaults). Output goes to `data/cron.log` as before.
+- **Your user id:** the containers run as uid 1000 so files in the folder stay yours. If `id -u`
+  says otherwise, add `APP_UID` and `APP_GID` to `.env`.
+- **Logins** live in the `agent-home` volume, so a rebuild keeps them.
+- **Updating:** `git pull && docker compose restart`. Code runs from the mounted folder; rebuild
+  (`docker compose up -d --build`) only when dependencies change.
+- Codex sign-in on a headless box: sign in on a laptop and copy `~/.codex/auth.json` in with
+  `docker compose cp ~/.codex/auth.json web:/home/app/.codex/auth.json`.
+
 ## Commands
 
 ```

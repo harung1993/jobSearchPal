@@ -207,7 +207,9 @@ def main(argv=None):
         import uvicorn
         from .web import make_app
         r = s.raw.get("review", {})
-        uvicorn.run(make_app(s, db), host=r.get("host", "127.0.0.1"), port=r.get("port", 8787))
+        # In Docker the dashboard listens on all interfaces inside the container; compose decides what's exposed.
+        host = os.environ.get("AUTOAPPLY_HOST") or r.get("host", "127.0.0.1")
+        uvicorn.run(make_app(s, db), host=host, port=int(os.environ.get("AUTOAPPLY_PORT") or r.get("port", 8787)))
 
 
 def finish(job_id: str, server: str):

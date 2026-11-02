@@ -1,0 +1,36 @@
+# JobSearchPal with Docker. From the repo folder:
+#   docker compose up -d --build
+# If your user id isn't 1000 (check with: id -u), add APP_UID and APP_GID to .env first.
+# Sign in to your agent once (either or both):
+#   docker compose run --rm web claude        (then /login, and trust the /app folder)
+#   docker compose run --rm web codex login   (or copy ~/.codex/auth.json from a machine where you're signed in)
+# Your config.yaml, profile.yaml, .env, CLAUDE.local.md, materials/ and data/ stay in this folder.
+x-app: &app
+  build: .
+  image: jobsearchpal
+  user: "${APP_UID:-1000}:${APP_GID:-1000}"
+  env_file: [{path: .env, required: false}]
+  environment:
+    TZ: ${TZ:-America/New_York}
+  volumes:
+    - .:/app
+    - agent-home:/home/app        # Claude Code / Codex logins
+  restart: unless-stopped
+
+services:
+  web:
+    <<: *app
+    command: ["autoapply", "serve"]
+    ports:
+      # Only this machine by default. Set BIND to your Tailscale IP to reach it from your phone.
+      - "${BIND:-127.0.0.1}:${PORT:-8787}:8787"
+  scheduler:
+    <<: *app
+    command: ["python3", "scripts/scheduler.py"]
+    environment:
+      TZ: ${TZ:-America/New_York}
+      DAILY_AT: ${DAILY_AT:-06:30}
+      DAILY_DAYS: ${DAILY_DAYS:-1-5}
+
+volumes:
+  agent-home:

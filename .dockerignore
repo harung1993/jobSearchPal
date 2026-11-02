@@ -1,0 +1,14 @@
+# Only code goes into the image; your files are mounted at run time.
+.git
+.venv
+data
+materials
+seed
+.env
+config.yaml
+profile.yaml
+boards.yaml
+CLAUDE.local.md
+**/__pycache__
+*.egg-info
+.pytest_cache

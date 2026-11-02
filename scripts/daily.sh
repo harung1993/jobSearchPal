@@ -3,7 +3,7 @@
 #   30 6 * * 1-5  $HOME/auto-apply/scripts/daily.sh >> $HOME/auto-apply/data/cron.log 2>&1
 set -euo pipefail
 cd "$(dirname "$0")/.."
-source .venv/bin/activate
+[ -f .venv/bin/activate ] && source .venv/bin/activate  # Docker has it on PATH already
 [ -f .env ] && set -a && source .env && set +a
 mkdir -p data/daily
 
