@@ -154,3 +154,16 @@ def test_settings_tabs(fresh):
     r = c.post("/settings", data={"tab": "daily", "daily_agent": "claude", "action": "save"}, follow_redirects=False)
     assert r.headers["location"].startswith("/settings?tab=daily")
     assert c.get("/settings?tab=setup", follow_redirects=False).headers["location"] == "/setup"
+
+
+def test_real_jane_can_finish_contact(tmp_path):
+    import yaml as _y
+    from autoapply import setup as su
+    from autoapply.config import Settings
+    s = Settings(root=tmp_path, raw={"data_dir": str(tmp_path / "data")}, profile={})
+    prof = tmp_path / "profile.yaml"
+    prof.write_text(_y.safe_dump({"first_name": "Jane", "last_name": "Doe", "email": "jane.doe@example.com"}))
+    done = lambda: su.status(s, {})["steps"]["profile"]["done"]
+    assert not done()  # the untouched example
+    prof.write_text(_y.safe_dump({"first_name": "Jane", "last_name": "Smith", "email": "jane.smith@mail.example"}))
+    assert done()

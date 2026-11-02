@@ -11,8 +11,10 @@ Nothing here is required to come from the page: hand-edited files work as before
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
+import tempfile
 import subprocess
 import zipfile
 from datetime import datetime
@@ -128,7 +130,8 @@ def status(settings, environ: dict) -> dict:
     about = materials(root) / "context"
     has_about = (root / "CLAUDE.local.md").exists() or (about.is_dir() and any(about.glob("*.md")))
     steps = {
-        "profile": {"done": bool(prof.get("first_name")) and prof.get("first_name") != "Jane",
+        # Done once it's yours: a real "Jane" counts; the untouched example (Jane Doe, jane.doe@example.com) doesn't.
+        "profile": {"done": bool(prof.get("first_name")) and (prof.get("email") or "").lower() != "jane.doe@example.com",
                     "note": f"{prof.get('first_name', '')} {prof.get('last_name', '')}".strip() or "not set"},
         "interests": {"done": cfg.exists() and bool(titles),
                       "note": f"{len(titles)} titles" if cfg.exists() and titles else "not set"},
@@ -297,7 +300,11 @@ def save_resume(root: Path, last_name: str, docx: bytes | None, pdf: bytes | Non
         soffice = shutil.which("soffice") or shutil.which("libreoffice")
         if soffice:
             try:
-                subprocess.run([soffice, "--headless", "--convert-to", "pdf", "--outdir", str(m), str(m / f"{stem}.docx")],
+                # A user id with no passwd entry (Docker with APP_UID=501 on a Mac) has no usable home, and
+                # LibreOffice then quits on "User installation could not be completed": give it its own profile dir.
+                lo_profile = Path(tempfile.gettempdir()) / f"lo-profile-{os.getuid()}"
+                subprocess.run([soffice, f"-env:UserInstallation={lo_profile.as_uri()}", "--headless", "--convert-to", "pdf",
+                                "--outdir", str(m), str(m / f"{stem}.docx")],
                                capture_output=True, timeout=180, check=True)
                 out["pdf"] = f"{stem}.pdf" if (m / f"{stem}.pdf").exists() else None
             except (subprocess.SubprocessError, OSError):
