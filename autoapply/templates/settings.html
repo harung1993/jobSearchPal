@@ -26,7 +26,7 @@
     <div class="top">
      <label class="switch"><input type="checkbox" name="on::{{ name }}" value="1" {% if on %}checked{% endif %} onchange="this.form.requestSubmit()">
       <span><b>{{ meta.name }}</b> <span class="ink2">· {{ meta.via }}</span></span></label>
-     <span class="dot {{ 'ok' if st.ready else 'no' }}">{{ st.note }}</span>
+     {% if on %}<span class="dot {{ 'ok' if st.ready else 'no' }}">{{ st.note }}</span>{% else %}<span class="pill skipped">Off</span>{% endif %}
     </div>
     <div class="row2">
      <label class="fld"><span>Model</span>
@@ -206,8 +206,10 @@
 
 <style>
 .srcs{list-style:none;margin:0;padding:0;display:grid;gap:10px}
-.src{display:grid;grid-template-columns:32px minmax(0,1fr);gap:12px;border:1px solid var(--line-2);border-radius:14px;padding:14px;opacity:.72}
-.src.on{opacity:1;border-color:color-mix(in srgb,var(--accent) 35%,var(--line-2))}
+.src{display:grid;grid-template-columns:32px minmax(0,1fr);gap:12px;align-items:start;border:1px solid var(--line);border-radius:var(--radius);padding:14px;background:var(--surface)}
+.src.on{border-color:color-mix(in srgb,var(--accent) 35%,var(--line))}
+.src:not(.on){background:var(--surface-2);border-color:transparent;padding:8px 14px;align-items:center}
+.src:not(.on) .row2,.src:not(.on) .facts,.src:not(.on) .test{display:none} .src:not(.on) .switch b{color:var(--ink-2);font-weight:600}
 .rank{width:28px;height:28px;border-radius:8px;background:var(--surface-2);display:grid;place-items:center;font-weight:700;color:var(--ink-2)}
 .src.on .rank{background:var(--accent-soft);color:var(--accent-ink)}
 .src .top{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
@@ -215,8 +217,7 @@
 .dot{font-size:12.5px;color:var(--ink-2);display:inline-flex;align-items:center;gap:6px}
 .dot::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--ink-3)}.dot.ok::before{background:var(--good-dot)}.dot.no::before{background:var(--warn-dot)}
 .row2{display:flex;gap:10px;align-items:flex-end;margin-top:10px;flex-wrap:wrap}.row2 .fld{flex:1;min-width:220px}
-.btns{display:flex;gap:6px}.btn.icon{width:34px;justify-content:center;padding-left:0;padding-right:0}.btn:disabled{opacity:.4;cursor:default}
-.fld{display:grid;gap:5px}.fld>span{font-size:12.5px;font-weight:600;color:var(--ink-2)}.fld small{font-size:12px;line-height:1.45}
+.btns{display:flex;gap:6px}.btn.icon{width:34px;justify-content:center;padding-left:0;padding-right:0}
 .facts{display:flex;gap:6px 16px;flex-wrap:wrap;margin-top:10px;font-size:12.5px;color:var(--ink-2)}.facts .bad{color:var(--bad)}
 .test{margin-top:8px;font-size:12.5px;padding:7px 10px;border-radius:9px}.test.ok{background:var(--good-soft);color:var(--good)}.test.bad{background:var(--bad-soft);color:var(--bad)}
 .agents{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
