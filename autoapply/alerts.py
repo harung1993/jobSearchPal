@@ -20,6 +20,7 @@ DEFAULT_SENDERS = [
     "jobs-noreply@linkedin.com",
     "builtin.com",
     "alert@indeed.com",
+    "match.indeed.com",  # Indeed's job-match emails (donotreply@match.indeed.com)
     "glassdoor.com",
     "wellfound.com",
     "higheredjobs.com",
