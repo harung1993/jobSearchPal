@@ -12,7 +12,7 @@ import zipfile
 from datetime import date, datetime
 from pathlib import Path
 
-from fastapi import FastAPI, Form, HTTPException, Request
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 from jinja2 import Environment, FileSystemLoader
 from starlette.concurrency import run_in_threadpool
@@ -41,13 +41,14 @@ def work_search(settings) -> tuple[str, int]:
 
 def make_app(settings, db: DB) -> FastAPI:
     app = FastAPI()
-    token = os.environ.get("AUTOAPPLY_TOKEN")
     shots = settings.data_dir / "screenshots"
     headless = settings.raw.get("browser", {}).get("headless", True)
 
     @app.middleware("http")
     async def auth(request: Request, call_next):
-        # Optional shared secret: open /?t=TOKEN once, then a cookie carries it.
+        # Optional shared secret: open /?t=TOKEN once, then a cookie carries it. Read on every request,
+        # because the Setup page can create it.
+        token = os.environ.get("AUTOAPPLY_TOKEN")
         if token:
             given = request.query_params.get("t") or request.cookies.get("aa")
             if given != token:
@@ -67,10 +68,14 @@ def make_app(settings, db: DB) -> FastAPI:
     env.globals["ws_label"] = ws_label
 
     def page(name: str, **ctx) -> HTMLResponse:  # noqa: F811  every page shows the waiting-email badge
-        return HTMLResponse(env.get_template(name).render(pending_count=len(db.pending_events()), **ctx))
+        from . import setup
+        return HTMLResponse(env.get_template(name).render(pending_count=len(db.pending_events()),
+                                                          setup_left=len(setup.status(settings, os.environ)["left"]), **ctx))
 
     @app.get("/")
     def index():
+        if settings.raw.get("_from_example"):
+            return RedirectResponse("/setup", status_code=303)  # fresh install
         from . import prep
         from . import nudges
         todo = nudges.compute(db, settings.data_dir)
@@ -316,6 +321,133 @@ def make_app(settings, db: DB) -> FastAPI:
                 " Failed: " + "; ".join(f"{k}: {v[:80]}" for k, v in r["errors"].items()) if r.get("errors") else "")
         from urllib.parse import quote
         return RedirectResponse(f"/settings?msg={quote(msg)}" + (f"#src-{name}" if name else ""), status_code=303)
+
+    # ---- first-run setup: writes profile.yaml, config.yaml, materials/ and data/secrets.json ----
+    def _back(msg: str, anchor: str = "") -> RedirectResponse:
+        from urllib.parse import quote
+        return RedirectResponse(f"/setup?msg={quote(msg)}" + (f"#{anchor}" if anchor else ""), status_code=303)
+
+    @app.get("/setup")
+    def setup_page(msg: str = "", err: str = "", t: str = ""):
+        from . import setup
+        from .finder import FEEDS
+        from .prefs import Prefs
+        st = setup.status(settings, os.environ)
+        prof = setup.load_profile(settings.root)
+        if not st["steps"]["profile"]["done"]:
+            # Blank out the example's Jane Doe values, then prefill from the resume.
+            example = setup._yaml(settings.root / "profile.example.yaml")
+            prof = {k: ("" if example.get(k) == v and k not in ("work_authorized", "requires_sponsorship", "willing_to_relocate",
+                                                                "how_did_you_hear") else v) for k, v in prof.items()}
+            for k, v in setup.resume_contact(setup.base_resume(settings.root)).items():
+                prof[k] = prof.get(k) or v
+        cfg = setup.load_config(settings.root) if not st["fresh"] else {}
+        search = cfg.get("search") or {}
+        boards = "\n".join(f"{b['ats']} {b['slug']}" for b in cfg.get("boards") or [])
+        pr = Prefs(settings.data_dir, settings.raw)
+        return page("setup.html", nav="setup", st=st, prof=prof, fields=setup.PROFILE_FIELDS, yes_no=setup.YES_NO,
+                    titles=", ".join(search.get("title_keywords") or []), exclude=", ".join(search.get("exclude_keywords") or []),
+                    us_only=search.get("us_only", True), boards=boards, feeds=setup.FEED_LABELS,
+                    feeds_on=cfg.get("feeds", list(FEEDS)) if cfg else list(FEEDS), ws=cfg.get("work_search") or {},
+                    about=setup.load_about(settings.data_dir), about_fields=setup.ABOUT_FIELDS,
+                    resume=setup.base_resume(settings.root), gmail_user=os.environ.get("GMAIL_USER", ""),
+                    gmail_env=pr.from_env("GMAIL_APP_PASSWORD"), token_env=pr.from_env("AUTOAPPLY_TOKEN"),
+                    msg=msg, err=err, link=(os.environ.get("REVIEW_URL") or "/").split("?")[0] + "?t=" + t
+                    if t and t == os.environ.get("AUTOAPPLY_TOKEN") else "")
+
+    @app.post("/setup/profile")
+    async def setup_profile(request: Request):
+        from . import setup
+        f = dict(await request.form())
+        if not (str(f.get("first_name") or "").strip() and str(f.get("last_name") or "").strip()
+                and "@" in str(f.get("email") or "")):
+            return _back("First name, last name and email are needed.", "profile")
+        setup.save_profile(settings, f)
+        setup.name_placeholder_resume(settings.root, settings.profile.get("last_name", ""))
+        return _back("Saved your contact details to profile.yaml.", "interests")
+
+    @app.post("/setup/interests")
+    async def setup_interests(request: Request):
+        from . import setup
+        f = dict(await request.form())
+        if not setup._lines(str(f.get("titles") or "")):
+            return _back("Add at least one job title to look for.", "interests")
+        r = setup.save_interests(settings, f)
+        env.globals["ws_label"] = (settings.raw.get("work_search") or {}).get("label", "Work search")
+        msg = "Saved your job interests to config.yaml."
+        if r["bad"]:
+            msg += " Couldn't read: " + "; ".join(r["bad"][:5]) + ". Use a careers-page URL or 'greenhouse slug'."
+        return _back(msg, "about")
+
+    @app.post("/setup/resume")
+    async def setup_resume(docx: UploadFile = File(None), pdf: UploadFile = File(None)):
+        from . import setup
+        limit = 10 * 1024 * 1024
+        d = await docx.read(limit + 1) if docx and docx.filename else None
+        p = await pdf.read(limit + 1) if pdf and pdf.filename else None
+        if not d and not p:
+            return _back("Pick your resume's .docx file first.", "resume")
+        if (d and len(d) > limit) or (p and len(p) > limit):
+            return _back("That file is over 10 MB.", "resume")
+        if p and not d and not setup.base_resume(settings.root):
+            return _back("The .docx is needed: tailored resumes are built from it. The PDF is optional.", "resume")
+        last = settings.profile.get("last_name") or ""
+        r = await run_in_threadpool(setup.save_resume, settings.root, last, d, p)
+        if r["error"]:
+            return _back(r["error"], "resume")
+        if not last:  # name it after the resume's own header when contact details aren't saved yet
+            guess = setup.resume_contact(setup.base_resume(settings.root)).get("last_name", "")
+            if renamed := setup.name_placeholder_resume(settings.root, guess):
+                r = {"docx": renamed, "pdf": renamed.replace(".docx", ".pdf") if r["pdf"] else None}
+        made = " and ".join(x for x in (r["docx"], r["pdf"]) if x)
+        return _back(f"Saved {made} in materials/." + ("" if r["pdf"] or p else
+                     " No PDF was made (LibreOffice isn't installed here), so upload one too."), "profile")
+
+    @app.post("/setup/about")
+    async def setup_about(request: Request):
+        from . import setup
+        setup.save_about(settings.root, settings.data_dir, dict(await request.form()))
+        return _back("Saved to materials/context/setup.md. The agent reads it before every application.", "gmail")
+
+    @app.post("/setup/gmail")
+    async def setup_gmail(request: Request):
+        from . import setup
+        from .prefs import Prefs
+        f = await request.form()
+        pr = Prefs(settings.data_dir, settings.raw)
+        user = str(f.get("gmail_user") or "").strip()
+        pw = re.sub(r"\s", "", str(f.get("gmail_password") or ""))
+        if f.get("action") == "forget":
+            for k in ("GMAIL_USER", "GMAIL_APP_PASSWORD", "BRIEF_TO"):
+                pr.set_key(k, "")
+            return _back("Removed the saved Gmail login.", "gmail")
+        pw = pw or (os.environ.get("GMAIL_APP_PASSWORD") or "")
+        if "@" not in user or not pw:
+            return _back("Enter your Gmail address and an app password.", "gmail")
+        problem = await run_in_threadpool(setup.test_gmail, user, pw)
+        if problem:
+            return _back(f"Not saved: {problem}", "gmail")
+        if not pr.from_env("GMAIL_USER"):
+            pr.set_key("GMAIL_USER", user)
+        if not pr.from_env("GMAIL_APP_PASSWORD"):
+            pr.set_key("GMAIL_APP_PASSWORD", pw)
+        brief_to = str(f.get("brief_to") or "").strip()
+        if "@" in brief_to and not pr.from_env("BRIEF_TO"):
+            pr.set_key("BRIEF_TO", brief_to)
+        return _back("Gmail works. Job alerts and replies will be read (read-only), and the brief sent from it.", "agent")
+
+    @app.post("/setup/token")
+    def setup_token():
+        import secrets as _secrets
+        from urllib.parse import quote
+        from .prefs import Prefs
+        pr = Prefs(settings.data_dir, settings.raw)
+        if os.environ.get("AUTOAPPLY_TOKEN"):
+            raise HTTPException(409, "a dashboard password is already set")
+        t = _secrets.token_urlsafe(24)
+        pr.set_key("AUTOAPPLY_TOKEN", t)
+        msg = "Password set. This browser is signed in; open the link below once on each other device."
+        return RedirectResponse(f"/setup?t={quote(t)}&msg={quote(msg)}#token", status_code=303)
 
     @app.get("/dua")
     def dua():

@@ -5,6 +5,7 @@
  <div class="sub">{{ s.today.strftime("%A, %B %-d") }} · {{ s.new_count }} new role{{ '' if s.new_count == 1 else 's' }} found · {{ s.ready|length }} ready for you</div></div>
  <a class="btn" href="/stats">Detailed stats →</a></div>
 
+{% if setup_left %}<p class="notice" style="margin:0 0 16px">Setup isn't finished: {{ setup_left }} required step{{ '' if setup_left == 1 else 's' }} left. The daily run needs them. <a href="/setup">Finish setup →</a></p>{% endif %}
 <section class="runs" aria-label="When things last ran">
  {% for r in s.runs %}<span class="run {{ r.state }}" title="{{ r.summary }}"><i aria-hidden="true"></i><b>{{ r.label }}</b> {{ r.when }}{% if r.state == 'fail' %} · failed{% elif r.state == 'stale' %} · overdue{% endif %}</span>{% endfor %}
 </section>

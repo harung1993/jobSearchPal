@@ -152,6 +152,8 @@ Choices are saved in `data/settings.json`. Nothing on the page needs a restart.
 - **Stats:** response and interview rates, median time to reply, funnels, results by application
   platform, reply-time buckets, weeks at your work-search minimum, and pipeline trends.
 - **Emails:** see above.
+- **Setup:** resume, contact details, job interests, notes about you, agent sign-in, Gmail and the
+  dashboard password. Shown in the menu while a required step is missing.
 - **Work-search log:** if you claim unemployment benefits, every application and recruiter contact
   is grouped by Sunday-to-Saturday week, with the original emails and submit screenshots saved as
   proof and a weekly zip in work-search-log columns.
@@ -190,7 +192,8 @@ can also use an OpenRouter key or a local Ollama model.
 
 1. Clone this repo to `~/auto-apply` on the server and run `bash scripts/install.sh`
    (`AGENT=codex bash scripts/install.sh` for Codex).
-2. Copy the examples and fill them in:
+2. Start the dashboard (`autoapply serve`) and use its **Setup** page (see Docker below for the steps), or
+   copy the examples and fill them in:
    - `config.example.yaml` → `config.yaml` (boards to watch, title keywords, dashboard host,
      work-search label and weekly minimum)
    - `profile.example.yaml` → `profile.yaml` (your contact details and standard answers)
@@ -220,10 +223,27 @@ installed on the host. Your files stay in the repo folder, which is mounted into
 
 ```
 git clone https://github.com/harung1993/jobSearchPal.git ~/auto-apply && cd ~/auto-apply
-cp config.example.yaml config.yaml; cp profile.example.yaml profile.yaml; cp .env.example .env   # fill these in
-docker compose run --rm web claude          # sign in to Claude Code and trust /app (or: codex login)
 docker compose up -d --build                # dashboard + the daily scheduler
+docker compose run --rm web claude          # sign in to Claude Code and trust /app (or: codex login)
 ```
+
+Then open `http://localhost:8787/` (or `http://<server>:8787/` with `BIND` set, below). A fresh install opens
+the **Setup** page, which walks through everything in a browser:
+
+1. **Base resume**: upload your .docx (a PDF is made for you). Tailored resumes are built from it.
+2. **Contact details and standard answers** (prefilled from the resume), saved to `profile.yaml`.
+3. **Job interests**: titles to look for and skip, US-only, companies to watch (paste careers-page URLs from
+   Greenhouse, Lever, Ashby, Workable or SmartRecruiters) and job sites, saved to `config.yaml`.
+4. **About you** (optional, recommended): roles and level, pay ask, where you'll work, work authorization,
+   what to emphasize and avoid, saved to `materials/context/setup.md`.
+5. **Agent sign-in**: the command above; the page shows when it worked.
+6. **Gmail** (optional): an app password, tested before it's saved, for job alerts, replies and the brief.
+7. **Dashboard password** (optional, recommended before you open it beyond localhost).
+
+![Setup](docs/setup.png)
+
+Until steps 2 and 3 are done, the daily run does nothing. The Setup page writes the same files you could edit
+by hand, so either way works; keys it saves go to `data/secrets.json` (owner-only), and `.env` wins over them.
 
 - **Dashboard:** port 8787 on `127.0.0.1` by default. Add `BIND=<your Tailscale IP>` to `.env` to
   reach it from your phone.

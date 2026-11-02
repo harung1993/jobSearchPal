@@ -95,16 +95,30 @@ class Prefs:
     def key(self, name: str) -> str | None:
         return os.environ.get(name) or self._read(self.secrets_path).get(name) or None
 
+    def from_env(self, name: str) -> bool:
+        from .config import FROM_SECRETS
+        return bool(os.environ.get(name)) and name not in FROM_SECRETS
+
     def set_key(self, name: str, value: str):
+        """Saves to data/secrets.json and applies it to this process, unless .env already sets it."""
+        from .config import FROM_SECRETS
         s = self._read(self.secrets_path)
         if value:
             s[name] = value
         else:
             s.pop(name, None)
-        self.secrets_path.write_text(json.dumps(s))
+        self.secrets_path.touch(mode=0o600, exist_ok=True)
         os.chmod(self.secrets_path, 0o600)
+        self.secrets_path.write_text(json.dumps(s))
+        if not self.from_env(name):
+            if value:
+                os.environ[name] = value
+                FROM_SECRETS.add(name)
+            else:
+                os.environ.pop(name, None)
+                FROM_SECRETS.discard(name)
 
     def key_hint(self, name: str) -> str:
         k = self.key(name)
-        src = "in .env" if os.environ.get(name) else "saved here"
+        src = "in .env" if self.from_env(name) else "saved here"
         return f"set ({src}, ends {k[-4:]})" if k else "not set"

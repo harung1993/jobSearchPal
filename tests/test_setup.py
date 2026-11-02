@@ -1,0 +1,127 @@
+"""Setup page: a fresh install writes the same files you'd edit by hand, and never runs on the example."""
+import io
+import json
+import os
+import shutil
+from pathlib import Path
+
+import pytest
+import yaml
+from docx import Document
+from fastapi.testclient import TestClient
+
+from autoapply import config, setup
+from autoapply.db import DB
+from autoapply.web import make_app
+
+REPO = Path(__file__).resolve().parents[1]
+
+
+@pytest.fixture
+def fresh(tmp_path, monkeypatch):
+    for f in ("config.example.yaml", "profile.example.yaml"):
+        shutil.copy(REPO / f, tmp_path / f)
+    for k in config.SECRET_KEYS:
+        monkeypatch.delenv(k, raising=False)
+    config.FROM_SECRETS.clear()
+    s = config.load(str(tmp_path / "config.yaml"), allow_example=True)
+    db = DB(s.data_dir / "t.db")
+    yield s, TestClient(make_app(s, db))
+    for k in list(config.FROM_SECRETS):
+        os.environ.pop(k, None)
+    config.FROM_SECRETS.clear()
+
+
+def _resume() -> bytes:
+    d = Document()
+    d.add_paragraph("Ada Lovelace")
+    d.add_paragraph("ada@example.org | (555) 123-4567 | linkedin.com/in/ada-l")
+    d.add_paragraph("Experience")
+    b = io.BytesIO()
+    d.save(b)
+    return b.getvalue()
+
+
+def test_fresh_install_goes_to_setup_and_nothing_runs(fresh, tmp_path):
+    s, c = fresh
+    r = c.get("/", follow_redirects=False)
+    assert r.status_code == 303 and r.headers["location"] == "/setup"
+    assert "Base resume" in c.get("/setup").text
+    with pytest.raises(SystemExit):
+        config.load(str(tmp_path / "config.yaml"))  # every other command refuses to run on the example
+
+
+def test_walkthrough_writes_the_files(fresh, tmp_path, monkeypatch):
+    s, c = fresh
+    monkeypatch.setattr(setup.shutil, "which", lambda n: None)  # no LibreOffice in the test
+    r = c.post("/setup/resume", files={"docx": ("cv.docx", _resume())})
+    assert r.status_code == 200
+    assert (tmp_path / "materials" / "Lovelace Resume - Base.docx").exists()
+    page = c.get("/setup").text
+    assert 'value="ada@example.org"' in page and 'value="Ada"' in page  # prefilled from the resume
+    assert "Jane" not in page
+
+    c.post("/setup/profile", data={"first_name": "Ada", "last_name": "Lovelace", "email": "ada@example.org",
+                                   "requires_sponsorship": "No", "salary_expectation": "$180,000"})
+    prof = yaml.safe_load((tmp_path / "profile.yaml").read_text())
+    assert prof["first_name"] == "Ada" and prof["salary_expectation"] == "180000"
+    assert any(r.get("value") == "Ada Lovelace" for r in prof["rules"])
+    assert prof["hold_for_review"]  # consent rules kept
+
+    r = c.post("/setup/interests", data={"titles": "Data Engineer, analytics engineer", "exclude": "intern",
+                                         "us_only": "1", "feed::remotive": "1",
+                                         "companies": "https://job-boards.greenhouse.io/gitlab\njobs.lever.co/netflix/\nashby ramp\nworkday acme"})
+    cfg = yaml.safe_load((tmp_path / "config.yaml").read_text())
+    assert cfg["search"]["title_keywords"] == ["data engineer", "analytics engineer"]
+    assert cfg["boards"] == [{"ats": "greenhouse", "slug": "gitlab"}, {"ats": "lever", "slug": "netflix"},
+                             {"ats": "ashby", "slug": "ramp"}]
+    assert cfg["feeds"] == ["remotive"] and "_from_example" not in cfg
+    assert "workday acme" in r.text  # told what it couldn't read
+
+    c.post("/setup/about", data={"roles": "Staff data engineer", "pay": "$180K"})
+    md = (tmp_path / "materials" / "context" / "setup.md").read_text()
+    assert "Staff data engineer" in md and "## Pay ask" in md
+
+    st = setup.status(s, os.environ)
+    assert not set(st["left"]) - {"agent"}
+    assert c.get("/", follow_redirects=False).status_code == 200  # dashboard opens now
+
+
+def test_rejects_non_docx(fresh):
+    _, c = fresh
+    r = c.post("/setup/resume", files={"docx": ("cv.docx", b"not a zip")})
+    assert "a Word .docx file" in r.text
+
+
+def test_password_is_created_once_and_then_required(fresh):
+    s, c = fresh
+    r = c.post("/setup/token", follow_redirects=False)
+    loc = r.headers["location"]
+    token = loc.split("t=")[1].split("&")[0]
+    assert os.environ["AUTOAPPLY_TOKEN"] == token
+    saved = json.loads((s.data_dir / "secrets.json").read_text())
+    assert saved["AUTOAPPLY_TOKEN"] == token and oct((s.data_dir / "secrets.json").stat().st_mode)[-3:] == "600"
+    page = c.get(loc).text  # this browser gets the cookie
+    assert "Save this link now" in page
+    assert c.get("/setup").status_code == 200
+    assert TestClient(c.app).get("/setup").status_code == 403  # a new browser needs it
+    assert c.post("/setup/token").status_code == 409
+
+
+def test_gmail_saved_only_after_login_works(fresh, monkeypatch):
+    s, c = fresh
+    monkeypatch.setattr(setup, "test_gmail", lambda u, p: "Gmail refused the login.")
+    assert "Not saved" in c.post("/setup/gmail", data={"gmail_user": "a@gmail.com", "gmail_password": "abcd efgh"}).text
+    assert not (s.data_dir / "secrets.json").exists()
+    seen = {}
+    monkeypatch.setattr(setup, "test_gmail", lambda u, p: seen.update(u=u, p=p) or "")
+    c.post("/setup/gmail", data={"gmail_user": "a@gmail.com", "gmail_password": "abcd efgh ijkl mnop"})
+    assert seen["p"] == "abcdefghijklmnop" and os.environ["GMAIL_APP_PASSWORD"] == "abcdefghijklmnop"
+    assert "abcdefghijklmnop" not in c.get("/setup").text  # never shown again
+
+
+def test_board_urls():
+    assert setup.parse_board("https://boards.greenhouse.io/airbnb/jobs/123") == ("greenhouse", "airbnb")
+    assert setup.parse_board("https://jobs.ashbyhq.com/ramp?x=1") == ("ashby", "ramp")
+    assert setup.parse_board("smartrecruiters:Visa") == ("smartrecruiters", "Visa")
+    assert setup.parse_board("acme careers") is None

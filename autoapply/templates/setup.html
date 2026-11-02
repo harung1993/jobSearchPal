@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+{% block title %}Setup{% endblock %}
+{% block body %}
+{% set s = st.steps %}
+{% set req_done = 4 - st.left|length %}
+<div class="ph"><div><h1>Setup</h1>
+ <div class="sub">Everything JobSearchPal needs to know about you, in one place. You can come back and change any of it.</div></div>
+ <div class="prog" aria-label="{{ req_done }} of 4 required steps done"><b>{{ req_done }}</b> of 4 required done
+  <div class="meter {{ 'ok' if st.ready }}"><span style="width:{{ (100 * req_done / 4)|round }}%"></span></div></div></div>
+{% if msg %}<p class="notice" role="status">{{ msg }}</p>{% endif %}
+
+<nav class="rail" aria-label="Setup steps">
+ {% for key, label, req in [('resume','Resume',1),('profile','Contact',1),('interests','Job interests',1),('about','About you',0),('agent','Agent',1),('gmail','Gmail',0),('token','Password',0)] %}
+ <a href="#{{ key }}" class="{{ 'done' if s[key].done }}"><i aria-hidden="true">{{ '✓' if s[key].done else loop.index }}</i>{{ label }}{% if not req %}<small>optional</small>{% endif %}</a>
+ {% endfor %}
+</nav>
+
+{% if st.ready %}
+<section class="card mt good">
+ <h2>You're set up</h2>
+ <p>The daily run will find matching roles, rank them against your notes, tailor your resume and cover letter for the top picks,
+  and fill the forms. It stops before Submit: you review each one on the <a href="/">Dashboard</a> and press Submit yourself.
+  Consent and self-ID questions are always left for you.</p>
+ <p class="muted">Runs weekdays at 6:30 by default (<code>DAILY_AT</code> in <code>.env</code> with Docker). To try one now:
+  <code>docker compose exec scheduler bash scripts/daily.sh</code> or <code>bash scripts/daily.sh</code>.
+  Models, limits and costs are on <a href="/settings">Settings</a>.</p>
+</section>
+{% endif %}
+
+<section class="card mt step" id="resume">
+ <h2><span><span class="n {{ 'done' if s.resume.done }}">{{ "✓" if s.resume.done else "1" }}</span> Base resume</span><span class="count">{{ s.resume.note }}</span></h2>
+ <p class="lead">Your full, current resume as a Word file. Every tailored resume is built from it, keeping its layout and styles,
+  so the agent only reorders and rewords what's already true. It never adds jobs, titles or numbers.</p>
+ <form method="post" action="/setup/resume" enctype="multipart/form-data" class="grid g11">
+  <label class="fld"><span>Resume (.docx)</span><input type="file" name="docx" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+   <small class="muted">From Google Docs: File &gt; Download &gt; Microsoft Word.</small></label>
+  <label class="fld"><span>PDF of it (optional)</span><input type="file" name="pdf" accept=".pdf,application/pdf">
+   <small class="muted">Made for you when LibreOffice is installed (it is in Docker).</small></label>
+  <div class="actions"><button class="btn primary">{{ 'Replace' if resume else 'Upload' }}</button>
+   {% if resume %}<span class="muted" style="align-self:center">Current: <code>materials/{{ resume.name }}</code></span>{% endif %}</div>
+ </form>
+</section>
+
+<section class="card mt step" id="profile">
+ <h2><span><span class="n {{ 'done' if s.profile.done }}">{{ "✓" if s.profile.done else "2" }}</span> Contact details and standard answers</span><span class="count">profile.yaml</span></h2>
+ <p class="lead">The form filler types these straight into every application.{% if not s.profile.done and resume %} Filled in from your resume where it could; check them.{% endif %}</p>
+ <form method="post" action="/setup/profile">
+  <div class="grid g3">
+  {% for k, label in fields %}
+   <label class="fld"><span>{{ label }}{% if k in ('first_name','last_name','email') %} *{% endif %}</span>
+    <input type="text" name="{{ k }}" value="{{ prof.get(k) or '' }}" {% if k in ('first_name','last_name','email') %}required{% endif %}
+     {% if k == 'email' %}inputmode="email" autocomplete="email"{% elif k == 'phone' %}inputmode="tel" autocomplete="tel"{% elif k == 'zip' %}inputmode="numeric"{% endif %}></label>
+  {% endfor %}
+   <label class="fld"><span>Salary expectation (for forms that ask)</span>
+    <input type="text" name="salary_expectation" value="{{ prof.get('salary_expectation') or '' }}" inputmode="numeric" placeholder="e.g. 180000"></label>
+  {% for k, label in yes_no %}
+   <label class="fld"><span>{{ label }}</span><select name="{{ k }}">
+    {% for v in ('Yes', 'No') %}<option {% if prof.get(k) == v %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></label>
+  {% endfor %}
+  </div>
+  <div class="actions"><button class="btn primary">Save</button></div>
+ </form>
+</section>
+
+<section class="card mt step" id="interests">
+ <h2><span><span class="n {{ 'done' if s.interests.done }}">{{ "✓" if s.interests.done else "3" }}</span> Job interests</span><span class="count">config.yaml</span></h2>
+ <p class="lead">A role is picked up when its title contains one of your titles and none of the excluded words. The agent then
+  ranks what's left against "About you".</p>
+ <form method="post" action="/setup/interests">
+  <div class="grid g11">
+   <label class="fld"><span>Titles to look for *</span>
+    <textarea name="titles" rows="3" required placeholder="data engineer, analytics engineer, head of data">{{ titles }}</textarea>
+    <small class="muted">Comma or line separated. Short phrases match more ("data engineer" also finds "Senior Data Engineer, Platform").</small></label>
+   <label class="fld"><span>Skip titles with</span>
+    <textarea name="exclude" rows="3" placeholder="intern, junior, sales">{{ exclude }}</textarea></label>
+  </div>
+  <label class="check mt"><input type="checkbox" name="us_only" value="1" {% if us_only %}checked{% endif %}> US roles only (and Remote roles that name no other country)</label>
+
+  <label class="fld mt"><span>Companies to watch</span>
+   <textarea name="companies" rows="6" placeholder="https://job-boards.greenhouse.io/gitlab&#10;https://jobs.lever.co/netflix&#10;https://jobs.ashbyhq.com/ramp&#10;greenhouse airbnb">{{ boards }}</textarea>
+   <small class="muted">One per line: the company's careers-page URL on Greenhouse, Lever, Ashby, Workable or SmartRecruiters
+    (or <code>ats slug</code>). These are checked first, every day. Companies on Workday or other sites can't be watched here;
+    their roles still come in through job-alert emails.</small></label>
+
+  <fieldset class="fld mt"><span>Also search these job sites</span>
+   <div class="checks">{% for k, label in feeds.items() %}
+    <label class="check"><input type="checkbox" name="feed::{{ k }}" value="1" {% if k in feeds_on %}checked{% endif %}> {{ label }}</label>{% endfor %}</div>
+   <small class="muted">LinkedIn, Indeed and others come in through their job-alert emails once Gmail is connected (step 6).</small></fieldset>
+
+  <details class="mt"><summary>Work-search log (for unemployment benefits)</summary>
+   <div class="grid g11 mt">
+    <label class="fld"><span>Label</span><input type="text" name="ws_label" value="{{ ws.get('label', 'Work search') }}" placeholder="e.g. DUA"></label>
+    <label class="fld"><span>Applications needed per week</span><input type="text" name="ws_min" value="{{ ws.get('weekly_minimum', 3) }}" inputmode="numeric"></label>
+   </div></details>
+  <div class="actions"><button class="btn primary">Save</button></div>
+ </form>
+</section>
+
+<section class="card mt step" id="about">
+ <h2><span><span class="n {{ 'done' if s.about.done }}">{{ "✓" if s.about.done else "4" }}</span> About you</span><span class="count">optional · materials/context/setup.md</span></h2>
+ <p class="lead">What the agent needs to rank roles and answer questions the way you would. Plain notes are fine. It uses only what's
+  here and on your resume, and never makes up metrics, titles or dates.</p>
+ <form method="post" action="/setup/about">
+  <div class="grid g11">
+  {% for k, label, hint in about_fields %}
+   <label class="fld {% if k in ('strengths','avoid','other') %}wide{% endif %}"><span>{{ label }}</span>
+    {% if k in ('strengths','avoid','other') %}<textarea name="{{ k }}" rows="4" placeholder="{{ hint }}">{{ about.get(k, '') }}</textarea>
+    {% else %}<input type="text" name="{{ k }}" value="{{ about.get(k, '') }}" placeholder="{{ hint }}">{% endif %}</label>
+  {% endfor %}
+  </div>
+  <p class="muted" style="font-size:12.5px">For more detail, add your own Markdown notes in <code>materials/context/</code> (projects, past
+   wins, a brag doc) or a <code>CLAUDE.local.md</code> in the folder. The agent reads all of them.</p>
+  <div class="actions"><button class="btn primary">Save</button></div>
+ </form>
+</section>
+
+<section class="card mt step" id="agent">
+ <h2><span><span class="n {{ 'done' if s.agent.done }}">{{ "✓" if s.agent.done else "5" }}</span> Sign in to an AI agent</span><span class="count">{{ s.agent.note }}</span></h2>
+ <p class="lead">The daily run uses your own subscription through Claude Code or the Codex CLI. Signing in happens once,
+  in a terminal on the server, because it opens a browser login.</p>
+ <div class="grid g11">
+  <div class="opt"><div><b>Claude subscription</b> (Pro or Max)</div>
+   <pre>docker compose run --rm web claude</pre>
+   <small class="muted">Then type <code>/login</code>, and say yes when it asks to trust <code>/app</code>. Without Docker, run <code>claude</code> in the folder.</small></div>
+  <div class="opt"><div><b>ChatGPT subscription</b> (Plus or Pro)</div>
+   <pre>docker compose run --rm web codex login</pre>
+   <small class="muted">On a server with no browser, sign in on your laptop and copy <code>~/.codex/auth.json</code> over
+    (see the README). Then pick Codex on <a href="/settings">Settings</a>.</small></div>
+ </div>
+ <p class="muted" style="font-size:12.5px">Reload this page after signing in.</p>
+</section>
+
+<section class="card mt step" id="gmail">
+ <h2><span><span class="n {{ 'done' if s.gmail.done }}">{{ "✓" if s.gmail.done else "6" }}</span> Gmail</span><span class="count">{{ s.gmail.note }}</span></h2>
+ <p class="lead">Lets JobSearchPal read job-alert emails (LinkedIn, Indeed and others), sort replies from companies, remind you to
+  follow up, and email you a morning brief. It reads only, never marks anything read, and never sends anything except the brief to you.</p>
+ <form method="post" action="/setup/gmail">
+  <div class="grid g3">
+   <label class="fld"><span>Gmail address</span><input type="text" name="gmail_user" value="{{ gmail_user }}" inputmode="email" autocomplete="username"></label>
+   <label class="fld"><span>App password</span><input type="password" name="gmail_password" autocomplete="new-password"
+     placeholder="{{ 'set in .env' if gmail_env else ('saved; leave blank to keep' if s.gmail.done else '16 letters') }}"></label>
+   <label class="fld"><span>Send the brief to (optional)</span><input type="text" name="brief_to" inputmode="email" placeholder="same address"></label>
+  </div>
+  <p class="muted" style="font-size:12.5px">An app password is not your normal password. Turn on 2-step verification, then create one at
+   <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer">myaccount.google.com/apppasswords</a>.
+   It's saved in <code>data/secrets.json</code> on this server, readable only by you, and never shown again.</p>
+  <div class="actions"><button class="btn primary" name="action" value="save">Test and save</button>
+   {% if s.gmail.done and not gmail_env %}<button class="btn" name="action" value="forget">Forget it</button>{% endif %}</div>
+ </form>
+</section>
+
+<section class="card mt step" id="token">
+ <h2><span><span class="n {{ 'done' if s.token.done }}">{{ "✓" if s.token.done else "7" }}</span> Dashboard password</span><span class="count">{{ s.token.note }}</span></h2>
+ {% if s.token.done %}
+  <p class="lead">Set{% if token_env %} in <code>.env</code>{% endif %}. To sign in on another device, open the dashboard address with
+   <code>?t=</code> and the password on the end, once. A cookie remembers it.</p>
+  {% if link %}<p class="notice"><b>Save this link now; it isn't shown again.</b><br><code class="sel">{{ link }}</code>
+   {% if link.startswith('/') %}<br><small class="muted">Put your dashboard's address in front of it, e.g. http://100.x.y.z:8787{{ link }}</small>{% endif %}</p>{% endif %}
+ {% else %}
+  <p class="lead">Without one, anyone who can reach this page can see your applications. Make one before you open the dashboard
+   to your phone (with <code>BIND</code> in <code>.env</code>, ideally on Tailscale).</p>
+  <form method="post" action="/setup/token"><div class="actions"><button class="btn primary">Make a password</button></div></form>
+ {% endif %}
+</section>
+
+<style>
+.prog{min-width:200px;font-size:13px;color:var(--ink-2)} .prog b{color:var(--ink);font-size:15px}
+.rail{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 0}
+.rail a{display:inline-flex;align-items:center;gap:8px;padding:6px 12px 6px 6px;border-radius:999px;background:var(--surface);border:1px solid var(--line);color:var(--ink-2);font-size:13px;font-weight:600}
+.rail a:hover{text-decoration:none;background:var(--surface-2)}
+.rail i{font-style:normal;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:var(--surface-2);font-size:12px}
+.rail a.done i{background:var(--good-soft);color:var(--good)} .rail small{font-weight:500;color:var(--ink-3)}
+.step h2>span:first-child{display:flex;align-items:center;gap:10px;font-size:15px}
+.n{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent-ink);font-size:13px}
+.n.done{background:var(--good-soft);color:var(--good)}
+.lead{color:var(--ink-2);margin:-4px 0 14px;max-width:760px}
+.fld{display:grid;gap:5px;border:0;margin:0;padding:0;min-width:0}.fld>span{font-size:12.5px;font-weight:600;color:var(--ink-2)}.fld small{font-size:12px;line-height:1.45}
+.fld.wide{grid-column:1/-1}
+textarea{resize:vertical}
+input[type=file]{font:inherit;font-size:13px;max-width:100%}
+.check{display:inline-flex;gap:8px;align-items:center;font-size:13.5px;cursor:pointer}.check input{width:16px;height:16px;accent-color:var(--accent)}
+.checks{display:flex;gap:6px 18px;flex-wrap:wrap}
+.actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.opt{border:1px solid var(--line-2);border-radius:14px;padding:14px;display:grid;gap:8px;min-width:0}
+.opt pre{margin:0;font:12.5px ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--surface-2);padding:8px 10px;border-radius:8px;overflow-x:auto}
+.card.good{border-color:color-mix(in srgb,var(--good-dot) 40%,var(--line-2))} .card.good p{margin:0 0 8px}
+.notice{margin:12px 0 0}
+.step{scroll-margin-top:16px} code.sel{user-select:all;word-break:break-all}
+</style>
+{% endblock %}

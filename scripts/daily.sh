@@ -6,6 +6,12 @@ cd "$(dirname "$0")/.."
 [ -f .venv/bin/activate ] && source .venv/bin/activate  # Docker has it on PATH already
 [ -f .env ] && set -a && source .env && set +a
 mkdir -p data/daily
+# A fresh install does nothing until the dashboard's Setup page has contact details and job interests.
+if ! check=$(autoapply setup-check 2>&1); then
+  echo "$(date -Is) $check"
+  autoapply log-run daily fail "$check" 2>/dev/null || true
+  exit 0
+fi
 
 # The agent and model are picked on the dashboard's Settings page: Claude Code on a Claude subscription
 # (run `claude` once to sign in) or the Codex CLI on a ChatGPT subscription (run `codex login` once).

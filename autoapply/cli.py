@@ -100,12 +100,25 @@ def main(argv=None):
     a = sub.add_parser("fill"); a.add_argument("plan"); a.add_argument("--job")
     a = sub.add_parser("brief"); a.add_argument("--send", action="store_true")
     sub.add_parser("serve")
+    sub.add_parser("setup-check")
     a = sub.add_parser("finish"); a.add_argument("job_id"); a.add_argument("--server", default=os.environ.get("AUTOAPPLY_SERVER", ""))
     args = ap.parse_args(argv)
     if args.cmd == "finish":
         return finish(args.job_id, args.server)
 
-    s = config.load(args.config)
+    s = config.load(args.config, allow_example=args.cmd in ("serve", "setup-check"))
+    if args.cmd == "setup-check":
+        from . import setup
+        # The daily run stops only without contact details or job interests; the rest are warnings.
+        st = setup.status(s, os.environ)
+        labels = {"profile": "contact details", "interests": "job interests", "resume": "base resume",
+                  "agent": "agent sign-in"}
+        block = [labels[k] for k in st["left"] if k in ("profile", "interests")]
+        warn = [labels[k] for k in st["left"] if k not in ("profile", "interests")]
+        if block:
+            sys.exit("setup not finished: " + ", ".join(block + warn) + " (dashboard > Setup)")
+        print("ready" + (f" (missing: {', '.join(warn)})" if warn else ""))
+        return
     db = DB(s.data_dir / "autoapply.db")
     headless = s.raw.get("browser", {}).get("headless", True)
 
