@@ -192,8 +192,9 @@
    <input type="text" name="quick_pick_model" value="{{ p.quick_pick_model }}" list="or-quick" placeholder="blank = off (the agent picks)">
    <datalist id="or-quick">{% for m in or_models %}<option value="{{ m.id }}">{{ m.name }} · ${{ '%g'|format(m['in']) }} in / ${{ '%g'|format(m.out) }} out per M</option>{% endfor %}</datalist>
    <small class="muted">Picks the day's roles in one call, usually well under a cent, instead of an agent session. Any model works here,
-    e.g. google/gemini-2.5-flash or deepseek/deepseek-chat. Uses your OpenRouter key and budget. It skips job-alert emails
-    (LinkedIn, Indeed), which need a lookup, and the agent still picks on the day it looks for new companies.</small></label>
+    e.g. google/gemini-2.5-flash or deepseek/deepseek-chat. Uses your OpenRouter key and budget. It also reads your job-alert
+    emails (LinkedIn, Indeed...) and lists the roles that fit; a short light-model step then finds only those on the company's
+    own site. The agent still picks on the day it looks for new companies.</small></label>
   <label class="fld"><span>Look for new companies to watch</span>
    <select name="discover_weekday">{% for v, l in [(0, 'Never'), (1, 'Mondays'), (2, 'Tuesdays'), (3, 'Wednesdays'), (4, 'Thursdays'), (5, 'Fridays')] %}<option value="{{ v }}" {% if p.discover_weekday == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select>
    <small class="muted">Once a week the run searches the web for about 10 companies hiring for roles like yours and starts watching their boards. It's the heaviest light step.</small></label>

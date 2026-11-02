@@ -147,8 +147,9 @@ descriptions, and the light steps use a lighter model. Costs & limits shows toke
 
 **Quick pick.** With an OpenRouter key, set *Quick pick* on Settings > Daily run to any cheap model
 (e.g. `google/gemini-2.5-flash`). The day's roles are then picked in one chat call, usually well under a cent,
-instead of an agent session. It only chooses among the pre-ranked candidates, skips job-alert emails (they need
-a lookup), and falls back to the agent if the reply is bad or on the weekly discovery day. Tailoring and form
+instead of an agent session. The same model reads yesterday's job-alert emails (LinkedIn, Indeed, HigherEdJobs)
+and lists the roles that fit; a short light-model agent step then looks up only those on the company's own site.
+It picks only among tracked roles, and falls back to the agent if a reply is bad or on the weekly discovery day. Tailoring and form
 filling stay with the agent and its main model, since they need many tool turns and good writing.
 
 To spend less: choose Sonnet or Haiku for the daily run, tailor one role a day, and keep email sorting on

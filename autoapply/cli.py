@@ -93,7 +93,7 @@ def main(argv=None):
     sub.add_parser("daily-stages"); sub.add_parser("daily-picks")
     a = sub.add_parser("daily-prompt"); a.add_argument("stage"); a.add_argument("job_id", nargs="?", default="")
     a = sub.add_parser("candidates"); a.add_argument("--limit", type=int, default=12)
-    sub.add_parser("quick-pick")
+    a = sub.add_parser("quick-pick"); a.add_argument("--alerts", action="store_true")
     a = sub.add_parser("log-daily"); a.add_argument("agent"); a.add_argument("model", nargs="?", default="")
     a.add_argument("via", nargs="?", default="subscription"); a.add_argument("--stage", default="")
     sub.add_parser("daily-env")
@@ -230,6 +230,25 @@ def main(argv=None):
         if db.spend_this_month() >= float(pr.data.get("monthly_api_budget") or 0):
             sys.exit(2)
         n = pr.limits()["picks_per_day"]
+        if args.alerts:
+            # Step 1: the cheap model reads the alert emails and lists roles that fit; writes data/daily/alert-roles.json.
+            from . import alerts
+            try:
+                gmail = os.environ.get("GMAIL_USER") and os.environ.get("GMAIL_APP_PASSWORD")
+                emails = alerts.fetch(1, s.raw.get("alert_senders")) if gmail else []  # no Gmail set up: nothing to read
+                roles, u = rank.alert_roles(db, s, emails, model, key)
+                err = None
+            except Exception as e:
+                roles, u, err = [], {"tokens": 0, "cost": 0.0}, str(e)[:300]
+            if u["tokens"] or err:
+                db.log_usage("daily", f"openrouter:{model}:alerts (openrouter)", 0, 0, u["cost"], 0, err, u["cost"], u["tokens"])
+            (s.data_dir / "daily").mkdir(exist_ok=True)
+            (s.data_dir / "daily" / "alert-roles.json").write_text(json.dumps(roles, indent=1))
+            if err:
+                print(f"alert read failed: {err}", file=sys.stderr)
+                sys.exit(1)
+            print(len(roles))
+            return
         try:
             picks, u = rank.quick_pick(db, s, n, model, key)
             err = None

@@ -33,7 +33,7 @@ run_stage() {
     blocked=$(autoapply daily-agent --stage "$stage" 2>&1 >/dev/null | tail -1)
     return 1
   fi
-  case $stage in rank) turns=40;; apply) turns=60;; prep) turns=40;; *) turns=20;; esac
+  case $stage in rank) turns=40;; alerts) turns=30;; apply) turns=60;; prep) turns=40;; *) turns=20;; esac
   [ "$via" = openrouter ] && eval "$(autoapply daily-env)"
   rm -f "$last"
   if [ "$agent" = codex ]; then
@@ -57,8 +57,14 @@ run_stage() {
 
 for stage in $(autoapply daily-stages 2>/dev/null); do
   if [ "$stage" = rank ]; then
-    # Quick pick (Settings > Daily run): one cheap OpenRouter call. Exit 2 = off today, so the rank agent runs.
-    rc=0; line=$(autoapply quick-pick 2>>data/cron.log) || rc=$?
+    # Quick pick (Settings > Daily run): a cheap OpenRouter model reads the alert emails, a short light agent
+    # step looks up only the roles that fit, then one cheap call picks. Exit 2 = off today, 1 = failed:
+    # either way the rank agent does the whole step instead.
+    rc=0; n=$(autoapply quick-pick --alerts 2>>data/cron.log) || rc=$?
+    if [ "$rc" = 0 ]; then
+      if [ "${n:-0}" -gt 0 ] 2>/dev/null; then run_stage alerts || true; fi
+      line=$(autoapply quick-pick 2>>data/cron.log) || rc=$?
+    fi
     if [ "$rc" = 0 ]; then picked="$line"; echo "- rank (quick pick): $line" >> "$today"; continue; fi
     [ "$rc" = 1 ] && echo "- rank (quick pick failed, using the agent)" >> "$today"
   fi

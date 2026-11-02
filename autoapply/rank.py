@@ -139,3 +139,56 @@ def quick_pick(db, settings, n: int, model: str, key: str, limit: int = 15) -> t
             picks.append({"id": jid, "why": str(p.get("why") or "")[:200],
                           **({"by_hand": True} if c["ats"] == "workday" else {})})
     return picks[:n], usage
+
+
+ALERT_PROMPT = """These are job-alert emails (LinkedIn, Indeed, HigherEdJobs and others) for the person described below.
+List the roles in them that clearly fit the person, at most {n}, best first. Leave out roles they already applied to.
+It's fine to list none.
+
+About the person:
+{about}
+
+Already applied to:
+{applied}
+
+Emails:
+{emails}
+
+Reply with JSON only, no prose:
+{{"roles": [{{"company": "<company>", "title": "<job title>", "link": "<the link in the email, if any>", "why": "<one line>"}}]}}"""
+
+
+def _norm(s: str) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", (s or "").lower()).strip()
+
+
+def alert_roles(db, settings, emails: list[dict], model: str, key: str, limit: int = 8) -> tuple[list[dict], dict]:
+    """One cheap call over the alert emails: the roles worth looking up. Drops ones already tracked."""
+    from . import classify
+    if not emails:
+        return [], {"tokens": 0, "cost": 0.0}
+    applied = sorted({f"{j['company']} ({j['title']})" for j in db.by_status("submitted")})[-60:]
+    body = "\n\n".join(f"--- {e['from']} | {e['subject']}\n{e['text'][:3000]}" for e in emails)[:40000]
+    prompt = ALERT_PROMPT.format(n=limit, about=_about(settings.root), applied="\n".join(applied) or "(none)", emails=body)
+    data = classify._post("https://openrouter.ai/api/v1/chat/completions",
+                          {"model": model, "temperature": 0, "messages": [{"role": "user", "content": prompt}],
+                           "response_format": {"type": "json_object"}, "usage": {"include": True}}, key)
+    u = data.get("usage") or {}
+    usage = {"tokens": int(u.get("total_tokens") or 0), "cost": float(u.get("cost") or 0)}
+    text = data["choices"][0]["message"]["content"] or ""
+    m = re.search(r"\{.*\}", text, re.S)
+    try:
+        raw = json.loads(m.group(0))["roles"]
+    except (ValueError, KeyError, TypeError, AttributeError):
+        raise RuntimeError(f"the model's reply wasn't the JSON asked for: {text[:200]}")
+    have = {(_norm(j["company"]), _norm(j["title"])) for j in db.all()}
+    out = []
+    for r in raw if isinstance(raw, list) else []:
+        if not isinstance(r, dict) or not r.get("company") or not r.get("title"):
+            continue
+        k = (_norm(r["company"]), _norm(r["title"]))
+        if k in have:
+            continue
+        have.add(k)
+        out.append({f: str(r.get(f) or "")[:300] for f in ("company", "title", "link", "why")})
+    return out[:limit], usage

@@ -95,7 +95,7 @@ class Prefs:
         over = spent >= float(self.data.get("monthly_api_budget") or 0)
         return [p for p in self.data["order"] if p in self.data["enabled"] and not (over and p in PAID)]
 
-    LIGHT_STAGES = ("rank", "prep", "drafts")
+    LIGHT_STAGES = ("rank", "prep", "drafts", "alerts")
 
     def daily(self, spent: float = 0.0, stage: str = "apply") -> dict:
         """What the daily run uses: agent, model, and where the model comes from. via is 'blocked' when it

@@ -118,3 +118,32 @@ def test_quick_pick(tmp_path, capsys, monkeypatch):
     with pytest.raises(SystemExit) as e:  # discovery day: the agent picks
         cli.main(["--config", str(cfg), "quick-pick"])
     assert e.value.code == 2
+
+
+def test_quick_pick_reads_alert_emails(tmp_path, capsys, monkeypatch):
+    s, db, cfg = make(tmp_path)
+    p = Prefs(s.data_dir)
+    upd(p, quick_pick_model="google/gemini-2.5-flash", discover_weekday=0, monthly_api_budget=5)
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or-test-key-123456")
+    monkeypatch.setenv("GMAIL_USER", "me@example.com")
+    monkeypatch.setenv("GMAIL_APP_PASSWORD", "x")
+    emails = [{"from": "jobalerts-noreply@linkedin.com", "subject": "New jobs", "text": "Analytics Engineer at Hooli\nhttps://linkedin.com/x"}]
+    monkeypatch.setattr("autoapply.alerts.fetch", lambda *a, **k: emails)
+    sent = {}
+
+    def fake_post(url, body, key, timeout=120):
+        sent.update(body)
+        roles = [{"company": "Hooli", "title": "Analytics Engineer", "link": "https://linkedin.com/x", "why": "dbt"},
+                 {"company": "Acme", "title": "Senior Analytics Engineer"},  # already tracked: dropped
+                 {"title": "no company"}]
+        return {"choices": [{"message": {"content": json.dumps({"roles": roles})}}], "usage": {"total_tokens": 900, "cost": 0.0002}}
+    monkeypatch.setattr("autoapply.classify._post", fake_post)
+    cli.main(["--config", str(cfg), "quick-pick", "--alerts"])
+    assert capsys.readouterr().out.strip() == "1"
+    roles = json.loads((s.data_dir / "daily" / "alert-roles.json").read_text())
+    assert [r["company"] for r in roles] == ["Hooli"]
+    assert "Analytics Engineer at Hooli" in sent["messages"][0]["content"]
+    assert {b["stage"] for b in db.usage_by_stage()} == {"alerts"}
+    cli.main(["--config", str(cfg), "daily-prompt", "alerts"])
+    assert "alert-roles.json" in capsys.readouterr().out
+    assert Prefs(s.data_dir).daily(0, "alerts")["model"] == Prefs(s.data_dir).daily(0, "rank")["model"]
