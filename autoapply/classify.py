@@ -17,7 +17,6 @@ from __future__ import annotations
 import json
 import os
 import re
-import shutil
 import subprocess
 import tempfile
 import time
@@ -27,7 +26,7 @@ from pathlib import Path
 
 from . import emailsync
 from .db import DB
-from .prefs import Prefs
+from .prefs import Prefs, find_cli
 
 BATCH = 8
 BODY_CHARS = 2500
@@ -109,14 +108,6 @@ def parse(reply: str, batch: list[dict], apps: list[dict]) -> list[tuple[str, st
 
 
 # ---- sources ---------------------------------------------------------------------------------------
-
-def find_cli(name: str) -> str | None:
-    """systemd's PATH skips ~/.local/bin and npm's global bin, where these CLIs usually live."""
-    for p in (shutil.which(name), f"~/.local/bin/{name}", f"~/.npm-global/bin/{name}", f"/usr/local/bin/{name}"):
-        if p and Path(os.path.expanduser(p)).is_file():
-            return os.path.expanduser(p)
-    return None
-
 
 CLAUDE_NO_TOOLS = ["--disallowedTools", "Bash,Edit,Write,Read,Glob,Grep,WebFetch,WebSearch,NotebookEdit,Task,Agent,TodoWrite"]
 

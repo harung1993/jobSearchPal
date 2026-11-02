@@ -88,11 +88,23 @@
 </section>
 
 <section class="card mt">
- <h2>Daily run</h2>
- <label class="fld" style="max-width:360px"><span>Claude model for the 6:30 pass</span>
-  <select name="daily_model">{% for m in daily_models %}<option value="{{ m }}" {% if p.daily_model == m %}selected{% endif %}>{{ m|capitalize if m else "Claude Code's default" }}</option>{% endfor %}</select>
-  <small class="muted">Finding roles, tailoring and filling forms need Claude Code's tools, so this stays on your Claude subscription.
-   Opus writes the best cover letters; Sonnet is lighter on usage limits.</small></label>
+ <h2>Daily run <span class="count">finds roles, tailors, fills forms</span></h2>
+ <p class="muted" style="font-size:13px;margin:-4px 0 14px">This needs an agent that can run commands and write files, so it runs on a
+  subscription CLI. Both follow the same rules (AGENTS.md) and neither can submit: the tool has no submit command.</p>
+ <div class="agents">
+ {% for key, label in daily_agents.items() %}{% set st = status[key] %}
+  <label class="agent {% if p.daily_agent == key %}on{% endif %}"><input type="radio" name="daily_agent" value="{{ key }}" {% if p.daily_agent == key %}checked{% endif %}>
+   <span><b>{{ label }}</b><br><span class="dot {{ 'ok' if st.ready else 'no' }}">{{ st.note }}</span></span></label>
+ {% endfor %}
+ </div>
+ <div class="grid g2 mt">
+  <label class="fld"><span>Claude model</span>
+   <select name="daily_model">{% for m in daily_models %}<option value="{{ m }}" {% if p.daily_model == m %}selected{% endif %}>{{ m|capitalize if m else "Claude Code's default" }}</option>{% endfor %}</select>
+   <small class="muted">Opus writes the best cover letters; Sonnet is lighter on usage limits.</small></label>
+  <label class="fld"><span>Codex model</span>
+   <input type="text" name="daily_codex_model" value="{{ p.daily_codex_model }}" placeholder="blank = Codex's default" list="codex-models">
+   <small class="muted">Runs with writes limited to the JobSearchPal folder and network on, so it can reach job boards.</small></label>
+ </div>
  <div class="actions"><button class="btn primary" name="action" value="save">Save</button></div>
 </section>
 </form>
@@ -112,6 +124,9 @@
 .fld{display:grid;gap:5px}.fld>span{font-size:12.5px;font-weight:600;color:var(--ink-2)}.fld small{font-size:12px;line-height:1.45}
 .facts{display:flex;gap:6px 16px;flex-wrap:wrap;margin-top:10px;font-size:12.5px;color:var(--ink-2)}.facts .bad{color:var(--bad)}
 .test{margin-top:8px;font-size:12.5px;padding:7px 10px;border-radius:9px}.test.ok{background:var(--good-soft);color:var(--good)}.test.bad{background:var(--bad-soft);color:var(--bad)}
+.agents{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
+.agent{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line-2);border-radius:14px;padding:12px 14px;cursor:pointer}
+.agent.on{border-color:color-mix(in srgb,var(--accent) 45%,var(--line-2));background:var(--accent-soft)}.agent input{margin-top:3px;accent-color:var(--accent)}
 .actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
 .notice{margin:12px 0 0}
 </style>

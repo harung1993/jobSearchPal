@@ -1,4 +1,4 @@
-"""autoapply: the hands for the daily Claude run. Claude decides; this opens, fills and uploads.
+"""autoapply: the hands for the daily agent run. The agent decides; this opens, fills and uploads.
 
   autoapply find                      pull new matching roles from boards and feeds
   autoapply board add ATS SLUG        watch another company's job board (checked first)
@@ -7,7 +7,7 @@
   autoapply sync-email [--days N] [--rebuild] [--no-review]  gather ATS/recruiter emails, then have the
                                       model sort them (--rebuild refiles; your corrections are kept)
   autoapply review-emails             sort the emails still waiting (sources and order: Settings page)
-  autoapply daily-model               the Claude model picked for the daily run (blank = default)
+  autoapply daily-agent               the agent (claude or codex) and model picked for the daily run
   autoapply emails [--pending]        filed emails with their kind, as JSON
   autoapply emails set ID KIND [--job JOB_ID|none]  settle one by hand (confirmed, interview, rejected,
                                       offer, recruiter, ignored)
@@ -83,7 +83,7 @@ def main(argv=None):
     a = sub.add_parser("alerts"); a.add_argument("--days", type=int, default=1)
     a = sub.add_parser("sync-email"); a.add_argument("--days", type=int, default=60); a.add_argument("--rebuild", action="store_true"); a.add_argument("--no-review", action="store_true")
     sub.add_parser("review-emails")
-    sub.add_parser("daily-model")
+    sub.add_parser("daily-model"); sub.add_parser("daily-agent")
     a = sub.add_parser("emails"); a.add_argument("action", nargs="?", choices=["set"]); a.add_argument("event_id", nargs="?")
     a.add_argument("kind", nargs="?"); a.add_argument("--job", default=""); a.add_argument("--pending", action="store_true")
     a = sub.add_parser("import-history"); a.add_argument("file")
@@ -139,9 +139,12 @@ def main(argv=None):
             out["reviewed"] = _review(s, db)
         db.log_run("sync-email", True, _summary(out))
         _out(out)
-    elif args.cmd == "daily-model":
-        from .prefs import Prefs
-        print(Prefs(s.data_dir, s.raw).data.get("daily_model") or "")
+    elif args.cmd in ("daily-model", "daily-agent"):
+        from .prefs import DAILY_AGENTS, Prefs
+        d = Prefs(s.data_dir, s.raw).data
+        agent = d.get("daily_agent") if d.get("daily_agent") in DAILY_AGENTS else "claude"
+        model = d.get("daily_codex_model" if agent == "codex" else "daily_model") or ""
+        print(model if args.cmd == "daily-model" else f"{agent} {model}".strip())
     elif args.cmd == "review-emails":
         _out(_review(s, db))
     elif args.cmd == "emails":

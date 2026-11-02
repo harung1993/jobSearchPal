@@ -15,7 +15,17 @@ playwright install --with-deps chromium || playwright install chromium
 [ -f profile.yaml ] || cp profile.example.yaml profile.yaml
 mkdir -p data materials/context materials/applications
 export PATH="$HOME/.local/bin:$PATH"
-command -v claude >/dev/null || { curl -fsSL https://claude.ai/install.sh | bash; }
+# The daily run needs one agent CLI: Claude Code (Claude subscription) or Codex (ChatGPT subscription).
+# AGENT=codex bash scripts/install.sh picks Codex; the default is Claude Code. Both can be installed.
+AGENT=${AGENT:-claude}
+if [ "$AGENT" = codex ]; then
+  command -v codex >/dev/null || { command -v npm >/dev/null || sudo apt-get install -y npm; sudo npm i -g @openai/codex; }
+  login="run 'codex login' once to sign in with ChatGPT"
+else
+  command -v claude >/dev/null || { curl -fsSL https://claude.ai/install.sh | bash; }
+  login="run 'claude' once in this folder to sign in and trust it"
+fi
 echo
 echo "Next: edit profile.yaml and config.yaml, copy your materials into materials/,"
-echo "run 'claude' once to sign in, then 'pytest' to check the filler works."
+echo "$login, then 'pytest' to check the filler works."
+echo "Pick the agent and models later on the dashboard's Settings page."

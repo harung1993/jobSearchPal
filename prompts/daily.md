@@ -1,4 +1,4 @@
-Run today's job application pass. Follow CLAUDE.md. Today's summary goes in data/daily/<YYYY-MM-DD>.md.
+Run today's job application pass. Follow AGENTS.md. Today's summary goes in data/daily/<YYYY-MM-DD>.md.
 
 0. `autoapply sync-email --days 3` to file new replies, recruiter emails and work-search proof. It sorts them
    with the configured email classifier; emails it couldn't sort show on the dashboard's Emails page.

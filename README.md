@@ -1,7 +1,8 @@
 # JobSearchPal
 
-A self-hosted job application assistant. Every weekday morning, [Claude Code](https://claude.com/claude-code)
-runs headless on a small always-on server. It finds new roles, picks the best fits, tailors your
+A self-hosted job application assistant. Every weekday morning, an AI agent on your own subscription,
+[Claude Code](https://claude.com/claude-code) or OpenAI's [Codex CLI](https://github.com/openai/codex), runs headless
+on a small always-on server. It finds new roles, picks the best fits, tailors your
 resume and cover letter, and fills the real application forms with Playwright, PDF uploads
 included. **It never presses Submit.** You review each application on a private dashboard and send
 it yourself.
@@ -19,7 +20,7 @@ The screenshots use fictional demo data (`scripts/demo-data.py`).
 ## How it works
 
 ```
-cron 6:30am ─► claude -p prompts/daily.md
+cron 6:30am ─► claude -p / codex exec prompts/daily.md
                  ├─ autoapply sync-email               replies, recruiters, proof copies, sorted by a model
                  ├─ autoapply find / alerts / add      roles from job boards, feeds, alert emails
                  ├─ tailored resume + cover letter     python-docx + LibreOffice → PDF
@@ -47,7 +48,7 @@ you ───────► dashboard ─► review answers, decide consents �
   no tools), your ChatGPT subscription (Codex CLI, read-only), TypeSafe's Jev decision model or any
   chat model on OpenRouter, or a local Ollama model. If one fails or isn't sure, the next one gets the
   email. Nothing counts until it's sorted, and the **Emails** page lets you change any call; your
-  choice survives rescans. The Settings page also picks the Claude model for the daily run.
+  choice survives rescans. The Settings page also picks the daily-run agent (Claude Code or Codex) and model.
 - **Email:** reads Gmail over read-only IMAP with an app password (nothing is marked, moved or
   deleted), and sends you one morning summary over SMTP.
 
@@ -62,24 +63,36 @@ you ───────► dashboard ─► review answers, decide consents �
 - **Workday and other account-based sites.** Materials are prepared and the role is flagged
   "apply by hand".
 
-`CLAUDE.md` gives Claude these rules and `.claude/settings.json` keeps it from editing the tool's
-own code. Those are guardrails, not a sandbox: the review step is the real safety net.
+`AGENTS.md` gives the agent these rules (Codex reads it directly; `CLAUDE.md` imports it). With Claude
+Code, `.claude/settings.json` also blocks edits to the tool's own code; Codex runs with writes limited to
+this folder, so for it that rule is an instruction only. Either way these are guardrails, not a sandbox:
+the review step is the real safety net.
 
 ## Setup (about 30 minutes)
 
-You need an always-on Linux box (Ubuntu 24.04 tested), a Claude subscription for Claude Code,
-and ideally [Tailscale](https://tailscale.com) so the dashboard is reachable only from your devices.
+You need an always-on Linux box (Ubuntu 24.04 tested), **either** a Claude subscription (Pro or Max,
+for Claude Code) **or** a ChatGPT subscription (Plus or Pro, for the Codex CLI), and ideally
+[Tailscale](https://tailscale.com) so the dashboard is reachable only from your devices. Email sorting
+can also use an OpenRouter key or a local Ollama model.
 
-1. Clone this repo to `~/auto-apply` on the server and run `bash scripts/install.sh`.
+| You have | Daily run | Email sorting |
+|---|---|---|
+| Claude subscription | Claude Code | Claude (Haiku) |
+| ChatGPT subscription | Codex CLI | Codex |
+| Either, plus an OpenRouter key | as above | Jev or any OpenRouter model first, the subscription as backup |
+| Either, plus a GPU or spare CPU | as above | a local Ollama model, nothing leaves the server |
+
+1. Clone this repo to `~/auto-apply` on the server and run `bash scripts/install.sh`
+   (`AGENT=codex bash scripts/install.sh` for Codex).
 2. Copy the examples and fill them in:
    - `config.example.yaml` → `config.yaml` (boards to watch, title keywords, dashboard host,
      work-search label and weekly minimum)
    - `profile.example.yaml` → `profile.yaml` (your contact details and standard answers)
    - `.env.example` → `.env` (a long random `AUTOAPPLY_TOKEN`, `REVIEW_URL`, Gmail app password)
 3. Put your files in `materials/` (see `materials/README.md`), and write `CLAUDE.local.md` with
-   personal facts Claude should use: work authorization, titles and dates, pay asks, location
+   personal facts the agent should use (the same file works for Codex): work authorization, titles and dates, pay asks, location
    preferences, how to name files. Both are gitignored.
-4. Run `claude` once in the folder to sign in and trust it.
+4. Sign in once: `claude` in the folder (sign in and trust it), or `codex login`.
 5. `pytest` to check the form filler, then `bash scripts/daily.sh` for a first run.
 6. Start the dashboard as a service and schedule the daily run:
    ```
@@ -88,7 +101,8 @@ and ideally [Tailscale](https://tailscale.com) so the dashboard is reachable onl
    sudo loginctl enable-linger $USER
    crontab -e   # add the line from the top of scripts/daily.sh
    ```
-7. Open `REVIEW_URL?t=<your token>` once on each device. A cookie remembers it.
+7. Open `REVIEW_URL?t=<your token>` once on each device. A cookie remembers it. On the **Settings**
+   page, pick the daily-run agent and model and the email-sorting order.
 8. Optional, on your laptop: `bash scripts/mac-setup.sh <ssh-host>` installs `autoapply-finish`.
 
 Updating later: `git pull && .venv/bin/pip install -e . && systemctl --user restart autoapply-review`.
@@ -114,7 +128,7 @@ autoapply finish JOB_ID                (laptop) open the filled form in Chrome f
 ## Layout
 
 ```
-autoapply/cli.py         the commands Claude calls
+autoapply/cli.py         the commands the agent calls
 autoapply/fillers/       scan.js reads any form; base.py fills and submits per ATS
 autoapply/finder.py      job-board APIs and feeds
 autoapply/emailsync.py   gathers candidate emails, proof copies, applies a settled kind
@@ -123,8 +137,8 @@ autoapply/prefs.py       Settings page choices (data/settings.json) and saved AP
 autoapply/stats.py       dashboard and stats numbers
 autoapply/web.py         dashboard, review page, work-search log
 autoapply/templates/     HTML (no build step, no JavaScript framework)
-prompts/daily.md         the daily instructions for Claude
-CLAUDE.md                standing rules for Claude (personal facts go in CLAUDE.local.md)
+prompts/daily.md         the daily instructions for the agent
+AGENTS.md                standing rules for the agent (CLAUDE.md imports it; personal facts go in CLAUDE.local.md)
 tests/                   local fixture forms and tests
 ```
 

@@ -7,7 +7,16 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 from pathlib import Path
+
+
+def find_cli(name: str) -> str | None:
+    """systemd's PATH skips ~/.local/bin and npm's global bin, where the agent CLIs usually live."""
+    for p in (shutil.which(name), f"~/.local/bin/{name}", f"~/.npm-global/bin/{name}", f"/usr/local/bin/{name}"):
+        if p and Path(os.path.expanduser(p)).is_file():
+            return os.path.expanduser(p)
+    return None
 
 PROVIDERS = {
     "claude": {"name": "Claude subscription", "via": "Claude Code CLI", "models": ["haiku", "sonnet", "opus"], "default": "haiku"},
@@ -19,6 +28,7 @@ PROVIDERS = {
 }
 DEFAULT_ORDER = ["claude", "codex", "jev", "openrouter", "ollama"]
 DAILY_MODELS = ["", "opus", "sonnet", "haiku"]  # "" = Claude Code's default
+DAILY_AGENTS = {"claude": "Claude Code (Claude subscription)", "codex": "Codex CLI (ChatGPT subscription)"}
 
 
 def _legacy(raw: dict) -> dict:
@@ -43,8 +53,11 @@ class Prefs:
         self.path = data_dir / "settings.json"
         self.secrets_path = data_dir / "secrets.json"
         saved = self._read(self.path)
-        base = {"order": list(DEFAULT_ORDER), "enabled": ["claude"], "models": {}, "min_confidence": 0.7,
-                "daily_model": "", "ollama_url": PROVIDERS["ollama"]["base_url"]}
+        # Out of the box, use whichever subscription CLI is installed.
+        agent = "codex" if find_cli("codex") and not find_cli("claude") else "claude"
+        base = {"order": list(DEFAULT_ORDER), "enabled": [agent], "models": {}, "min_confidence": 0.7,
+                "daily_agent": agent, "daily_model": "", "daily_codex_model": "",
+                "ollama_url": PROVIDERS["ollama"]["base_url"]}
         base.update(_legacy(raw or {}) if not saved else {})
         base.update(saved)
         base["order"] = [p for p in base["order"] if p in PROVIDERS] + [p for p in DEFAULT_ORDER if p not in base["order"]]

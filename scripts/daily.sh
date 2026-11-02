@@ -7,16 +7,28 @@ source .venv/bin/activate
 [ -f .env ] && set -a && source .env && set +a
 mkdir -p data/daily
 
-# Headless Claude Code run using your Claude subscription login (run `claude` once to sign in).
-# The model is picked on the dashboard's Settings page (blank = Claude Code's default).
-model=$(autoapply daily-model 2>/dev/null || true)
-if summary=$(claude -p "$(cat prompts/daily.md)" ${model:+--model "$model"} \
-  --permission-mode acceptEdits \
-  --max-turns 120 \
-  --output-format text | tail -n 1); then
-  autoapply log-run daily ok "$summary"
+# The agent and model are picked on the dashboard's Settings page: Claude Code on a Claude subscription
+# (run `claude` once to sign in) or the Codex CLI on a ChatGPT subscription (run `codex login` once).
+read -r agent model < <(autoapply daily-agent 2>/dev/null || echo claude) || true
+agent=${agent:-claude}
+last=data/daily/.last-message
+rm -f "$last"
+if [ "$agent" = codex ]; then
+  # Writes stay inside this folder; network is on so the CLI can reach job boards and ATS pages.
+  codex exec --skip-git-repo-check --sandbox workspace-write \
+    -c sandbox_workspace_write.network_access=true -c approval_policy=never \
+    ${model:+-m "$model"} -o "$last" - < prompts/daily.md && ok=1 || ok=0
+  summary=$( [ -s "$last" ] && tail -n 1 "$last" || echo "")
 else
-  autoapply log-run daily fail "claude run exited with an error; see data/cron.log"
+  summary=$(claude -p "$(cat prompts/daily.md)" ${model:+--model "$model"} \
+    --permission-mode acceptEdits \
+    --max-turns 120 \
+    --output-format text | tail -n 1) && ok=1 || ok=0
+fi
+if [ "$ok" = 1 ]; then
+  autoapply log-run daily ok "${summary:-done ($agent)}"
+else
+  autoapply log-run daily fail "$agent run exited with an error; see data/cron.log"
 fi
 
 echo "$(date -Is) $summary"

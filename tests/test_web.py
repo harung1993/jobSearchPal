@@ -163,3 +163,21 @@ def test_settings_page_order_enable_test_and_key(tmp_path, base_url, pdfs, monke
     assert "sorted the sample interview email correctly" in c.get("/settings").text
     c.post("/settings", data={"daily_model": "rm -rf", "action": "save"})
     assert Prefs(tmp_path / "data").data["daily_model"] == "opus" and Prefs(tmp_path / "data").chain() == []
+
+
+def test_daily_agent_setting(tmp_path, base_url, pdfs, capsys):
+    import yaml as _y
+    from autoapply import cli
+    from autoapply.prefs import Prefs
+    db, c, plan = setup(tmp_path, base_url, pdfs)
+    assert "Codex CLI (ChatGPT subscription)" in c.get("/settings").text
+    c.post("/settings", data={"daily_agent": "codex", "daily_codex_model": "gpt-5; rm -rf ~", "action": "save"})
+    assert Prefs(tmp_path / "data").data["daily_agent"] == "codex" and Prefs(tmp_path / "data").data["daily_codex_model"] == ""
+    c.post("/settings", data={"daily_agent": "codex", "daily_codex_model": "gpt-5-mini", "action": "save"})
+    cfg = tmp_path / "config.yaml"
+    cfg.write_text(_y.safe_dump({"data_dir": str(tmp_path / "data")}))
+    cli.main(["--config", str(cfg), "daily-agent"])
+    assert capsys.readouterr().out.strip() == "codex gpt-5-mini"
+    c.post("/settings", data={"daily_agent": "claude", "daily_model": "sonnet", "action": "save"})
+    cli.main(["--config", str(cfg), "daily-agent"])
+    assert capsys.readouterr().out.strip() == "claude sonnet"

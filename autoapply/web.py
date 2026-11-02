@@ -5,6 +5,7 @@ import csv
 import io
 import json
 import os
+import re
 import shutil
 import time
 import zipfile
@@ -206,19 +207,19 @@ def make_app(settings, db: DB) -> FastAPI:
     @app.get("/settings")
     def settings_page(msg: str = ""):
         from . import classify
-        from .prefs import DAILY_MODELS, PROVIDERS, Prefs
+        from .prefs import DAILY_AGENTS, DAILY_MODELS, PROVIDERS, Prefs
         pr = Prefs(settings.data_dir, settings.raw)
         st = classify.status(pr)
         orm = classify.openrouter_models(settings.data_dir / "openrouter-models.json") if (
             "openrouter" in pr.data["enabled"] or pr.key("OPENROUTER_API_KEY")) else []
         return page("settings.html", p=pr.data, prefs=pr, providers=PROVIDERS, status=st, usage=db.usage_summary(30),
-                    or_models=orm, daily_models=DAILY_MODELS, key_hint=pr.key_hint("OPENROUTER_API_KEY"),
+                    or_models=orm, daily_models=DAILY_MODELS, daily_agents=DAILY_AGENTS, key_hint=pr.key_hint("OPENROUTER_API_KEY"),
                     pending=len(db.pending_events()), msg=msg, nav="settings")
 
     @app.post("/settings")
     async def save_settings(request: Request):
         from . import classify
-        from .prefs import DAILY_MODELS, PROVIDERS, Prefs
+        from .prefs import DAILY_AGENTS, DAILY_MODELS, PROVIDERS, Prefs
         f = await request.form()
         pr = Prefs(settings.data_dir, settings.raw)
         d = pr.data
@@ -232,6 +233,12 @@ def make_app(settings, db: DB) -> FastAPI:
             pass
         if f.get("daily_model", "") in DAILY_MODELS:
             d["daily_model"] = f.get("daily_model", "")
+        if f.get("daily_agent") in DAILY_AGENTS:
+            d["daily_agent"] = f.get("daily_agent")
+        if "daily_codex_model" in f:
+            cm = str(f.get("daily_codex_model") or "").strip()
+            if re.fullmatch(r"[A-Za-z0-9._:/-]{0,80}", cm):  # it ends up on daily.sh's command line
+                d["daily_codex_model"] = cm
         url = str(f.get("ollama_url") or "").strip()
         if url.startswith(("http://", "https://")):
             d["ollama_url"] = url.rstrip("/")
