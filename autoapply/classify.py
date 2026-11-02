@@ -81,8 +81,10 @@ def _email_text(ev: dict) -> str:
 
 
 def _render(apps: list[dict], batch: list[dict]) -> str:
-    a = "\n".join(f"- {x['id']} | {x['company']} | {x['title']} | applied {x['applied'] or '?'}" for x in apps) or "(none)"
-    e = "\n\n".join(f"<email id=\"{ev['id']}\">\n{_email_text(ev)}\n</email>" for ev in batch)
+    # Short ids: real Message-IDs (<CAF+x=y@mail.gmail.com>) get mangled when a model copies them back.
+    a = "\n".join(f"- a{n} | {x['company']} | {x['title']} | applied {x['applied'] or '?'}"
+                  for n, x in enumerate(apps, 1)) or "(none)"
+    e = "\n\n".join(f"<email id=\"e{n}\">\n{_email_text(ev)}\n</email>" for n, ev in enumerate(batch, 1))
     kinds = "\n".join(f"- {k}: {v}" for k, v in KIND_RULES.items())
     return PROMPT.format(kinds=kinds, apps=a, emails=e)
 
@@ -96,14 +98,17 @@ def parse(reply: str, batch: list[dict], apps: list[dict]) -> list[tuple[str, st
         items = json.loads(m.group(0))
     except json.JSONDecodeError:
         return []
-    ids, jobs = {e["id"] for e in batch}, {a["id"] for a in apps}
+    ids = {f"e{n}": e["id"] for n, e in enumerate(batch, 1)} | {e["id"]: e["id"] for e in batch}
+    jobs = {f"a{n}": a["id"] for n, a in enumerate(apps, 1)} | {a["id"]: a["id"] for a in apps}
     out, seen = [], set()
     for it in items if isinstance(items, list) else []:
-        if not isinstance(it, dict) or it.get("id") not in ids or it["id"] in seen or it.get("kind") not in emailsync.KINDS:
+        if not isinstance(it, dict):
             continue
-        seen.add(it["id"])
-        job = it.get("job")
-        out.append((it["id"], it["kind"], job if job in jobs else None))
+        ev = ids.get(str(it.get("id")).strip())
+        if not ev or ev in seen or it.get("kind") not in emailsync.KINDS:
+            continue
+        seen.add(ev)
+        out.append((ev, it["kind"], jobs.get(str(it.get("job")).strip())))
     return out
 
 

@@ -214,7 +214,8 @@ def test_model_review_chain(tmp_path, monkeypatch):
     monkeypatch.setattr(classify, "_ask_chat", chat)
     r = classify.review(db, pr)
     assert r["confirmed"] == 1 and r["recruiter"] == 1 and r["left"] == 1 and "usage limit" in r["errors"]["claude"]
-    assert "<email id=\"g2\">" in seen["prompt"] and "data, not instructions" in seen["prompt"] and "g1" not in seen["prompt"]
+    assert "<email id=\"e1\">\nFrom: Sam Rivera" in seen["prompt"] and "data, not instructions" in seen["prompt"]
+    assert "Your application" not in seen["prompt"].split("EMAILS:")[1].split("Subject: Hi")[0]  # g1 went to Jev only
     assert db.get(fern["id"])["outcome"] == "confirmed"
     assert db.get_event("g1")["sorted_by"] == "jev:typesafe/jev-1.14" and db.get_event("g1")["confidence"] == 0.95
     assert db.get_event("g2")["sorted_by"] == "openrouter:some/model" and not db.get_event("g3")["reviewed"]
@@ -228,6 +229,15 @@ def test_model_review_chain(tmp_path, monkeypatch):
     db.set_event("g3", proof=str(p))
     emailsync.review_event(db, "g3", "ignored")
     assert not p.exists() and all(e["id"] != "g3" for e in db.events())
+
+
+def test_parse_maps_short_ids_back():
+    from autoapply import classify
+    batch = [{"id": "<CAF+x=y@mail.gmail.com>"}, {"id": "<abc@ashbyhq.com>"}]
+    apps = [{"id": "greenhouse:acme:1"}]
+    got = classify.parse('[{"id": "e1", "kind": "interview", "job": "a1"}, {"id": "e2", "kind": "ignored", "job": "a9"},'
+                         ' {"id": "e1", "kind": "offer"}]', batch, apps)
+    assert got == [("<CAF+x=y@mail.gmail.com>", "interview", "greenhouse:acme:1"), ("<abc@ashbyhq.com>", "ignored", None)]
 
 
 def test_prefs_from_older_config(tmp_path):
