@@ -91,5 +91,8 @@ echo "$(date -Is) $summary"
 autoapply brief --send || autoapply log-run brief fail "brief email failed; see data/cron.log"
 # Optional phone push via ntfy (set NTFY_TOPIC in .env and subscribe in the ntfy app).
 if [ -n "${NTFY_TOPIC:-}" ]; then
-  curl -fsS -H "Title: autoapply" -H "Click: ${REVIEW_URL:-}" -d "$summary" "https://ntfy.sh/$NTFY_TOPIC" >/dev/null || true
+  todo=$(autoapply todo-line 2>/dev/null || true)
+  msg=$summary; [ -n "$todo" ] && msg="$summary
+$todo"
+  curl -fsS -H "Title: autoapply" -H "Click: ${REVIEW_URL:-}" -d "$msg" "https://ntfy.sh/$NTFY_TOPIC" >/dev/null || true
 fi

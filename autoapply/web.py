@@ -23,13 +23,15 @@ from .fillers import fill, submit
 
 env = Environment(loader=FileSystemLoader(Path(__file__).parent / "templates"), autoescape=True)
 env.globals["ws_label"] = "Work search"
+# "confirmed" (the stored kind) read as a confirmed interview; it only means the application was received.
+env.filters["label"] = lambda k: {"confirmed": "received"}.get(k, k)
 
 
 def page(name: str, **ctx) -> HTMLResponse:
     return HTMLResponse(env.get_template(name).render(**ctx))
 
 
-KIND_LABELS = [("confirmed", "Confirmation"), ("interview", "Interview"), ("rejected", "Rejection"), ("offer", "Offer"),
+KIND_LABELS = [("confirmed", "Received (auto-reply)"), ("interview", "Interview"), ("rejected", "Rejection"), ("offer", "Offer"),
                ("recruiter", "Recruiter"), ("ignored", "Not job-related")]
 
 

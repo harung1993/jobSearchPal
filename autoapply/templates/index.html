@@ -55,7 +55,7 @@ pre.draft{white-space:pre-wrap;font:inherit;font-size:13px;background:var(--surf
   {% else %}<p class="empty">Nothing waiting. The next daily run prepares more.</p>{% endfor %}
  </div>
  <div class="card"><h2>Latest replies <a href="/emails?show={{ 'waiting' if s.pending else 'all' }}">{% if s.pending %}{{ s.pending|length }} not sorted{% else %}All emails{% endif %}</a></h2>
-  <ul class="feed">{% for e in s.events %}<li><span class="pill {{ e.kind }}">{{ e.kind }}</span><span>{{ e.subject }}</span><span class="when">{{ e.at[5:10]|replace('-', '/') }}</span></li>
+  <ul class="feed">{% for e in s.events %}<li><span class="pill {{ e.kind }}">{{ e.kind|label }}</span><span>{{ e.subject }}</span><span class="when">{{ e.at[5:10]|replace('-', '/') }}</span></li>
   {% else %}<li class="empty">No replies synced yet. Run <code>autoapply sync-email</code> once the Gmail app password is set.</li>{% endfor %}</ul>
  </div>
 </section>
@@ -74,7 +74,7 @@ pre.draft{white-space:pre-wrap;font:inherit;font-size:13px;background:var(--surf
  {% macro row(j) %}<tr><td><b style="font-weight:600">{{ co(j.company) }}</b></td>
   <td>{% if not j.id.startswith('tracker:') %}<a href="/job/{{ j.id|urlencode }}">{{ j.title }}</a>{% else %}{{ j.title }}{% endif %}</td>
   <td class="ink2" style="white-space:nowrap">{{ j.applied_label }}</td><td class="ink2 hide-sm">{{ j.pay or "" }}</td>
-  <td><span class="pill {{ j.state }}">{{ j.state }}</span></td></tr>{% endmacro %}
+  <td><span class="pill {{ j.state }}">{{ j.state|label }}</span></td></tr>{% endmacro %}
  <table><thead><tr><th>Company</th><th>Role</th><th>Applied</th><th class="hide-sm">Pay</th><th>Status</th></tr></thead><tbody>
  {% for j in s.applications[:10] %}{{ row(j) }}{% else %}<tr><td colspan="5" class="empty">No applications yet.</td></tr>{% endfor %}</tbody></table>
  {% if s.applications|length > 10 %}<details style="margin-top:10px"><summary>Show {{ s.applications|length - 10 }} older</summary>

@@ -90,7 +90,7 @@ def main(argv=None):
     sub.add_parser("review-emails")
     sub.add_parser("daily-model")
     a = sub.add_parser("daily-agent"); a.add_argument("--stage", default="apply")
-    sub.add_parser("daily-stages"); sub.add_parser("daily-picks")
+    sub.add_parser("daily-stages"); sub.add_parser("daily-picks"); sub.add_parser("todo-line")
     a = sub.add_parser("daily-prompt"); a.add_argument("stage"); a.add_argument("job_id", nargs="?", default="")
     a = sub.add_parser("candidates"); a.add_argument("--limit", type=int, default=12)
     a = sub.add_parser("quick-pick"); a.add_argument("--alerts", action="store_true")
@@ -197,6 +197,13 @@ def main(argv=None):
         if lim["picks_per_day"]:
             stages.append("rank")
         print(" ".join(stages))
+    elif args.cmd == "todo-line":
+        # One line of open follow-up reminders for the phone push, e.g. "3 to do: Reply to ...; Follow up on ...".
+        from . import nudges
+        open_ = nudges.compute(db, s.data_dir)
+        if open_:
+            names = "; ".join(n["title"] for n in open_[:4]) + ("; ..." if len(open_) > 4 else "")
+            print(f"{len(open_)} to do: {names}")
     elif args.cmd == "daily-picks":
         from .prefs import Prefs
         try:

@@ -356,3 +356,22 @@ def test_follow_up_reminders(tmp_path):
     assert [n["job"]["company"] for n in later] == ["Fernwood Health"]
     subject, text, _ = brief.compose(db, "http://srv", today=date(2026, 11, 2), data_dir=tmp_path)
     assert "to do" in subject and "TO DO" in text
+
+
+def test_own_replies_are_not_recruiter_contacts(tmp_path, monkeypatch):
+    db = DB(tmp_path / "t.db")
+    when = datetime(2026, 10, 22, 8, 57)
+    monkeypatch.setenv("GMAIL_USER", "Me@Example.com")
+    body = "Thanks for reaching out about the senior analytics engineer role; happy to talk."
+    # Filed before the fix: an own reply sitting in the log as a settled recruiter contact.
+    db.add_event({"id": "<own@x>", "job_id": None, "kind": "recruiter", "at": "2026-10-22 08:57",
+                  "sender": "me <me@example.com>", "subject": "Re: Senior Analytics Engineer", "reviewed": 1})
+    assert emailsync.apply_event(db, [], "<own@x>", "me", "me@example.com", "Re: Senior Analytics Engineer", when, body) is None
+    assert db.get_event("<own@x>") is None
+    assert emailsync.apply_event(db, [], "<own2@x>", "me", "me@example.com", "Re: recruiter call", when, body) is None
+    assert db.get_event("<own2@x>") is None
+    # A correction you made by hand stays.
+    db.add_event({"id": "<own3@x>", "job_id": None, "kind": "recruiter", "at": "2026-10-22 08:57",
+                  "sender": "me", "subject": "Re: x", "reviewed": 1, "manual": 1})
+    emailsync.apply_event(db, [], "<own3@x>", "me", "me@example.com", "Re: x", when, body)
+    assert db.get_event("<own3@x>") is not None

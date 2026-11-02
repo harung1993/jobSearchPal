@@ -147,3 +147,14 @@ def test_quick_pick_reads_alert_emails(tmp_path, capsys, monkeypatch):
     cli.main(["--config", str(cfg), "daily-prompt", "alerts"])
     assert "alert-roles.json" in capsys.readouterr().out
     assert Prefs(s.data_dir).daily(0, "alerts")["model"] == Prefs(s.data_dir).daily(0, "rank")["model"]
+
+
+def test_todo_line_for_phone_push(tmp_path, capsys):
+    s, db, cfg = make(tmp_path)
+    cli.main(["--config", str(cfg), "todo-line"])
+    assert capsys.readouterr().out == ""  # nothing open, no line
+    db.add_event({"id": "<r@x>", "job_id": None, "kind": "recruiter", "at": "2026-10-01 09:00",
+                  "sender": "Pat Lee <pat@agency.example>", "subject": "Data role", "reviewed": 1})
+    cli.main(["--config", str(cfg), "todo-line"])
+    out = capsys.readouterr().out
+    assert out.startswith("1 to do: ") and "Pat Lee" in out

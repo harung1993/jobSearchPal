@@ -2,6 +2,7 @@
 files a copy of each one under data/proof/<week>/ so there is a record if a benefits office asks."""
 from __future__ import annotations
 
+import os
 import re
 from datetime import datetime
 from pathlib import Path
@@ -115,11 +116,24 @@ def match_job(jobs: list[dict], name: str, addr: str, subject: str, text: str) -
 KINDS = ["confirmed", "interview", "rejected", "offer", "recruiter", "ignored"]
 
 
+def is_own(addr: str) -> bool:
+    """Mail from your own address (GMAIL_USER, plus any in OWN_ADDRESSES, comma-separated)."""
+    own = {a.strip().lower() for a in [os.environ.get("GMAIL_USER", ""), *os.environ.get("OWN_ADDRESSES", "").split(",")]
+           if a.strip()}
+    return (addr or "").strip().lower() in own
+
+
 def apply_event(db: DB, jobs: list[dict], msg_id: str, name: str, addr: str, subject: str, when, text: str,
                 raw: bytes = b"", proof_root: Path | None = None) -> str | None:
     """Files a candidate email as unreviewed, with the keyword rules' guess. Nothing counts (stats, outcomes,
     the work-search log) until review_event settles it, either from the model (classify.py) or from you."""
     old = db.get_event(msg_id)
+    if is_own(addr):
+        # Your own replies aren't a new contact: they're read from Sent mail for reminders, and counting them
+        # here doubled recruiter contacts in the work-search log. Drop any already filed, unless you set it by hand.
+        if old and not old["manual"]:
+            db.delete_event(msg_id)
+        return None
     if old and old["reviewed"]:
         return None  # settled already; only a --rebuild (or you, on the Emails page) changes it
     from_ats = any(d in addr.lower() for d in ATS_SENDERS)
