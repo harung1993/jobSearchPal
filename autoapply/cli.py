@@ -89,6 +89,8 @@ def main(argv=None):
     sub.add_parser("review-emails")
     sub.add_parser("daily-model"); sub.add_parser("daily-agent")
     a = sub.add_parser("log-daily"); a.add_argument("agent"); a.add_argument("model", nargs="?", default="")
+    a.add_argument("via", nargs="?", default="subscription")
+    sub.add_parser("daily-env")
     a = sub.add_parser("emails"); a.add_argument("action", nargs="?", choices=["set"]); a.add_argument("event_id", nargs="?")
     a.add_argument("kind", nargs="?"); a.add_argument("--job", default=""); a.add_argument("--pending", action="store_true")
     a = sub.add_parser("import-history"); a.add_argument("file")
@@ -161,15 +163,41 @@ def main(argv=None):
         db.log_run("sync-email", True, _summary(out))
         _out(out)
     elif args.cmd in ("daily-model", "daily-agent"):
-        from .prefs import DAILY_AGENTS, Prefs
-        d = Prefs(s.data_dir, s.raw).data
-        agent = d.get("daily_agent") if d.get("daily_agent") in DAILY_AGENTS else "claude"
-        model = d.get("daily_codex_model" if agent == "codex" else "daily_model") or ""
-        print(model if args.cmd == "daily-model" else f"{agent} {model}".strip())
+        # daily.sh reads "agent model via" ("-" for no model); via is subscription, openrouter or blocked.
+        from .prefs import Prefs
+        pr = Prefs(s.data_dir, s.raw)
+        d = pr.daily(db.spend_this_month())
+        if args.cmd == "daily-model":
+            print(d["model"])
+        else:
+            if d["via"] == "openrouter":  # remember the key's total so log-daily can work out what this run cost
+                from . import classify
+                before = classify.openrouter_spent(pr.key("OPENROUTER_API_KEY"))
+                (s.data_dir / "daily").mkdir(exist_ok=True)
+                (s.data_dir / "daily" / ".or-before").write_text("" if before is None else str(before))
+            print(f"{d['agent']} {d['model'] or '-'} {d['via']}")
+            if d["why"]:
+                print(d["why"], file=sys.stderr)
+    elif args.cmd == "daily-env":
+        # Environment for running the daily agent on an OpenRouter key; daily.sh evals it. Prints nothing otherwise.
+        import shlex
+        from .prefs import Prefs
+        pr = Prefs(s.data_dir, s.raw)
+        d = pr.daily(db.spend_this_month())
+        if d["via"] == "openrouter":
+            key = pr.key("OPENROUTER_API_KEY")
+            env_out = {"OPENROUTER_API_KEY": key}
+            if d["agent"] == "claude":  # OpenRouter's Anthropic-compatible endpoint (its Claude Code guide)
+                env_out.update({"ANTHROPIC_BASE_URL": "https://openrouter.ai/api", "ANTHROPIC_AUTH_TOKEN": key,
+                                "ANTHROPIC_API_KEY": "", "ANTHROPIC_DEFAULT_HAIKU_MODEL": "~anthropic/claude-haiku-latest",
+                                "CLAUDE_CODE_SUBAGENT_MODEL": d["model"]})
+            for k, v in env_out.items():
+                print(f"export {k}={shlex.quote(v)}")
     elif args.cmd == "log-daily":
-        # daily.sh pipes the agent's output here: log its tokens and API-price estimate, print the summary line.
+        # daily.sh pipes the agent's output here: log its tokens and cost, print the summary line.
+        from .prefs import Prefs
         raw = sys.stdin.read()
-        text, est, tokens, err = raw, 0.0, 0, None
+        text, est, tokens, err, cost = raw, 0.0, 0, None, 0.0
         if args.agent == "claude":
             from . import classify
             classify.LAST.clear()
@@ -178,7 +206,19 @@ def main(argv=None):
             except RuntimeError as e:
                 text, err = "", str(e)
             est, tokens = classify.LAST.get("est", 0.0), classify.LAST.get("tokens", 0)
-        db.log_usage("daily", f"{args.agent}:{args.model}" if args.model else args.agent, 0, 0, 0.0, 0, err, est, tokens)
+        via = args.via
+        if via == "openrouter":
+            # Real spend: the key's usage now minus before the run. Falls back to the agent's own estimate.
+            from . import classify
+            before_f = s.data_dir / "daily" / ".or-before"
+            try:
+                before = float(before_f.read_text())
+            except (OSError, ValueError):
+                before = None
+            after = classify.openrouter_spent(Prefs(s.data_dir, s.raw).key("OPENROUTER_API_KEY") or "")
+            cost = max(0.0, after - before) if (after is not None and before is not None) else est
+        label = f"{args.agent}:{args.model}" if args.model else args.agent
+        db.log_usage("daily", label + (" (openrouter)" if via == "openrouter" else ""), 0, 0, cost, 0, err, est, tokens)
         lines = [l for l in text.strip().splitlines() if l.strip()]
         print(lines[-1] if lines else "")
         if err:

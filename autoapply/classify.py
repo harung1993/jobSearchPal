@@ -301,6 +301,17 @@ def _get_json(url: str, timeout: int = 8) -> dict:
         return json.loads(r.read())
 
 
+def openrouter_spent(key: str) -> float | None:
+    """Total credits this OpenRouter key has used, in dollars (None if it can't be read)."""
+    try:
+        req = urllib.request.Request("https://openrouter.ai/api/v1/key",
+                                     headers={"Authorization": f"Bearer {key}", "user-agent": "JobSearchPal"})
+        with urllib.request.urlopen(req, timeout=20) as r:
+            return float((json.loads(r.read()).get("data") or {}).get("usage") or 0)
+    except Exception:
+        return None
+
+
 def openrouter_models(cache: Path, max_age_h: int = 24) -> list[dict]:
     """Chat models on OpenRouter with their prices per million tokens, cheapest first. Cached for a day."""
     try:

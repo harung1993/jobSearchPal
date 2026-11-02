@@ -179,10 +179,10 @@ def test_daily_agent_setting(tmp_path, base_url, pdfs, capsys):
     cfg = tmp_path / "config.yaml"
     cfg.write_text(_y.safe_dump({"data_dir": str(tmp_path / "data")}))
     cli.main(["--config", str(cfg), "daily-agent"])
-    assert capsys.readouterr().out.strip() == "codex gpt-5-mini"
+    assert capsys.readouterr().out.strip() == "codex gpt-5-mini subscription"
     c.post("/settings", data={"daily_agent": "claude", "daily_model": "sonnet", "action": "save"})
     cli.main(["--config", str(cfg), "daily-agent"])
-    assert capsys.readouterr().out.strip() == "claude sonnet"
+    assert capsys.readouterr().out.strip() == "claude sonnet subscription"
 
 
 def test_prep_page_and_dashboard_card(tmp_path, base_url, pdfs):
@@ -248,3 +248,55 @@ def test_todo_card_done_and_snooze(tmp_path, base_url, pdfs):
     c.post(f"/nudge/{key}", data={"action": "done"})
     assert "Reply to Dana Lee" not in c.get("/").text
     assert c.post(f"/nudge/{key}", data={"action": "send"}).status_code == 400
+
+
+def test_daily_run_on_openrouter(tmp_path, base_url, pdfs, capsys, monkeypatch):
+    import io
+    import yaml as _y
+    from autoapply import classify, cli
+    from autoapply.prefs import Prefs
+    db, c, plan = setup(tmp_path, base_url, pdfs)
+    monkeypatch.setattr(classify, "openrouter_models", lambda cache: [
+        {"id": "anthropic/claude-sonnet-4.6", "name": "Sonnet", "in": 3, "out": 15, "ctx": 1},
+        {"id": "openai/gpt-5.6-luna", "name": "Luna", "in": 0.2, "out": 0.8, "ctx": 1}])
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    cfg = tmp_path / "config.yaml"
+    cfg.write_text(_y.safe_dump({"data_dir": str(tmp_path / "data")}))
+
+    c.post("/settings", data={"tab": "daily", "daily_agent": "claude", "daily_via": "openrouter", "action": "save"})
+    cli.main(["--config", str(cfg), "daily-agent"])
+    assert capsys.readouterr().out.strip() == "claude ~anthropic/claude-sonnet-latest blocked"  # no key yet
+    html = c.get("/settings?tab=daily").text
+    assert "no OpenRouter key" in html and 'value="anthropic/claude-sonnet-4.6"' in html and "gpt-5.6-luna" not in html
+
+    Prefs(tmp_path / "data").set_key("OPENROUTER_API_KEY", "sk-or-test-1234")
+    c.post("/settings", data={"tab": "daily", "daily_or_model": "anthropic/claude-sonnet-4.6; rm -rf ~", "action": "save"})
+    assert Prefs(tmp_path / "data").data["daily_or_model"] == ""  # rejected
+    c.post("/settings", data={"tab": "daily", "daily_or_model": "anthropic/claude-sonnet-4.6", "action": "save"})
+    spent = iter([10.0, 11.75])
+    monkeypatch.setattr(classify, "openrouter_spent", lambda key: next(spent))
+    cli.main(["--config", str(cfg), "daily-agent"])
+    assert capsys.readouterr().out.strip() == "claude anthropic/claude-sonnet-4.6 openrouter"
+    cli.main(["--config", str(cfg), "daily-env"])
+    env = capsys.readouterr().out
+    assert "export ANTHROPIC_BASE_URL=https://openrouter.ai/api" in env and "export ANTHROPIC_API_KEY=''" in env
+    assert "ANTHROPIC_AUTH_TOKEN=sk-or-test-1234" in env
+
+    out = '{"type":"result","is_error":false,"result":"Done.","total_cost_usd":1.5,"usage":{"input_tokens":10,"output_tokens":5}}'
+    monkeypatch.setattr("sys.stdin", io.StringIO(out))
+    cli.main(["--config", str(cfg), "log-daily", "claude", "anthropic/claude-sonnet-4.6", "openrouter"])
+    capsys.readouterr()
+    from autoapply.db import DB as _DB
+    d = _DB(tmp_path / "data" / "autoapply.db")
+    assert abs(d.spend_this_month() - 1.75) < 1e-9  # the key's real usage delta, not the estimate
+
+    p = Prefs(tmp_path / "data"); p.data["monthly_api_budget"] = 1.5; p.save()
+    cli.main(["--config", str(cfg), "daily-agent"])
+    o = capsys.readouterr()
+    assert o.out.strip().endswith("blocked") and "budget" in o.err
+
+    c.post("/settings", data={"tab": "daily", "daily_via": "subscription", "action": "save"})
+    cli.main(["--config", str(cfg), "daily-agent"])
+    assert capsys.readouterr().out.strip() == "claude - subscription"
+    cli.main(["--config", str(cfg), "daily-env"])
+    assert capsys.readouterr().out == ""

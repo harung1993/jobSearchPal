@@ -30,6 +30,9 @@ DEFAULT_ORDER = ["claude", "codex", "jev", "openrouter", "ollama"]
 PAID = {"jev", "openrouter"}  # billed per token; the others run on a subscription or locally
 DAILY_MODELS = ["", "opus", "sonnet", "haiku"]  # "" = Claude Code's default
 DAILY_AGENTS = {"claude": "Claude Code (Claude subscription)", "codex": "Codex CLI (ChatGPT subscription)"}
+# The daily run's model can come from the agent's subscription or from an OpenRouter key (paid per token).
+DAILY_VIA = {"subscription": "Your subscription", "openrouter": "OpenRouter key"}
+DAILY_OR_DEFAULT = {"claude": "~anthropic/claude-sonnet-latest", "codex": ""}
 
 
 def _legacy(raw: dict) -> dict:
@@ -58,6 +61,7 @@ class Prefs:
         agent = "codex" if find_cli("codex") and not find_cli("claude") else "claude"
         base = {"order": list(DEFAULT_ORDER), "enabled": [agent], "models": {}, "min_confidence": 0.7,
                 "daily_agent": agent, "daily_model": "", "daily_codex_model": "",
+                "daily_via": "subscription", "daily_or_model": "",
                 "ollama_url": PROVIDERS["ollama"]["base_url"],
                 # Cost controls: what the daily run may do per day, and a cap on money spent on paid APIs.
                 "picks_per_day": 2, "prep_enabled": True, "prep_per_day": 2, "drafts_enabled": True,
@@ -85,6 +89,21 @@ class Prefs:
         reaches the budget."""
         over = spent >= float(self.data.get("monthly_api_budget") or 0)
         return [p for p in self.data["order"] if p in self.data["enabled"] and not (over and p in PAID)]
+
+    def daily(self, spent: float = 0.0) -> dict:
+        """What the daily run uses: agent, model, and where the model comes from. via is 'blocked' when it
+        would use OpenRouter but this month's spend has reached the budget, or no key is set."""
+        d = self.data
+        agent = d.get("daily_agent") if d.get("daily_agent") in DAILY_AGENTS else "claude"
+        via = d.get("daily_via") if d.get("daily_via") in DAILY_VIA else "subscription"
+        if via == "openrouter":
+            model = d.get("daily_or_model") or DAILY_OR_DEFAULT[agent]
+            why = ("no OpenRouter key" if not self.key("OPENROUTER_API_KEY") else
+                   "no OpenRouter model picked" if not model else
+                   "monthly API budget reached" if spent >= float(d.get("monthly_api_budget") or 0) else "")
+            return {"agent": agent, "model": model, "via": "blocked" if why else via, "why": why}
+        model = d.get("daily_codex_model" if agent == "codex" else "daily_model") or ""
+        return {"agent": agent, "model": model, "via": via, "why": ""}
 
     def limits(self) -> dict:
         d = self.data

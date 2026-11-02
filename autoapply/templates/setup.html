@@ -141,7 +141,8 @@
 <section class="card mt step" id="agent">
  <h2><span><span class="n {{ 'done' if s.agent.done }}">{{ "✓" if s.agent.done else "5" }}</span> Sign in to an AI agent</span><span class="count">{{ s.agent.note }}</span></h2>
  <p class="lead">The daily run uses your own subscription through Claude Code or the Codex CLI. Signing in happens once,
-  in a terminal on the server, because it opens a browser login.</p>
+  in a terminal on the server, because it opens a browser login. No subscription? Pick <b>OpenRouter key</b> on the
+  <a href="/settings?tab=daily">Daily run</a> tab instead and pay per token; then no sign-in is needed.</p>
  <div class="grid g11">
   <div class="opt"><div><b>Claude subscription</b> (Pro or Max)</div>
    <pre>docker compose run --rm web claude</pre>

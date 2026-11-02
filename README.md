@@ -135,8 +135,9 @@ page shows both:
 
 - **Daily caps:** roles to tailor per day (the heaviest step), interview prep packs per day and follow-up
   drafts per day, each of which can be switched off. The daily run reads them first (`autoapply list --limits`).
-- **Monthly budget for paid APIs:** once Jev and OpenRouter have billed that much this month, sorting
-  uses only your subscriptions and local models until the 1st.
+- **Monthly budget for paid APIs:** once Jev and OpenRouter have billed that much this month (sorting and,
+  if it runs on OpenRouter, the daily run), sorting uses only your subscriptions and local models and a
+  daily run on OpenRouter is skipped until the 1st.
 - **Usage, last 30 days:** daily runs and tokens, what that would cost at API prices (a gauge of how heavy
   each step is, since your subscription covers it), and what OpenRouter actually billed, by day.
 
@@ -153,7 +154,7 @@ Four tabs. The menu's Settings item opens **Setup** first, with a badge while a 
 | Email sorting | which sources are on, their order (↑ ↓), the model for each (OpenRouter's list comes with live prices), Jev's minimum confidence, the Ollama address. Each source has a **Test** button that sorts a sample email and shows the answer, time and cost, plus 30-day counts of emails sorted, cost and failures. |
 | Email sorting: OpenRouter key | for Jev and OpenRouter. It's stored in `data/secrets.json` (owner-only) and never shown again. A key in `.env` wins. |
 | Costs and limits | daily caps for tailoring, prep packs and drafts; the monthly budget for paid APIs; 30-day usage and cost by day. |
-| Daily run | the agent (Claude Code or Codex CLI, with what's installed and signed in) and its model. Opus writes the best cover letters; Sonnet or Haiku go easier on usage limits. |
+| Daily run | the agent (Claude Code or Codex CLI, with what's installed and signed in), what pays for its model (your subscription, or an OpenRouter key billed per token), and the model. Opus writes the best cover letters; Sonnet or Haiku go easier on usage limits. |
 
 Choices are saved in `data/settings.json`. Nothing on the page needs a restart.
 
@@ -200,6 +201,11 @@ can also use an OpenRouter key or a local Ollama model.
 | ChatGPT subscription | Codex CLI | Codex |
 | Either, plus an OpenRouter key | as above | Jev or any OpenRouter model first, the subscription as backup |
 | Either, plus a GPU or spare CPU | as above | a local Ollama model, nothing leaves the server |
+| Only an OpenRouter key | Claude Code (Anthropic models) or Codex CLI (most models) on the key | Jev or any OpenRouter model |
+
+The OpenRouter route for the daily run follows OpenRouter's own guides: Claude Code talks to its
+Anthropic-compatible endpoint, and Codex uses it as a custom provider. Each run's real cost is read from
+the key's usage before and after, and the run is skipped once the month's budget is reached.
 
 1. Clone this repo to `~/auto-apply` on the server and run `bash scripts/install.sh`
    (`AGENT=codex bash scripts/install.sh` for Codex).

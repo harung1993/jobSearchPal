@@ -249,16 +249,18 @@ def make_app(settings, db: DB) -> FastAPI:
         pr = Prefs(settings.data_dir, settings.raw)
         st = classify.status(pr)
         orm = classify.openrouter_models(settings.data_dir / "openrouter-models.json") if (
-            "openrouter" in pr.data["enabled"] or pr.key("OPENROUTER_API_KEY")) else []
+            "openrouter" in pr.data["enabled"] or pr.key("OPENROUTER_API_KEY") or pr.data.get("daily_via") == "openrouter") else []
         u30 = db.usage_summary(30)
         daily = u30.get("daily") or {}
         sorting = [v for k, v in u30.items() if k != "daily"]
         costs = {"daily_runs": daily.get("calls") or 0, "daily_tokens": daily.get("tokens") or 0, "daily_est": daily.get("est") or 0,
-                 "sort_est": sum(v.get("est") or 0 for v in sorting), "sort_cost": sum(v.get("cost") or 0 for v in sorting),
+                 "sort_est": sum(v.get("est") or 0 for v in sorting),
+                 "sort_cost": sum(v.get("cost") or 0 for v in sorting) + (daily.get("cost") or 0),
                  "month_spend": db.spend_this_month(), "by_day": db.usage_by_day(14)}
         return page("settings.html", p=pr.data, prefs=pr, providers=PROVIDERS, status=st, usage=u30, costs=costs,
                     or_models=orm, daily_models=DAILY_MODELS, daily_agents=DAILY_AGENTS, key_hint=pr.key_hint("OPENROUTER_API_KEY"),
-                    pending=len(db.pending_events()), msg=msg, nav="settings", tab=tab)
+                    pending=len(db.pending_events()), msg=msg, nav="settings", tab=tab,
+                    daily=pr.daily(db.spend_this_month()), or_default=__import__("autoapply.prefs", fromlist=["x"]).DAILY_OR_DEFAULT)
 
     @app.post("/settings")
     async def save_settings(request: Request):
@@ -280,6 +282,12 @@ def make_app(settings, db: DB) -> FastAPI:
             d["daily_model"] = f.get("daily_model", "")
         if f.get("daily_agent") in DAILY_AGENTS:
             d["daily_agent"] = f.get("daily_agent")
+        if f.get("daily_via") in ("subscription", "openrouter"):
+            d["daily_via"] = f.get("daily_via")
+        if "daily_or_model" in f:
+            om = str(f.get("daily_or_model") or "").strip()
+            if re.fullmatch(r"[A-Za-z0-9._:/~\[\]-]{0,120}", om):  # also ends up on daily.sh's command line
+                d["daily_or_model"] = om
         if "daily_codex_model" in f:
             cm = str(f.get("daily_codex_model") or "").strip()
             if re.fullmatch(r"[A-Za-z0-9._:/-]{0,80}", cm):  # it ends up on daily.sh's command line

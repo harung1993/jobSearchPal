@@ -78,8 +78,15 @@ def base_resume(root: Path) -> Path | None:
     return next((d for d in docs if "resume" in d.stem.lower()), None)
 
 
-def agent_ready() -> dict:
+def agent_ready(prefs=None) -> dict:
     claude, codex = find_cli("claude"), find_cli("codex")
+    if prefs is not None and prefs.data.get("daily_via") == "openrouter":
+        cli = prefs.data.get("daily_agent", "claude")
+        has_cli = bool(claude if cli == "claude" else codex)
+        key = bool(prefs.key("OPENROUTER_API_KEY"))
+        return {"done": has_cli and key, "claude": bool(claude), "codex": bool(codex), "who": [],
+                "note": ("runs on your OpenRouter key" if has_cli and key else
+                         "OpenRouter picked, but no key yet" if has_cli else f"{cli} not installed")}
     home = Path.home()
     claude_in = (home / ".claude" / ".credentials.json").exists() or (home / ".claude.json").exists()
     codex_in = (home / ".codex" / "auth.json").exists()
@@ -87,6 +94,14 @@ def agent_ready() -> dict:
     return {"done": bool(who), "claude": bool(claude), "codex": bool(codex), "who": who,
             "note": f"{' and '.join(who)} signed in" if who else
                     ("installed, not signed in yet" if claude or codex else "no agent CLI found")}
+
+
+def _prefs(settings):
+    from .prefs import Prefs
+    try:
+        return Prefs(settings.data_dir, settings.raw)
+    except Exception:
+        return None
 
 
 def status(settings, environ: dict) -> dict:
@@ -106,7 +121,7 @@ def status(settings, environ: dict) -> dict:
         "about": {"done": has_about, "note": "written" if has_about else "optional, but it makes answers much better"},
         "gmail": {"done": bool(environ.get("GMAIL_USER") and environ.get("GMAIL_APP_PASSWORD")),
                   "note": environ.get("GMAIL_USER") or "optional: job alerts, replies and the morning brief"},
-        "agent": agent_ready(),
+        "agent": agent_ready(_prefs(settings)),
         "token": {"done": bool(environ.get("AUTOAPPLY_TOKEN")),
                   "note": "set" if environ.get("AUTOAPPLY_TOKEN") else "anyone who can reach this page can use it"},
     }
