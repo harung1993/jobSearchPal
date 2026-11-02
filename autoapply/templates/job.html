@@ -1,15 +1,15 @@
 {% extends "base.html" %}
 {% block title %}{{ job.company }}{% endblock %}
 {% block body %}
-<style>.finish{background:var(--accent-soft);border:2px solid var(--accent)} .finish h2{font-size:17px;color:var(--accent-ink)}
+<style>.finish{background:var(--accent-soft);border:1px solid color-mix(in srgb,var(--accent) 40%,transparent)} .finish h2{font-size:17px;color:var(--accent-ink)}
 .finish .why{margin:-4px 0 10px;font-weight:600} .finish .steps{margin:0 0 12px;padding-left:20px;display:grid;gap:10px}
 .finish .cmd{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:8px 0 4px;padding:10px 12px;background:var(--surface);border-radius:12px;border:1px solid var(--line-2)}
 .finish .cmd code{font-size:14px;background:none;padding:0;user-select:all;word-break:break-all;flex:1;min-width:0}
 .finish small{color:var(--ink-2)}</style>
-<p style="margin:0 0 10px"><a href="/">← Dashboard</a></p>
+<a class="crumb" href="/">← Dashboard</a>
 <header class="top"><div><h1>{{ job.company|title if job.company.islower() else job.company }} · {{ job.title }}</h1>
  <div class="ink2">{{ job.location or "" }}{% if job.pay %} · {{ job.pay }}{% endif %} · <a href="{{ job.url }}" target="_blank">posting</a></div></div>
- <span class="pill {{ job.status }}">{{ job.status }}</span></header>
+ <span class="pill {{ job.status }}">{{ job.status|label }}</span></header>
 {% if report.submitted %}<p class="notice" style="background:var(--good-soft)">Submitted {{ job.submitted_at }}. Confirmation: “{{ report.confirmation }}”</p>{% endif %}
 
 <form method="post" action="/job/{{ job.id|urlencode }}">
@@ -23,13 +23,16 @@
   <a href="#answers" class="chip ok">Filled <b>{{ report.filled|length }}</b></a>
  </div>
  {% if job.status != 'submitted' %}<div class="act">
-  <label class="tick"><input type="checkbox" name="approve" value="yes"> I reviewed everything, including the consents</label>
+  <button class="btn" name="action" value="refill" title="Save your edits and fill the form again">Save and refill</button>
+  <details class="menu"><summary class="btn ghost" aria-label="More actions">More</summary><div class="menu-list">
+   {% if not handoff %}<button class="btn ghost" name="action" value="manual">I applied by hand</button>{% endif %}
+   <button class="btn ghost" name="action" value="skip">Not applying</button></div></details>
+  <span class="sep" aria-hidden="true"></span>
   {% if report.submit_clicked and not report.submitted %}<label class="tick warn"><input type="checkbox" name="resubmit" value="yes"> Submit was pressed once with no confirmation: I checked my email, submit again</label>{% endif %}
-  <div class="btns">{% if handoff %}<button class="btn go" name="action" value="manual">I applied by hand</button>
-   <button class="btn" name="action" value="submit">Submit here</button>{% else %}<button class="btn go" name="action" value="submit">Submit</button>{% endif %}
-   <button class="btn" name="action" value="refill">Save and refill</button>
-   {% if not handoff %}<button class="btn" name="action" value="manual">I applied by hand</button>{% endif %}
-   <button class="btn" name="action" value="skip">Not applying</button></div>
+  <label class="tick"><input type="checkbox" name="approve" value="yes" id="approve"> I reviewed everything, including the consents</label>
+  {% if handoff %}<button class="btn" name="action" value="submit" data-needs-approve disabled>Submit here</button>
+  <button class="btn primary" name="action" value="manual">I applied by hand</button>
+  {% else %}<button class="btn primary" name="action" value="submit" data-needs-approve disabled>Submit</button>{% endif %}
  </div>{% endif %}
 </div>
 {% if job.error %}<p class="notice">{{ job.error }}</p>{% endif %}
@@ -63,7 +66,7 @@
   {% if h.kind == 'checkbox_single' %}<label><input type="checkbox" name="held::{{ h.label }}" value="yes" {% if cur %}checked{% endif %}> I agree</label>
   {% elif h.options %}<select name="held::{{ h.label }}"><option value=""></option>{% for o in h.options %}<option {% if cur == o %}selected{% endif %}>{{ o }}</option>{% endfor %}</select>
   {% else %}<input type="text" name="held::{{ h.label }}" value="{{ cur }}">{% endif %}</td></tr>{% endfor %}</table></section>
- <style>.check-these{background:var(--warn-soft);border:2px solid var(--warn-dot)} .check-these h2{color:var(--warn)}
+ <style>.check-these{background:var(--warn-soft);border:1px solid color-mix(in srgb,var(--warn-dot) 45%,transparent)} .check-these h2{color:var(--warn)}
   .check-these td{border-bottom-color:color-mix(in srgb,var(--warn-dot) 35%,transparent)} .check-these tbody tr:hover td,.check-these tr:hover td{background:transparent}
   .tag{display:inline-block;margin-left:6px;font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;background:var(--warn-dot);color:#1a1200}
   .tag.none{background:var(--bad-soft);color:var(--bad)}</style>{% endif %}
@@ -82,11 +85,12 @@
 </div>
 <div>
  <section class="card side-tabs">
-  <div class="ptabs" role="tablist">
+  {% if not files and not notes and not job.screenshot %}<div class="empty-state"><b>No documents yet</b><span>The resume, cover letter and a screenshot of the filled form show up here after the next fill.</span></div>{% endif %}
+  {% if files or notes or job.screenshot %}<div class="ptabs" role="tablist">
    {% for slot, name in files %}<button type="button" role="tab" data-p="doc-{{ loop.index }}" {% if loop.first %}aria-selected="true"{% endif %}>{{ 'Cover letter' if 'cover' in slot else ('Resume' if slot == 'resume' else slot|replace('_', ' ')|capitalize) }}</button>{% endfor %}
    {% if notes %}<button type="button" role="tab" data-p="notes" {% if not files %}aria-selected="true"{% endif %}>Notes</button>{% endif %}
    {% if job.screenshot %}<button type="button" role="tab" data-p="shot" {% if not files and not notes %}aria-selected="true"{% endif %}>Form now</button>{% endif %}
-  </div>
+  </div>{% endif %}
   {% for slot, name in files %}<div class="pane" id="doc-{{ loop.index }}" {% if not loop.first %}hidden{% endif %}>
    <p style="margin:0 0 8px"><a href="/file/{{ slot }}/{{ job.id|urlencode }}" target="_blank">{{ name }}</a></p>
    {% if name.lower().endswith('.pdf') %}<iframe class="doc" src="/file/{{ slot }}/{{ job.id|urlencode }}" title="{{ name }}" loading="lazy"></iframe>{% endif %}</div>{% endfor %}
@@ -98,13 +102,16 @@
 </form>
 <style>
 .bar{position:sticky;top:0;z-index:4;display:flex;gap:10px 18px;align-items:center;justify-content:space-between;flex-wrap:wrap;
- background:var(--surface);border:1px solid var(--line-2);border-radius:14px;padding:10px 14px;margin:6px 0 14px;box-shadow:var(--shadow)}
+ background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:10px 12px 10px 16px;margin:8px 0 16px;box-shadow:var(--shadow)}
 .chips{display:flex;gap:6px;flex-wrap:wrap}
 .chip{font-size:12.5px;font-weight:600;padding:4px 10px;border-radius:999px;background:var(--surface-2);color:var(--ink-2)}
 .chip:hover{text-decoration:none;filter:brightness(.97)} .chip.warn{background:var(--warn-soft);color:var(--warn)} .chip.bad{background:var(--bad-soft);color:var(--bad)} .chip.ok{background:var(--good-soft);color:var(--good)}
-.act{display:flex;gap:8px 12px;align-items:center;flex-wrap:wrap} .act .btns{display:flex;gap:6px;flex-wrap:wrap}
+.act{display:flex;gap:8px;align-items:center;flex-wrap:wrap} .act .sep{width:1px;height:24px;background:var(--line);margin:0 4px}
+.menu{position:relative} .menu summary{list-style:none} .menu summary::-webkit-details-marker{display:none} .menu summary::after{content:"▾";font-size:10px;margin-left:2px}
+.menu-list{position:absolute;right:0;top:40px;z-index:6;display:grid;min-width:180px;padding:6px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-lg)}
+.menu-list .btn{justify-content:flex-start;width:100%}
 .tick{font-size:13px;display:inline-flex;gap:6px;align-items:center} .tick.warn{color:var(--warn)}
-.ptabs{display:flex;gap:4px;border-bottom:1px solid var(--line-2);margin:-6px 0 12px}
+.ptabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:-6px 0 12px}
 .ptabs button{font:inherit;font-size:13px;font-weight:600;border:0;background:none;color:var(--ink-2);padding:8px 10px;border-bottom:2px solid transparent;cursor:pointer}
 .ptabs button[aria-selected="true"]{color:var(--accent-ink);border-bottom-color:var(--accent)}
 .side-tabs{position:sticky;top:76px} .side-tabs .doc{height:70vh}
@@ -112,6 +119,8 @@
 @media (max-width:860px){.side-tabs{position:static}.bar{position:static}}
 </style>
 <script>
+(()=>{const a=document.getElementById("approve");if(!a)return;const go=()=>document.querySelectorAll("[data-needs-approve]").forEach(b=>b.disabled=!a.checked);a.addEventListener("change",go);go()})();
+document.addEventListener("click",e=>document.querySelectorAll("details.menu[open]").forEach(d=>{if(!d.contains(e.target))d.open=false}));
 document.querySelectorAll(".ptabs button").forEach(b=>b.onclick=()=>{const box=b.closest(".card");
  box.querySelectorAll(".ptabs button").forEach(x=>x.setAttribute("aria-selected",x===b));
  box.querySelectorAll(".pane").forEach(p=>p.hidden=p.id!==b.dataset.p)});

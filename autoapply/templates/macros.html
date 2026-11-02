@@ -1,6 +1,6 @@
 {# Weekly bar chart: series is [(week_start_date, value), ...]. floor draws a dashed reference line. #}
-{% macro week_bars(series, noun, label, floor=None, floor_label='', H=190, every=2) %}
-{% set W = 640 %}{% set pad = 30 %}{% set n = series|length %}
+{% macro week_bars(series, noun, label, floor=None, floor_label='', H=190, every=2, W=640) %}
+{% set pad = 30 %}{% set n = series|length %}
 {% set vmax = series|map(attribute=1)|max if n else 0 %}
 {% set top = [(floor or 0) + 1, vmax, 1]|max %}
 {% set step = [1, (top / 4)|round(0, 'ceil')|int]|max %}

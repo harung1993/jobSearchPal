@@ -98,8 +98,7 @@ def compute(db: DB, data_dir: Path | None = None, now: datetime | None = None, i
             out.append({"key": _key("app", j["id"]), "kind": "application", "title": f"Follow up on {j['company']}",
                         "about": j["title"], "since": j["submitted_at"], "days": age, "to": "", "subject": "",
                         "event": None, "job": j,
-                        "why": f"Applied {age} days ago with no answer beyond the confirmation. A short note to the recruiter "
-                               "or hiring manager on LinkedIn can help; or let it go."})
+                        "why": f"Applied {age} days ago · no reply yet"})
 
     for n in out:
         st = states.get(n["key"])

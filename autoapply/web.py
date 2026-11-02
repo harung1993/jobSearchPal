@@ -192,7 +192,7 @@ def make_app(settings, db: DB) -> FastAPI:
         return RedirectResponse("/emails" if db.pending_events() else "/", status_code=303)
 
     @app.get("/emails")
-    def emails(show: str = "waiting"):
+    def emails(show: str = ""):
         from . import classify
         every = [e for e in db.events(all=True) if e["kind"] != "applied"]
         groups = {"waiting": [e for e in every if not e["reviewed"]],
@@ -200,7 +200,8 @@ def make_app(settings, db: DB) -> FastAPI:
                   "recruiter": [e for e in every if e["reviewed"] and e["kind"] == "recruiter"],
                   "ignored": [e for e in every if e["reviewed"] and e["kind"] == "ignored"],
                   "all": every}
-        show = show if show in groups else "waiting"
+        if show not in groups:  # land on the first tab with something in it
+            show = next((k for k in ("waiting", "replies", "recruiter") if groups[k]), "all")
         tabs = [("waiting", "Not sorted", len(groups["waiting"])), ("replies", "Replies", len(groups["replies"])),
                 ("recruiter", "Recruiters", len(groups["recruiter"])), ("ignored", "Not job-related", len(groups["ignored"])),
                 ("all", "All", len(every))]
