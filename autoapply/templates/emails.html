@@ -15,7 +15,7 @@
   <td class="ink2" style="white-space:nowrap">{{ e.at[5:10]|replace('-', '/') }}</td>
   <td style="min-width:0"><details><summary><b style="font-weight:600;color:var(--ink)">{{ e.sender.split(" <")[0] }}</b>
     <span class="ink2">· {{ e.subject }}</span></summary>
-    <div class="ink2" style="font-size:12px;margin:6px 0 4px">{{ e.sender }}{% if e.guess and not e.reviewed %} · keyword guess: {{ e.guess }}{% endif %}{% if e.manual %} · set by you{% elif e.reviewed %} · sorted by {{ classifier }}{% endif %}</div>
+    <div class="ink2" style="font-size:12px;margin:6px 0 4px">{{ e.sender }}{% if e.guess and not e.reviewed %} · keyword guess: {{ e.guess }}{% endif %}{% if e.manual %} · set by you{% elif e.sorted_by %} · sorted by {{ e.sorted_by }}{% if e.confidence %} ({{ (100 * e.confidence)|round|int }}% sure){% endif %}{% endif %}</div>
     <pre class="body">{{ (e.body or "No text saved for this email.")[:3000] }}</pre></details></td>
   <td colspan="2"><form method="post" action="/emails/{{ e.id|urlencode }}" class="eform">
     <input type="hidden" name="show" value="{{ show }}">

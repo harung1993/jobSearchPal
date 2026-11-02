@@ -9,9 +9,11 @@ it yourself.
 
 ![Dashboard](docs/dashboard.png)
 
-<details><summary>Stats page (dark mode) and phone layout</summary>
+<details><summary>Stats, Settings and Emails pages, and the phone layout</summary>
 
 ![Stats](docs/stats-dark.png)
+![Settings](docs/settings.png)
+![Emails](docs/emails.png)
 <img src="docs/dashboard-phone.png" width="300" alt="Dashboard on a phone">
 </details>
 
@@ -20,37 +22,91 @@ The screenshots use fictional demo data (`scripts/demo-data.py`).
 ## How it works
 
 ```
-cron 6:30am ─► claude -p / codex exec prompts/daily.md
-                 ├─ autoapply sync-email               replies, recruiters, proof copies, sorted by a model
-                 ├─ autoapply find / alerts / add      roles from job boards, feeds, alert emails
-                 ├─ tailored resume + cover letter     python-docx + LibreOffice → PDF
-                 ├─ autoapply scan <url>               the form's questions as JSON
-                 └─ autoapply fill plan.json           Playwright fills and uploads, then stops
-               ─► autoapply brief --send               morning email: picks, replies, status
-you ───────► dashboard ─► review answers, decide consents ─► Submit
-             or: autoapply-finish <job> on your laptop ─► a real Chrome window, filled in, you submit
+6:30am weekdays (cron or the Docker scheduler) ─► scripts/daily.sh
+  agent: Claude Code or Codex CLI, picked on the Settings page, following AGENTS.md + prompts/daily.md
+    ├─ autoapply sync-email      gather job emails ─► a model sorts them ─► replies, recruiters, proof
+    ├─ autoapply find / alerts   new roles from job boards, feeds and your alert emails
+    ├─ rank, pick the best 1-2   fit first, then freshness, then pay
+    ├─ tailor                    resume + cover letter (python-docx, LibreOffice → PDF)
+    ├─ autoapply scan <url>      the form's questions as JSON
+    └─ autoapply fill plan.json  Playwright fills it and uploads the PDFs, then stops
+  ─► autoapply brief --send      morning email: what's ready, new replies, where everything stands
+you ─► dashboard ─► check answers, decide consents ─► Submit
+   or: autoapply-finish <job> on your laptop ─► a real Chrome window, filled in, you submit
 ```
 
-- **Sources:** public job-board APIs (Greenhouse, Lever, Ashby, Workable, SmartRecruiters) for the
-  companies you watch, the RemoteOK, Remotive and HN "Who is hiring?" feeds, and your
-  LinkedIn / Built In / Indeed / Glassdoor / Wellfound alert emails.
-- **Dashboard:** what's ready for you, latest replies, recruiters, applications per week, and a
-  full application list. Light and dark mode, works on a phone.
-- **Stats page:** response and interview rates, median time to reply, a funnel, results by
-  application platform, reply-time buckets, weeks at your work-search minimum, and pipeline trends.
-- **Work-search log:** if you claim unemployment benefits, every application and recruiter
-  contact is grouped by Sunday-to-Saturday week, with the original emails and submit screenshots
-  saved as proof and a weekly zip in work-search-log columns.
-- **Email sorting:** keyword rules only gather candidate emails. A model reads each one and files it as a
-  confirmation, interview, rejection, offer, recruiter contact or not job-related, and matches it to the
-  application. The **Settings** page sets which sources sort them and in what order, with a model
-  picker, a Test button and 30-day usage and cost for each: your Claude subscription (Claude Code,
-  no tools), your ChatGPT subscription (Codex CLI, read-only), TypeSafe's Jev decision model or any
-  chat model on OpenRouter, or a local Ollama model. If one fails or isn't sure, the next one gets the
-  email. Nothing counts until it's sorted, and the **Emails** page lets you change any call; your
-  choice survives rescans. The Settings page also picks the daily-run agent (Claude Code or Codex) and model.
-- **Email:** reads Gmail over read-only IMAP with an app password (nothing is marked, moved or
-  deleted), and sends you one morning summary over SMTP.
+### A morning, step by step
+
+1. **Email first.** New mail from application systems and recruiters is gathered over read-only
+   IMAP. Keyword rules only pick the candidates. A model then reads each one and files it as a
+   confirmation, interview, rejection, offer, recruiter contact or not job-related, and matches it to
+   the application it's about (see [Email sorting](#email-sorting)).
+2. **Find roles** from the sources below. Anything already tracked or applied to is skipped.
+3. **Rank and pick** the best one or two, and skip the clear misses with a reason (the Stats page
+   shows why roles were skipped).
+4. **Tailor** a resume and cover letter from your base resume and `CLAUDE.local.md`, plus a
+   `notes.md` with the fit/gap table, form answers and pay ask.
+5. **Fill the real form.** Playwright answers the questions, uploads both PDFs, takes a screenshot
+   and stops before Submit. Consent and self-ID questions are left blank for you.
+6. **Brief.** One email (sent to yourself over Gmail SMTP) with what's ready, new replies, your work-search count for the week, and
+   the status of every application.
+7. **You decide.** Open the dashboard, read the answers, tick the review box and press Submit, or
+   finish on your laptop when a site wants a code. Then the confirmation email arrives and the next
+   morning's sync files it.
+
+### Where jobs come from
+
+- **Company job boards you watch** (Greenhouse, Lever, Ashby, Workable, SmartRecruiters) through
+  their public APIs: the freshest source, and apply-ready. The run adds good companies as it finds
+  them (`autoapply board add`), and on Mondays it looks for about 10 new ones.
+- **Feeds:** RemoteOK, Remotive and Hacker News "Who is hiring?".
+- **Your job-alert emails** from LinkedIn, Built In, Indeed, Glassdoor and Wellfound. For each good
+  role, the agent finds the same posting on the company's own careers page and applies there, since
+  aggregator listings are often stale.
+
+**LinkedIn** is covered only through its alert emails. LinkedIn has no public jobs API, and
+scraping it or signing in as you breaks its terms and risks your account. To widen what the run
+sees, set up several daily alerts with tight filters in LinkedIn (Jobs → set alert), for example
+"analytics engineer · Remote · United States · past 24 hours" or "staff data engineer · Boston ·
+Hybrid". Send them to the inbox the sync reads. Each alert you add shows up in the next morning's run.
+
+### Email sorting
+
+- **Sources, in your order.** On the Settings page, turn on any of: your **Claude subscription**
+  (Claude Code, run with no tools), your **ChatGPT subscription** (Codex CLI, read-only sandbox),
+  **Jev** (TypeSafe's decision model on OpenRouter, which returns a label with a probability),
+  any **OpenRouter** chat model, or a local **Ollama** model. Each email goes to the first source.
+  If that source fails, or Jev is below your confidence threshold, the email goes to the next.
+- **Only labels come back.** Email text is treated as data. Answers that aren't a known category or
+  a known application are dropped.
+- **Nothing counts until it's sorted.** Stats, outcomes, the brief and the work-search log use sorted
+  emails only. Anything no source could sort waits on the **Emails** page.
+- **You have the last word.** The Emails page lists every job email by tab (Not sorted, Replies,
+  Recruiters, Not job-related, All), with the text, the keyword guess and who sorted it. Change the
+  category or the application from a dropdown. Your choice survives rescans and later model runs.
+
+### Settings page
+
+| Section | What you set |
+|---|---|
+| Email sorting | which sources are on, their order (↑ ↓), the model for each (OpenRouter's list comes with live prices), Jev's minimum confidence, the Ollama address. Each source has a **Test** button that sorts a sample email and shows the answer, time and cost, plus 30-day counts of emails sorted, cost and failures. |
+| OpenRouter key | for Jev and OpenRouter. It's stored in `data/secrets.json` (owner-only) and never shown again. A key in `.env` wins. |
+| Daily run | the agent (Claude Code or Codex CLI, with what's installed and signed in) and its model. Opus writes the best cover letters; Sonnet or Haiku go easier on usage limits. |
+
+Choices are saved in `data/settings.json`. Nothing on the page needs a restart.
+
+### Dashboard pages
+
+- **Dashboard:** what's ready for you, latest replies, recruiters, applications per week, the full
+  application list, and when each job (search, email sync, sorting, brief) last ran.
+- **Stats:** response and interview rates, median time to reply, funnels, results by application
+  platform, reply-time buckets, weeks at your work-search minimum, and pipeline trends.
+- **Emails:** see above.
+- **Work-search log:** if you claim unemployment benefits, every application and recruiter contact
+  is grouped by Sunday-to-Saturday week, with the original emails and submit screenshots saved as
+  proof and a weekly zip in work-search-log columns.
+
+Light and dark mode, and it works on a phone.
 
 ## What it will not do
 
@@ -138,13 +194,14 @@ autoapply find                         new matching roles from boards and feeds
 autoapply board add ATS SLUG           watch another company's board (checked first)
 autoapply alerts [--days N]            job-alert emails as text
 autoapply sync-email [--days N] [--rebuild]   replies and recruiter emails → sorted → dashboard and proof
-autoapply review-emails                sort emails still waiting (see email_classifier)
+autoapply review-emails                sort emails still waiting, through the Settings page's sources
 autoapply emails [--pending]           filed emails as JSON;  emails set ID KIND  settles one by hand
 autoapply import-history FILE.json     load past applications (tracker rows)
 autoapply add URL / list / show ID / skip ID
 autoapply scan URL                     a form's questions as JSON
 autoapply fill PLAN.json [--job ID]    fill, upload, screenshot, stop before Submit
 autoapply brief [--send]               the morning summary
+autoapply daily-agent                  the agent and model the daily run will use
 autoapply serve                        the dashboard
 autoapply finish JOB_ID                (laptop) open the filled form in Chrome for you to submit
 ```
