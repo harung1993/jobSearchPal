@@ -10,8 +10,29 @@
 <header class="top"><div><h1>{{ job.company|title if job.company.islower() else job.company }} · {{ job.title }}</h1>
  <div class="ink2">{{ job.location or "" }}{% if job.pay %} · {{ job.pay }}{% endif %} · <a href="{{ job.url }}" target="_blank">posting</a></div></div>
  <span class="pill {{ job.status }}">{{ job.status }}</span></header>
-{% if job.error %}<p class="notice">{{ job.error }}</p>{% endif %}
 {% if report.submitted %}<p class="notice" style="background:var(--good-soft)">Submitted {{ job.submitted_at }}. Confirmation: “{{ report.confirmation }}”</p>{% endif %}
+
+<form method="post" action="/job/{{ job.id|urlencode }}">
+{% set pre_n = report.held|selectattr('prefilled')|list|length %}
+{% set need_n = report.held|rejectattr('value')|list|length %}
+<div class="bar" role="region" aria-label="Review and decide">
+ <div class="chips">
+  {% if report.held %}<a href="#check" class="chip warn">Check these <b>{{ report.held|length }}</b>{% if need_n %} · {{ need_n }} need you{% endif %}</a>{% endif %}
+  {% if report.unanswered %}<a href="#unanswered" class="chip">Unanswered <b>{{ report.unanswered|length }}</b>{% set req = report.unanswered|selectattr('required')|list|length %}{% if req %} · {{ req }} required{% endif %}</a>{% endif %}
+  {% if report.errors %}<a href="#problems" class="chip bad">Problems <b>{{ report.errors|length }}</b></a>{% endif %}
+  <a href="#answers" class="chip ok">Filled <b>{{ report.filled|length }}</b></a>
+ </div>
+ {% if job.status != 'submitted' %}<div class="act">
+  <label class="tick"><input type="checkbox" name="approve" value="yes"> I reviewed everything, including the consents</label>
+  {% if report.submit_clicked and not report.submitted %}<label class="tick warn"><input type="checkbox" name="resubmit" value="yes"> Submit was pressed once with no confirmation: I checked my email, submit again</label>{% endif %}
+  <div class="btns">{% if handoff %}<button class="btn go" name="action" value="manual">I applied by hand</button>
+   <button class="btn" name="action" value="submit">Submit here</button>{% else %}<button class="btn go" name="action" value="submit">Submit</button>{% endif %}
+   <button class="btn" name="action" value="refill">Save and refill</button>
+   {% if not handoff %}<button class="btn" name="action" value="manual">I applied by hand</button>{% endif %}
+   <button class="btn" name="action" value="skip">Not applying</button></div>
+ </div>{% endif %}
+</div>
+{% if job.error %}<p class="notice">{{ job.error }}</p>{% endif %}
 
 {% if handoff %}<section class="card finish" style="margin-bottom:16px" id="finish"><h2>Finish this one yourself</h2>
  <p class="why">{{ handoff }}</p>
@@ -21,7 +42,7 @@
     <button type="button" class="btn primary" onclick="navigator.clipboard.writeText(this.dataset.v);this.textContent='Copied'" data-v="autoapply-finish {{ job.id }}">Copy command</button></div>
    <small>Chrome opens on the form with everything filled in and the files attached. Safari can't be filled this way.</small></li>
   <li>Answer the captcha or code there and press <b>Submit</b>.</li>
-  <li>Come back and press <b>I applied by hand</b> below.</li>
+  <li>Come back and press <b>I applied by hand</b> in the bar above.</li>
  </ol>
  <details><summary>No Mac handy? Fill it in by hand</summary>
  <p class="ink2">Open the <a href="{{ job.apply_url or job.url }}" target="_blank">application form</a>, attach the files, and copy each answer.</p>
@@ -30,8 +51,7 @@
 </details>
 </section>{% endif %}
 
-<form method="post" action="/job/{{ job.id|urlencode }}">
-<div class="grid g2">
+<div class="grid g2 mt">
 <div>
  {% if report.held %}{% set pre = report.held|selectattr('prefilled')|list %}<section class="card check-these" id="check">
   <h2>Check these: consents and self-ID {% if pre %}<span class="pill waiting" style="text-transform:none">{{ pre|length }} pre-filled</span>{% endif %}</h2>
@@ -48,35 +68,52 @@
   .tag{display:inline-block;margin-left:6px;font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;background:var(--warn-dot);color:#1a1200}
   .tag.none{background:var(--bad-soft);color:var(--bad)}</style>{% endif %}
 
- {% if report.unanswered %}<section class="card" style="margin-top:16px"><h2>Still unanswered</h2>
+ {% if report.unanswered %}<section class="card mt" id="unanswered"><h2>Still unanswered <span class="count">{{ report.unanswered|length }}</span></h2>
   <p class="ink2" style="margin-top:0">Questions on the form that neither the agent nor your profile answered. Optional ones can stay blank;
    fill any you want and press <b>Save and refill</b>.</p><table>{% for u in report.unanswered %}<tr><td>{{ u.label }}{% if u.required %} <b>*</b>{% else %} <span class="muted">optional</span>{% endif %}</td><td style="width:45%">
   {% if u.options %}<select name="ans::{{ u.label }}"><option value=""></option>{% for o in u.options %}<option>{{ o }}</option>{% endfor %}</select>
   {% else %}<input type="text" name="ans::{{ u.label }}">{% endif %}</td></tr>{% endfor %}</table></section>{% endif %}
- {% if report.errors %}<section class="card" style="margin-top:16px"><h2>Problems</h2><ul>{% for e in report.errors %}<li>{{ e.label }}: {{ e.error }}</li>{% endfor %}</ul></section>{% endif %}
+ {% if report.errors %}<section class="card mt" id="problems"><h2>Problems</h2><ul style="margin:0;padding-left:18px">{% for e in report.errors %}<li>{{ e.label }}: {{ e.error }}</li>{% endfor %}</ul></section>{% endif %}
 
- <section class="card" style="margin-top:16px"><h2>Filled ({{ report.filled|length }})</h2>
-  <table>{% for f in report.filled %}<tr><td class="ink2" style="width:45%">{{ f.label }}</td><td>{{ f.value }}</td><td><span class="pill">{{ f.source }}</span></td></tr>{% endfor %}</table>
+ <section class="card mt" id="answers"><details><summary><b>Filled answers ({{ report.filled|length }})</b> · what the form has now</summary>
+  <table style="margin-top:8px">{% for f in report.filled %}<tr><td class="ink2" style="width:40%">{{ f.label }}</td><td>{{ f.value }}</td><td><span class="pill">{{ f.source }}</span></td></tr>{% endfor %}</table>
   <details style="margin-top:12px"><summary>Edit all answers (JSON)</summary><textarea name="plan" rows="14" style="margin-top:8px">{{ plan_text }}</textarea></details>
- </section>
-
- {% if job.status != 'submitted' %}<section class="card" style="margin-top:16px"><h2>Decide</h2>
-  <p><label><input type="checkbox" name="approve" value="yes"> I reviewed this application, the files and the consent and self-ID answers above, and want it submitted.</label></p>
-  {% if report.submit_clicked and not report.submitted %}<p class="notice">Submit was already pressed once and no confirmation came back. Check your email for a confirmation first.<br>
-   <label><input type="checkbox" name="resubmit" value="yes"> I checked, it didn't go through: submit again</label></p>{% endif %}
-  <p style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn go" name="action" value="submit">Submit application</button>
-   <button class="btn" name="action" value="refill">Save and refill</button>
-   <button class="btn" name="action" value="manual">I applied by hand</button>
-   <button class="btn" name="action" value="skip">Not applying</button></p></section>{% endif %}
+ </details></section>
 </div>
 <div>
- {% if files %}<section class="card"><h2>Documents</h2>
-  {% for slot, name in files %}<p style="margin:0 0 6px"><a href="/file/{{ slot }}/{{ job.id|urlencode }}" target="_blank">{{ name }}</a></p>
-  {% if name.lower().endswith('.pdf') %}<iframe class="doc" src="/file/{{ slot }}/{{ job.id|urlencode }}" title="{{ name }}" loading="lazy" style="margin-bottom:12px"></iframe>{% endif %}{% endfor %}
- </section>{% endif %}
- {% if notes %}<section class="card" style="margin-top:16px"><h2>Notes</h2><details open><summary>Fit, gaps and screen prep</summary><pre style="white-space:pre-wrap;font:13px/1.5 ui-monospace,monospace">{{ notes }}</pre></details></section>{% endif %}
- {% if job.screenshot %}<section class="card" style="margin-top:16px"><h2>The form right now</h2><a href="/shot/{{ job.id|urlencode }}" target="_blank"><img class="shot" src="/shot/{{ job.id|urlencode }}" alt="Screenshot of the filled form"></a></section>{% endif %}
+ <section class="card side-tabs">
+  <div class="ptabs" role="tablist">
+   {% for slot, name in files %}<button type="button" role="tab" data-p="doc-{{ loop.index }}" {% if loop.first %}aria-selected="true"{% endif %}>{{ 'Cover letter' if 'cover' in slot else ('Resume' if slot == 'resume' else slot|replace('_', ' ')|capitalize) }}</button>{% endfor %}
+   {% if notes %}<button type="button" role="tab" data-p="notes" {% if not files %}aria-selected="true"{% endif %}>Notes</button>{% endif %}
+   {% if job.screenshot %}<button type="button" role="tab" data-p="shot" {% if not files and not notes %}aria-selected="true"{% endif %}>Form now</button>{% endif %}
+  </div>
+  {% for slot, name in files %}<div class="pane" id="doc-{{ loop.index }}" {% if not loop.first %}hidden{% endif %}>
+   <p style="margin:0 0 8px"><a href="/file/{{ slot }}/{{ job.id|urlencode }}" target="_blank">{{ name }}</a></p>
+   {% if name.lower().endswith('.pdf') %}<iframe class="doc" src="/file/{{ slot }}/{{ job.id|urlencode }}" title="{{ name }}" loading="lazy"></iframe>{% endif %}</div>{% endfor %}
+  {% if notes %}<div class="pane" id="notes" {% if files %}hidden{% endif %}><pre style="white-space:pre-wrap;font:13px/1.5 ui-monospace,monospace;margin:0">{{ notes }}</pre></div>{% endif %}
+  {% if job.screenshot %}<div class="pane" id="shot" {% if files or notes %}hidden{% endif %}><a href="/shot/{{ job.id|urlencode }}" target="_blank"><img class="shot" src="/shot/{{ job.id|urlencode }}" alt="Screenshot of the filled form"></a></div>{% endif %}
+ </section>
 </div>
 </div>
 </form>
+<style>
+.bar{position:sticky;top:0;z-index:4;display:flex;gap:10px 18px;align-items:center;justify-content:space-between;flex-wrap:wrap;
+ background:var(--surface);border:1px solid var(--line-2);border-radius:14px;padding:10px 14px;margin:6px 0 14px;box-shadow:var(--shadow)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font-size:12.5px;font-weight:600;padding:4px 10px;border-radius:999px;background:var(--surface-2);color:var(--ink-2)}
+.chip:hover{text-decoration:none;filter:brightness(.97)} .chip.warn{background:var(--warn-soft);color:var(--warn)} .chip.bad{background:var(--bad-soft);color:var(--bad)} .chip.ok{background:var(--good-soft);color:var(--good)}
+.act{display:flex;gap:8px 12px;align-items:center;flex-wrap:wrap} .act .btns{display:flex;gap:6px;flex-wrap:wrap}
+.tick{font-size:13px;display:inline-flex;gap:6px;align-items:center} .tick.warn{color:var(--warn)}
+.ptabs{display:flex;gap:4px;border-bottom:1px solid var(--line-2);margin:-6px 0 12px}
+.ptabs button{font:inherit;font-size:13px;font-weight:600;border:0;background:none;color:var(--ink-2);padding:8px 10px;border-bottom:2px solid transparent;cursor:pointer}
+.ptabs button[aria-selected="true"]{color:var(--accent-ink);border-bottom-color:var(--accent)}
+.side-tabs{position:sticky;top:76px} .side-tabs .doc{height:70vh}
+#check,#unanswered,#problems,#answers{scroll-margin-top:90px}
+@media (max-width:860px){.side-tabs{position:static}.bar{position:static}}
+</style>
+<script>
+document.querySelectorAll(".ptabs button").forEach(b=>b.onclick=()=>{const box=b.closest(".card");
+ box.querySelectorAll(".ptabs button").forEach(x=>x.setAttribute("aria-selected",x===b));
+ box.querySelectorAll(".pane").forEach(p=>p.hidden=p.id!==b.dataset.p)});
+</script>
 {% endblock %}
