@@ -22,6 +22,9 @@ DEFAULT_SENDERS = [
     "alert@indeed.com",
     "glassdoor.com",
     "wellfound.com",
+    "higheredjobs.com",
+    "ziprecruiter.com",
+    "dice.com",
 ]
 
 

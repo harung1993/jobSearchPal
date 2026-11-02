@@ -33,6 +33,7 @@ import hashlib
 import json
 import os
 import sys
+from datetime import datetime
 from pathlib import Path
 
 from . import config, finder
@@ -123,8 +124,11 @@ def main(argv=None):
     headless = s.raw.get("browser", {}).get("headless", True)
 
     if args.cmd == "find":
-        new = finder.run(s, db)
-        db.log_run("find", True, f"{len(new)} new roles")
+        stats: dict = {}
+        new = finder.run(s, db, stats)
+        (s.data_dir / "sources.json").write_text(json.dumps({"at": datetime.now().strftime("%Y-%m-%d %H:%M"), "sources": stats}))
+        failed = [k for k, v in stats.items() if v["error"]]
+        db.log_run("find", True, f"{len(new)} new roles from {len(stats)} sources" + (f"; {len(failed)} failed" if failed else ""))
         _out([{k: j[k] for k in ("id", "company", "title", "location", "url")} for j in new])
     elif args.cmd == "log-run":
         db.log_run(args.kind, args.result == "ok", args.msg)

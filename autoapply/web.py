@@ -344,11 +344,19 @@ def make_app(settings, db: DB) -> FastAPI:
         cfg = setup.load_config(settings.root) if not st["fresh"] else {}
         search = cfg.get("search") or {}
         boards = "\n".join(f"{b['ats']} {b['slug']}" for b in cfg.get("boards") or [])
+        rss = "\n".join((f"{f['name']} | {f['url']}" if f.get("name") else f["url"]) if isinstance(f, dict) else f
+                         for f in cfg.get("rss_feeds") or [])
+        from .sources import RSS_PRESETS
+        try:
+            src_stats = json.loads((settings.data_dir / "sources.json").read_text())
+        except (OSError, ValueError):
+            src_stats = {}
         pr = Prefs(settings.data_dir, settings.raw)
         return page("setup.html", nav="setup", st=st, prof=prof, fields=setup.PROFILE_FIELDS, yes_no=setup.YES_NO,
                     titles=", ".join(search.get("title_keywords") or []), exclude=", ".join(search.get("exclude_keywords") or []),
-                    us_only=search.get("us_only", True), boards=boards, feeds=setup.FEED_LABELS,
-                    feeds_on=cfg.get("feeds", list(FEEDS)) if cfg else list(FEEDS), ws=cfg.get("work_search") or {},
+                    us_only=search.get("us_only", True), boards=boards, rss=rss, rss_presets=RSS_PRESETS, src_stats=src_stats,
+                    keys={k: pr.key_hint(k) for k in ("ADZUNA_APP_ID", "ADZUNA_APP_KEY", "USAJOBS_API_KEY", "USAJOBS_EMAIL")}, feeds=setup.FEED_LABELS,
+                    feeds_on=cfg.get("feeds", list(FEEDS)) if cfg else [*FEEDS, "themuse", "himalayas", "jobicy"], ws=cfg.get("work_search") or {},
                     about=setup.load_about(settings.data_dir), about_fields=setup.ABOUT_FIELDS,
                     resume=setup.base_resume(settings.root), gmail_user=os.environ.get("GMAIL_USER", ""),
                     gmail_env=pr.from_env("GMAIL_APP_PASSWORD"), token_env=pr.from_env("AUTOAPPLY_TOKEN"),
@@ -372,11 +380,19 @@ def make_app(settings, db: DB) -> FastAPI:
         f = dict(await request.form())
         if not setup._lines(str(f.get("titles") or "")):
             return _back("Add at least one job title to look for.", "interests")
+        from .prefs import Prefs
+        pr = Prefs(settings.data_dir, settings.raw)
+        for k in ("ADZUNA_APP_ID", "ADZUNA_APP_KEY", "USAJOBS_API_KEY", "USAJOBS_EMAIL"):
+            v = str(f.get(k) or "").strip()
+            if v and not pr.from_env(k):
+                pr.set_key(k, v[:200])
         r = setup.save_interests(settings, f)
         env.globals["ws_label"] = (settings.raw.get("work_search") or {}).get("label", "Work search")
         msg = "Saved your job interests to config.yaml."
         if r["bad"]:
-            msg += " Couldn't read: " + "; ".join(r["bad"][:5]) + ". Use a careers-page URL or 'greenhouse slug'."
+            msg += " Couldn't read: " + "; ".join(r["bad"][:5]) + ". Use a careers-page URL, 'greenhouse slug', or a feed URL."
+        if r["missing_keys"]:
+            msg += " Turned on without a key, so skipped until you add one: " + ", ".join(r["missing_keys"]) + "."
         return _back(msg, "about")
 
     @app.post("/setup/resume")

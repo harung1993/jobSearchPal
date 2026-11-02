@@ -38,7 +38,9 @@ ABOUT_FIELDS = [
     ("avoid", "What to avoid", "Companies or industries to skip, claims never to make, titles to never use"),
     ("other", "Anything else the agent should know", "Notice period, start date, preferred file naming, tone"),
 ]
-FEED_LABELS = {"remoteok": "Remote OK", "remotive": "Remotive", "hn_whos_hiring": "Hacker News: Who's hiring"}
+FEED_LABELS = {"remoteok": "Remote OK", "remotive": "Remotive", "hn_whos_hiring": "Hacker News: Who's hiring",
+               "themuse": "The Muse", "himalayas": "Himalayas (remote)", "jobicy": "Jobicy (remote)",
+               "adzuna": "Adzuna (big US aggregator, free key)", "usajobs": "USAJOBS (federal, free key)"}
 ATS_HOSTS = [  # careers-page URL -> (ats, slug)
     (r"(?:job-)?boards(?:\.eu)?\.greenhouse\.io/(?:embed/job_board\?for=)?([\w-]+)", "greenhouse"),
     (r"jobs(?:\.eu)?\.lever\.co/([\w.-]+)", "lever"),
@@ -164,8 +166,8 @@ def load_config(root: Path) -> dict:
 
 
 def save_interests(settings, form: dict) -> dict:
-    """Returns {"bad": [lines it couldn't read]}."""
-    from .finder import FEEDS
+    """Returns {"bad": [lines it couldn't read], "missing_keys": [keyed sites turned on without a key]}."""
+    from .sources import EXTRA
     root = settings.root
     cfg = load_config(root)
     cfg.pop("_from_example", None)
@@ -183,7 +185,18 @@ def save_interests(settings, form: dict) -> dict:
         elif not b:
             bad.append(line.strip()[:120])
     cfg["boards"] = [{"ats": a, "slug": s} for a, s in boards[:300]]
-    cfg["feeds"] = [f for f in FEEDS if form.get(f"feed::{f}")]
+    cfg["feeds"] = [f for f in FEED_LABELS if form.get(f"feed::{f}")]
+    feeds = []
+    for line in str(form.get("rss") or "").splitlines():  # "Name | URL" or just the URL
+        name, _, url = line.rpartition("|") if "|" in line else ("", "", line)
+        url = url.strip()
+        if url.startswith(("http://", "https://")) and url not in [f["url"] for f in feeds]:
+            feeds.append({"name": name.strip()[:80], "url": url[:500]} if name.strip() else {"url": url[:500]})
+        elif line.strip():
+            bad.append(line.strip()[:120])
+    cfg["rss_feeds"] = feeds[:50]
+    missing = [EXTRA[f][1] for f in cfg["feeds"] if f in EXTRA and EXTRA[f][2]
+               and not all(form.get(k) or __import__("os").environ.get(k) for k in EXTRA[f][2])]
     ws = cfg.setdefault("work_search", {"label": "Work search", "weekly_minimum": 3})
     if form.get("ws_label"):
         ws["label"] = str(form["ws_label"]).strip()[:40]
@@ -196,7 +209,7 @@ def save_interests(settings, form: dict) -> dict:
     (root / "config.yaml").write_text(head + yaml.safe_dump(cfg, sort_keys=False, allow_unicode=True))
     settings.raw.clear()
     settings.raw.update(cfg)
-    return {"bad": bad}
+    return {"bad": bad, "missing_keys": missing}
 
 
 # ---- resume ---------------------------------------------------------------------------------------

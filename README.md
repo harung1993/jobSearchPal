@@ -62,10 +62,18 @@ you ─► dashboard ─► check answers, decide consents ─► Submit
 - **Company job boards you watch** (Greenhouse, Lever, Ashby, Workable, SmartRecruiters) through
   their public APIs: the freshest source, and apply-ready. The run adds good companies as it finds
   them (`autoapply board add`), and on Mondays it looks for about 10 new ones.
-- **Feeds:** RemoteOK, Remotive and Hacker News "Who is hiring?".
-- **Your job-alert emails** from LinkedIn, Built In, Indeed, Glassdoor and Wellfound. For each good
+- **Job sites with open APIs:** RemoteOK, Remotive, Hacker News "Who is hiring?", The Muse, Himalayas
+  and Jobicy. No key needed.
+- **Job sites with a free key:** Adzuna (a large US aggregator) and USAJOBS (federal jobs). Add the keys on
+  the Setup page or in `.env`.
+- **Any RSS or Atom job feed** (`rss_feeds` in `config.yaml`, or the Setup page): HigherEdJobs has one per
+  category (open a category and use its RSS link), and so do We Work Remotely, jobs.ac.uk and many others.
+- **Your job-alert emails** from LinkedIn, Built In, Indeed, Glassdoor, Wellfound, HigherEdJobs, ZipRecruiter and Dice. For each good
   role, the agent finds the same posting on the company's own careers page and applies there, since
   aggregator listings are often stale.
+
+Each run saves what every source returned to `data/sources.json`; the Setup page shows the counts, and a
+source that failed, next to its name.
 
 **LinkedIn** is covered only through its alert emails. LinkedIn has no public jobs API, and
 scraping it or signing in as you breaks its terms and risks your account. To widen what the run

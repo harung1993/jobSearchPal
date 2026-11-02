@@ -82,10 +82,33 @@
     (or <code>ats slug</code>). These are checked first, every day. Companies on Workday or other sites can't be watched here;
     their roles still come in through job-alert emails.</small></label>
 
+  {% set ss = src_stats.get('sources', {}) %}
   <fieldset class="fld mt"><span>Also search these job sites</span>
-   <div class="checks">{% for k, label in feeds.items() %}
-    <label class="check"><input type="checkbox" name="feed::{{ k }}" value="1" {% if k in feeds_on %}checked{% endif %}> {{ label }}</label>{% endfor %}</div>
-   <small class="muted">LinkedIn, Indeed and others come in through their job-alert emails once Gmail is connected (step 6).</small></fieldset>
+   <div class="checks">{% for k, label in feeds.items() %}{% set x = ss.get(k) %}
+    <label class="check"><input type="checkbox" name="feed::{{ k }}" value="1" {% if k in feeds_on %}checked{% endif %}> {{ label }}
+     {% if x %}<small class="{{ 'bad' if x.error else 'muted' }}" title="{{ x.error }}">{% if x.error %}failed last run{% else %}{{ x.matched }} matched last run{% endif %}</small>{% endif %}</label>{% endfor %}</div>
+   <small class="muted">LinkedIn, Indeed, HigherEdJobs, ZipRecruiter and others also come in through their job-alert emails once Gmail is connected (step 6).</small></fieldset>
+
+  <details class="mt" {% if keys.ADZUNA_APP_ID != 'not set' or keys.USAJOBS_API_KEY != 'not set' %}open{% endif %}><summary>Free API keys for Adzuna and USAJOBS</summary>
+   <p class="muted" style="font-size:12.5px">Adzuna indexes a large share of US postings; get an app id and key at
+    <a href="https://developer.adzuna.com/" target="_blank" rel="noopener noreferrer">developer.adzuna.com</a>. USAJOBS covers federal jobs; request a key at
+    <a href="https://developer.usajobs.gov/" target="_blank" rel="noopener noreferrer">developer.usajobs.gov</a>. Saved in <code>data/secrets.json</code>.</p>
+   <div class="grid g11">
+    <label class="fld"><span>Adzuna app id <small class="muted">{{ keys.ADZUNA_APP_ID }}</small></span><input type="text" name="ADZUNA_APP_ID" autocomplete="off"></label>
+    <label class="fld"><span>Adzuna app key <small class="muted">{{ keys.ADZUNA_APP_KEY }}</small></span><input type="password" name="ADZUNA_APP_KEY" autocomplete="new-password"></label>
+    <label class="fld"><span>USAJOBS key <small class="muted">{{ keys.USAJOBS_API_KEY }}</small></span><input type="password" name="USAJOBS_API_KEY" autocomplete="new-password"></label>
+    <label class="fld"><span>USAJOBS sign-up email <small class="muted">{{ keys.USAJOBS_EMAIL }}</small></span><input type="text" name="USAJOBS_EMAIL" inputmode="email"></label>
+   </div></details>
+
+  <label class="fld mt"><span>RSS job feeds</span>
+   <textarea name="rss" id="rss" rows="4" placeholder="HigherEdJobs: IT | https://www.higheredjobs.com/search/rss.cfm?JobCat=...">{{ rss }}</textarea>
+   <small class="muted">One per line, as <code>name | URL</code> or just the URL. Most job sites have them: on HigherEdJobs, open a
+    category and use its RSS link. Add a common one:
+    {% for name, url in rss_presets %}<button type="button" class="btn sm add-rss" data-line="{{ name }} | {{ url }}">+ {{ name }}</button>{% endfor %}</small>
+   {% for k, x in ss.items() if k.startswith('rss:') %}<small class="{{ 'bad' if x.error else 'muted' }}">{{ k[4:] }}: {% if x.error %}failed ({{ x.error|truncate(80) }}){% else %}{{ x.fetched }} roles, {{ x.matched }} matched{% endif %}</small>{% endfor %}
+  </label>
+  <script>document.querySelectorAll(".add-rss").forEach(b=>b.onclick=()=>{const t=document.getElementById("rss");
+   if(!t.value.includes(b.dataset.line.split(" | ")[1]))t.value=(t.value.trim()?t.value.trim()+"\n":"")+b.dataset.line;b.disabled=true})</script>
 
   <details class="mt"><summary>Work-search log (for unemployment benefits)</summary>
    <div class="grid g11 mt">
@@ -179,7 +202,8 @@
 textarea{resize:vertical}
 input[type=file]{font:inherit;font-size:13px;max-width:100%}
 .check{display:inline-flex;gap:8px;align-items:center;font-size:13.5px;cursor:pointer}.check input{width:16px;height:16px;accent-color:var(--accent)}
-.checks{display:flex;gap:6px 18px;flex-wrap:wrap}
+.checks{display:flex;gap:6px 18px;flex-wrap:wrap} .check small{font-size:11.5px} small.bad,.bad{color:var(--bad)}
+.add-rss{margin:4px 4px 0 0}
 .actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
 .opt{border:1px solid var(--line-2);border-radius:14px;padding:14px;display:grid;gap:8px;min-width:0}
 .opt pre{margin:0;font:12.5px ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--surface-2);padding:8px 10px;border-radius:8px;overflow-x:auto}

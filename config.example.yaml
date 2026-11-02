@@ -11,8 +11,13 @@ boards:
   - {ats: greenhouse, slug: airbnb}
   - {ats: ashby,      slug: ramp}
 
-# Aggregator feeds. Their hits aren't apply-ready: Claude follows each to the real posting.
-feeds: [remoteok, remotive, hn_whos_hiring]
+# Aggregator feeds. Their hits aren't apply-ready: the agent follows each to the real posting.
+# Also available: adzuna (set ADZUNA_APP_ID/ADZUNA_APP_KEY) and usajobs (USAJOBS_API_KEY/USAJOBS_EMAIL).
+feeds: [remoteok, remotive, hn_whos_hiring, themuse, himalayas, jobicy]
+
+# Any RSS or Atom job feed. On HigherEdJobs, open a category and copy its RSS link.
+rss_feeds:
+  - {name: "HigherEdJobs: Institutional Research", url: "https://www.higheredjobs.com/search/rss.cfm?JobCat=31"}
 
 search:
   title_keywords: [analytics engineer, data engineer, data platform, head of data, ai engineer, semantic]

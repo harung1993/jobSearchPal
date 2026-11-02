@@ -193,7 +193,9 @@ FEEDS = {"remoteok": remoteok, "remotive": remotive, "hn_whos_hiring": hn_whos_h
 
 US_MARKERS = re.compile(
     r"\b(united states|usa|u\.s\.|us|america|remote[- ]us|boston|massachusetts|ma|new england|new york|nyc"
-    r"|anywhere in the us|north america)\b", re.I)
+    r"|anywhere in the us|north america)\b"
+    r"|(?-i:,\s*(?:AL|AK|AZ|AR|CA|CO|CT|DE|DC|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NC|ND"
+    r"|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY)\b)", re.I)  # "Columbus, OH"; case-sensitive
 NON_US = re.compile(
     r"\b(emea|europe|eu|uk|united kingdom|england|london|ireland|dublin|poland|warsaw|spain|madrid|barcelona"
     r"|germany|berlin|munich|france|paris|netherlands|amsterdam|portugal|lisbon|italy|sweden|denmark|norway"
@@ -246,19 +248,37 @@ def add_board(settings: Settings, ats: str, slug: str) -> int:
     return len(jobs)
 
 
-def run(settings: Settings, db: DB) -> list[dict]:
+def run(settings: Settings, db: DB, stats: dict | None = None) -> list[dict]:
     """Fetch every board and feed; store new matching jobs. Returns the new ones."""
     sources = [(f"{b['ats']}:{b['slug']}", lambda b=b: FETCHERS[b["ats"]](b["slug"])) for b in boards(settings)]
-    sources += [(name, FEEDS[name]) for name in settings.raw.get("feeds", [])]
+    from . import sources as more
+    search = settings.raw.get("search") or {}
+    for name in settings.raw.get("feeds", []):
+        if name in FEEDS:
+            sources.append((name, FEEDS[name]))
+        elif name in more.EXTRA:
+            sources.append((name, lambda f=more.EXTRA[name][0]: f(search)))
+        else:
+            print(f"[finder] unknown feed {name!r} in config.yaml", file=sys.stderr)
+    for f in settings.raw.get("rss_feeds") or []:  # any RSS/Atom job feed: {name, url} or a bare URL
+        url, label = (f, "") if isinstance(f, str) else (f.get("url", ""), f.get("name", ""))
+        if url.startswith(("http://", "https://")):
+            sources.append((f"rss:{label or url}", lambda u=url: more.rss(u)))
     new = []
     for name, fetch in sources:
+        st = (stats if stats is not None else {}).setdefault(name, {"fetched": 0, "matched": 0, "new": 0, "error": ""})
         try:
             jobs = fetch()
         except Exception as e:  # one dead source shouldn't stop the run
             print(f"[finder] {name} failed: {e}", file=sys.stderr)
+            st["error"] = str(e)[:200]
             continue
+        st["fetched"] = len(jobs)
         for job in jobs:
             job = {k: ("" if v is None else v) for k, v in job.items()}  # boards often send null locations
-            if matches(job, settings.raw.get("search", {})) and db.upsert_job(job):
-                new.append(job)
+            if matches(job, settings.raw.get("search", {})):
+                st["matched"] += 1
+                if db.upsert_job(job):
+                    st["new"] += 1
+                    new.append(job)
     return new

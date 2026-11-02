@@ -125,3 +125,21 @@ def test_board_urls():
     assert setup.parse_board("https://jobs.ashbyhq.com/ramp?x=1") == ("ashby", "ramp")
     assert setup.parse_board("smartrecruiters:Visa") == ("smartrecruiters", "Visa")
     assert setup.parse_board("acme careers") is None
+
+
+def test_job_sites_feeds_and_keys(fresh, tmp_path, monkeypatch):
+    s, c = fresh
+    for k in ("ADZUNA_APP_ID", "ADZUNA_APP_KEY", "USAJOBS_API_KEY", "USAJOBS_EMAIL"):
+        monkeypatch.delenv(k, raising=False)
+    r = c.post("/setup/interests", data={
+        "titles": "data engineer", "feed::himalayas": "1", "feed::usajobs": "1", "feed::adzuna": "1",
+        "ADZUNA_APP_ID": "abc", "ADZUNA_APP_KEY": "secretkey123",
+        "rss": "HigherEdJobs: IR | https://www.higheredjobs.com/search/rss.cfm?JobCat=31\nhttps://weworkremotely.com/x.rss\nnot a url"})
+    cfg = yaml.safe_load((tmp_path / "config.yaml").read_text())
+    assert cfg["feeds"] == ["himalayas", "adzuna", "usajobs"]
+    assert cfg["rss_feeds"] == [{"name": "HigherEdJobs: IR", "url": "https://www.higheredjobs.com/search/rss.cfm?JobCat=31"},
+                                {"url": "https://weworkremotely.com/x.rss"}]
+    assert "not a url" in r.text and "USAJOBS" in r.text  # bad line and the keyless site are both reported
+    assert os.environ["ADZUNA_APP_KEY"] == "secretkey123"
+    page = c.get("/setup").text
+    assert "HigherEdJobs: IR | https://www.higheredjobs.com" in page and "secretkey123" not in page
