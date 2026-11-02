@@ -66,9 +66,10 @@ you ─► dashboard ─► check answers, decide consents ─► Submit
   and Jobicy. No key needed.
 - **Job sites with a free key:** Adzuna (a large US aggregator) and USAJOBS (federal jobs). Add the keys on
   the Setup page or in `.env`.
-- **Any RSS or Atom job feed** (`rss_feeds` in `config.yaml`, or the Setup page): HigherEdJobs has one per
-  category (open a category and use its RSS link), and so do We Work Remotely, jobs.ac.uk and many others.
-- **Your job-alert emails** from LinkedIn, Built In, Indeed, Glassdoor, Wellfound, HigherEdJobs, ZipRecruiter and Dice. For each good
+- **Any RSS or Atom job feed** (`rss_feeds` in `config.yaml`, or the Setup page): We Work Remotely, jobs.ac.uk and
+  many others have them. Sites that answer automated requests with a bot check (HigherEdJobs does) are
+  left to their job-alert emails; JobSearchPal doesn't try to get around those checks.
+- **Your job-alert emails** from LinkedIn, Built In, Indeed, Glassdoor, Wellfound, HigherEdJobs (Job Agent emails), ZipRecruiter and Dice. For each good
   role, the agent finds the same posting on the company's own careers page and applies there, since
   aggregator listings are often stale.
 

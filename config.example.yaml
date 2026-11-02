@@ -15,9 +15,10 @@ boards:
 # Also available: adzuna (set ADZUNA_APP_ID/ADZUNA_APP_KEY) and usajobs (USAJOBS_API_KEY/USAJOBS_EMAIL).
 feeds: [remoteok, remotive, hn_whos_hiring, themuse, himalayas, jobicy]
 
-# Any RSS or Atom job feed. On HigherEdJobs, open a category and copy its RSS link.
+# Any RSS or Atom job feed. Sites that answer automated requests with a bot check (HigherEdJobs does)
+# won't work here; use their job-alert emails.
 rss_feeds:
-  - {name: "HigherEdJobs: Institutional Research", url: "https://www.higheredjobs.com/search/rss.cfm?JobCat=31"}
+  - {name: "We Work Remotely: Programming", url: "https://weworkremotely.com/categories/remote-programming-jobs.rss"}
 
 search:
   title_keywords: [analytics engineer, data engineer, data platform, head of data, ai engineer, semantic]

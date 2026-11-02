@@ -73,6 +73,11 @@ def rss(url: str, name: str = "") -> list[dict]:
     r = httpx.get(url, headers={**UA, "accept": "application/rss+xml, application/atom+xml, application/xml, text/xml"},
                   timeout=30, follow_redirects=True)
     r.raise_for_status()
+    head = r.content[:600].lstrip().lower()
+    if head.startswith((b"<!doctype html", b"<html")) or b"<html" in head:
+        # Usually a bot check. We don't try to get around those; use the site's job-alert emails instead.
+        raise RuntimeError("the site sent a web page, not a feed (it likely blocks automated access); "
+                           "use its job-alert emails instead")
     return parse_feed(r.content, name or urlparse(url).netloc.removeprefix("www."))
 
 
@@ -181,8 +186,7 @@ EXTRA = {
 }
 
 # Feeds people often want, offered as one-click additions on the Setup page.
+# (HigherEdJobs answers automated requests with a bot check, so it comes in through its Job Agent emails.)
 RSS_PRESETS = [
-    ("HigherEdJobs: Institutional Research and Planning", "https://www.higheredjobs.com/search/rss.cfm?JobCat=31"),
-    ("HigherEdJobs: Software Engineer/Programmer", "https://www.higheredjobs.com/search/rss.cfm?JobCat=159"),
     ("We Work Remotely: Programming", "https://weworkremotely.com/categories/remote-programming-jobs.rss"),
 ]

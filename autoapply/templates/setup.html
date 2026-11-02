@@ -101,9 +101,9 @@
    </div></details>
 
   <label class="fld mt"><span>RSS job feeds</span>
-   <textarea name="rss" id="rss" rows="4" placeholder="HigherEdJobs: IT | https://www.higheredjobs.com/search/rss.cfm?JobCat=...">{{ rss }}</textarea>
-   <small class="muted">One per line, as <code>name | URL</code> or just the URL. Most job sites have them: on HigherEdJobs, open a
-    category and use its RSS link. Add a common one:
+   <textarea name="rss" id="rss" rows="4" placeholder="We Work Remotely: Programming | https://weworkremotely.com/categories/remote-programming-jobs.rss">{{ rss }}</textarea>
+   <small class="muted">One per line, as <code>name | URL</code> or just the URL. Many job sites have them (look for an RSS icon). Sites
+    that block automated requests, like HigherEdJobs, won't work here; use their job-alert emails instead. Add a common one:
     {% for name, url in rss_presets %}<button type="button" class="btn sm add-rss" data-line="{{ name }} | {{ url }}">+ {{ name }}</button>{% endfor %}</small>
    {% for k, x in ss.items() if k.startswith('rss:') %}<small class="{{ 'bad' if x.error else 'muted' }}">{{ k[4:] }}: {% if x.error %}failed ({{ x.error|truncate(80) }}){% else %}{{ x.fetched }} roles, {{ x.matched }} matched{% endif %}</small>{% endfor %}
   </label>

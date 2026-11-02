@@ -125,3 +125,15 @@ def test_api_sources_and_missing_keys(monkeypatch, tmp_path):
 def test_state_codes_count_as_us():
     assert finder.location_ok("Columbus, OH", {"us_only": True})
     assert not finder.location_ok("Remote, Berlin, Germany", {"us_only": True})
+
+
+def test_rss_bot_check_page_is_a_clear_error(monkeypatch):
+    import pytest
+    from autoapply import sources
+
+    class R(Resp):
+        content = b"<html><head><meta name='ROBOTS' content='NOINDEX, NOFOLLOW'></head><body><script></script></body></html>"
+
+    monkeypatch.setattr(sources.httpx, "get", lambda url, **k: R(None))
+    with pytest.raises(RuntimeError, match="job-alert emails"):
+        sources.rss("https://example.org/feed")
