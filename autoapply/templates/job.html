@@ -1,6 +1,11 @@
 {% extends "base.html" %}
 {% block title %}{{ job.company }}{% endblock %}
 {% block body %}
+<style>.finish{background:var(--accent-soft);border:2px solid var(--accent)} .finish h2{font-size:17px;color:var(--accent-ink)}
+.finish .why{margin:-4px 0 10px;font-weight:600} .finish .steps{margin:0 0 12px;padding-left:20px;display:grid;gap:10px}
+.finish .cmd{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:8px 0 4px;padding:10px 12px;background:var(--surface);border-radius:12px;border:1px solid var(--line-2)}
+.finish .cmd code{font-size:14px;background:none;padding:0;user-select:all;word-break:break-all;flex:1;min-width:0}
+.finish small{color:var(--ink-2)}</style>
 <p style="margin:0 0 10px"><a href="/">← Dashboard</a></p>
 <header class="top"><div><h1>{{ job.company|title if job.company.islower() else job.company }} · {{ job.title }}</h1>
  <div class="ink2">{{ job.location or "" }}{% if job.pay %} · {{ job.pay }}{% endif %} · <a href="{{ job.url }}" target="_blank">posting</a></div></div>
@@ -8,23 +13,44 @@
 {% if job.error %}<p class="notice">{{ job.error }}</p>{% endif %}
 {% if report.submitted %}<p class="notice" style="background:var(--good-soft)">Submitted {{ job.submitted_at }}. Confirmation: “{{ report.confirmation }}”</p>{% endif %}
 
-{% if handoff %}<section class="card" style="margin-bottom:16px;border-color:var(--accent)"><h2>Finish this one yourself</h2>
- <p class="ink2" style="margin-top:0">{{ handoff }} Open the <a href="{{ job.apply_url or job.url }}" target="_blank">application form</a>, attach the files below, paste the answers, and press Submit there. Then press <b>I applied by hand</b>. Quicker: on your Mac run <code>autoapply-finish {{ job.id }}</code> and Chrome opens with all of this filled in.</p>
+{% if handoff %}<section class="card finish" style="margin-bottom:16px" id="finish"><h2>Finish this one yourself</h2>
+ <p class="why">{{ handoff }}</p>
+ <ol class="steps">
+  <li>On your Mac, open Terminal and run:
+   <div class="cmd"><code>autoapply-finish {{ job.id }}</code>
+    <button type="button" class="btn primary" onclick="navigator.clipboard.writeText(this.dataset.v);this.textContent='Copied'" data-v="autoapply-finish {{ job.id }}">Copy command</button></div>
+   <small>Chrome opens on the form with everything filled in and the files attached. Safari can't be filled this way.</small></li>
+  <li>Answer the captcha or code there and press <b>Submit</b>.</li>
+  <li>Come back and press <b>I applied by hand</b> below.</li>
+ </ol>
+ <details><summary>No Mac handy? Fill it in by hand</summary>
+ <p class="ink2">Open the <a href="{{ job.apply_url or job.url }}" target="_blank">application form</a>, attach the files, and copy each answer.</p>
  {% if files %}<p>{% for slot, name in files %}<a class="btn" href="/file/{{ slot }}/{{ job.id|urlencode }}" download="{{ name }}">{{ name }}</a> {% endfor %}</p>{% endif %}
  <table>{% for f in report.filled if f.source != 'file' %}<tr><td class="ink2" style="width:40%">{{ f.label }}</td><td>{{ f.value }}</td><td><button type="button" class="btn" onclick="navigator.clipboard.writeText(this.dataset.v);this.textContent='Copied'" data-v="{{ f.value }}">Copy</button></td></tr>{% endfor %}</table>
+</details>
 </section>{% endif %}
 
 <form method="post" action="/job/{{ job.id|urlencode }}">
 <div class="grid g2">
 <div>
- {% if report.held %}<section class="card"><h2>Your call: consents and self-ID</h2>
-  <p class="ink2" style="margin-top:0">The bot never answers these. Pick an answer for each, or leave optional ones blank.</p>
-  <table>{% for h in report.held %}<tr><td>{{ h.label }}{% if h.required %} <b>*</b>{% endif %}</td><td style="width:45%">
-  {% if h.kind == 'checkbox_single' %}<label><input type="checkbox" name="held::{{ h.label }}" value="yes" {% if approved.get(h.label) %}checked{% endif %}> I agree</label>
-  {% elif h.options %}<select name="held::{{ h.label }}"><option value=""></option>{% for o in h.options %}<option {% if approved.get(h.label)==o %}selected{% endif %}>{{ o }}</option>{% endfor %}</select>
-  {% else %}<input type="text" name="held::{{ h.label }}" value="{{ approved.get(h.label,'') }}">{% endif %}</td></tr>{% endfor %}</table></section>{% endif %}
+ {% if report.held %}{% set pre = report.held|selectattr('prefilled')|list %}<section class="card check-these" id="check">
+  <h2>Check these: consents and self-ID {% if pre %}<span class="pill waiting" style="text-transform:none">{{ pre|length }} pre-filled</span>{% endif %}</h2>
+  <p style="margin-top:0">{% if pre %}Pre-filled from your standing answers (Settings &gt; Setup). The agent never answers these.
+   Read each one, change anything you don't want, then submit. Blank means it's left blank.{% else %}The agent never answers these.
+   Pick an answer for each, or leave optional ones blank. Save standing answers on Settings &gt; Setup to have them pre-filled.{% endif %}</p>
+  <table>{% for h in report.held %}{% set cur = approved.get(h.label, h.value or '') %}<tr class="{{ 'pre' if h.prefilled }}"><td>{{ h.label }}{% if h.required %} <b>*</b>{% endif %}
+   {% if h.prefilled %}<span class="tag">pre-filled</span>{% elif not cur %}<span class="tag none">needs you</span>{% endif %}</td><td style="width:45%">
+  {% if h.kind == 'checkbox_single' %}<label><input type="checkbox" name="held::{{ h.label }}" value="yes" {% if cur %}checked{% endif %}> I agree</label>
+  {% elif h.options %}<select name="held::{{ h.label }}"><option value=""></option>{% for o in h.options %}<option {% if cur == o %}selected{% endif %}>{{ o }}</option>{% endfor %}</select>
+  {% else %}<input type="text" name="held::{{ h.label }}" value="{{ cur }}">{% endif %}</td></tr>{% endfor %}</table></section>
+ <style>.check-these{background:var(--warn-soft);border:2px solid var(--warn-dot)} .check-these h2{color:var(--warn)}
+  .check-these td{border-bottom-color:color-mix(in srgb,var(--warn-dot) 35%,transparent)} .check-these tbody tr:hover td,.check-these tr:hover td{background:transparent}
+  .tag{display:inline-block;margin-left:6px;font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;background:var(--warn-dot);color:#1a1200}
+  .tag.none{background:var(--bad-soft);color:var(--bad)}</style>{% endif %}
 
- {% if report.unanswered %}<section class="card" style="margin-top:16px"><h2>Still unanswered</h2><table>{% for u in report.unanswered %}<tr><td>{{ u.label }}{% if u.required %} <b>*</b>{% endif %}</td><td style="width:45%">
+ {% if report.unanswered %}<section class="card" style="margin-top:16px"><h2>Still unanswered</h2>
+  <p class="ink2" style="margin-top:0">Questions on the form that neither the agent nor your profile answered. Optional ones can stay blank;
+   fill any you want and press <b>Save and refill</b>.</p><table>{% for u in report.unanswered %}<tr><td>{{ u.label }}{% if u.required %} <b>*</b>{% else %} <span class="muted">optional</span>{% endif %}</td><td style="width:45%">
   {% if u.options %}<select name="ans::{{ u.label }}"><option value=""></option>{% for o in u.options %}<option>{{ o }}</option>{% endfor %}</select>
   {% else %}<input type="text" name="ans::{{ u.label }}">{% endif %}</td></tr>{% endfor %}</table></section>{% endif %}
  {% if report.errors %}<section class="card" style="margin-top:16px"><h2>Problems</h2><ul>{% for e in report.errors %}<li>{{ e.label }}: {{ e.error }}</li>{% endfor %}</ul></section>{% endif %}
@@ -35,7 +61,7 @@
  </section>
 
  {% if job.status != 'submitted' %}<section class="card" style="margin-top:16px"><h2>Decide</h2>
-  <p><label><input type="checkbox" name="approve" value="yes"> I reviewed this application, the files and my consent answers, and want it submitted.</label></p>
+  <p><label><input type="checkbox" name="approve" value="yes"> I reviewed this application, the files and the consent and self-ID answers above, and want it submitted.</label></p>
   {% if report.submit_clicked and not report.submitted %}<p class="notice">Submit was already pressed once and no confirmation came back. Check your email for a confirmation first.<br>
    <label><input type="checkbox" name="resubmit" value="yes"> I checked, it didn't go through: submit again</label></p>{% endif %}
   <p style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn go" name="action" value="submit">Submit application</button>

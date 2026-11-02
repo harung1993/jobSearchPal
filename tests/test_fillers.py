@@ -122,3 +122,39 @@ def test_submit_reports_validation_errors(base_url, pdfs, tmp_path):
 def test_submit_confirmed_by_redirect(base_url, pdfs, tmp_path):
     r = submit({"url": f"{base_url}/gh-redirect/", "ats": "greenhouse", "approved_by_user": True}, PROFILE, tmp_path)
     assert r.submitted, r.errors
+
+
+def test_standing_answers_prefill_held_questions_until_reviewed(base_url, pdfs, tmp_path):
+    profile = {**PROFILE, "standing_answers": [
+        {"match": "consent|privacy|acknowledge", "value": "yes"},
+        {"match": "gender", "value": "Decline to self-identify"}]}
+    plan = {"url": f"{base_url}/gh/", "ats": "greenhouse", "files": pdfs}
+    r = fill(plan, profile, tmp_path)
+    held = {h["label"]: h for h in r.held}
+    assert held["Gender"]["value"] == "Decline to self-identify" and held["Gender"]["prefilled"]
+    consent = next(h for k, h in held.items() if "Privacy Notice" in k)
+    assert consent["value"] == "yes" and consent["prefilled"]
+    assert not any("Privacy" in b["label"] for b in r.blocking)  # pre-filled, so not blocking
+    assert not any(f["label"] == "Gender" for f in r.filled)  # shown in the check box, not as a normal answer
+    # Once you've reviewed and cleared it, a blank stays blank.
+    r2 = fill({**plan, "held_reviewed": True, "approved": {"Gender": "Female"}}, profile, tmp_path)
+    held2 = {h["label"]: h for h in r2.held}
+    assert held2["Gender"]["value"] == "Female" and not held2["Gender"].get("prefilled")
+    assert not next(h for k, h in held2.items() if "Privacy Notice" in k).get("value")
+
+
+def test_setup_saves_standing_answers_and_pronunciation(tmp_path):
+    import shutil
+    from autoapply import setup
+    from autoapply.config import Settings
+    for f in ("profile.example.yaml",):
+        shutil.copy(HERE.parent / f, tmp_path / f)
+    s = Settings(root=tmp_path, raw={"data_dir": str(tmp_path / "data")}, profile={})
+    setup.save_profile(s, {"first_name": "Ada", "last_name": "L", "email": "a@x.org", "name_pronunciation": "AY-duh",
+                           "standing_form": "1", "stand::consent": "1", "stand::veteran": "I am not a protected veteran",
+                           "stand::gender": ""})
+    prof = yaml.safe_load((tmp_path / "profile.yaml").read_text())
+    assert {r["value"] for r in prof["standing_answers"]} == {"yes", "I am not a protected veteran"}
+    assert setup.standing_values(prof) == {"consent": "yes", "veteran": "I am not a protected veteran"}
+    from autoapply.fillers.base import resolve
+    assert resolve({"label": "Name Pronunciation", "kind": "text"}, {}, prof) == ("AY-duh", "profile")

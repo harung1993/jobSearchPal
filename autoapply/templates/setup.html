@@ -59,6 +59,20 @@
     {% for v in ('Yes', 'No') %}<option {% if prof.get(k) == v %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></label>
   {% endfor %}
   </div>
+
+  <input type="hidden" name="standing_form" value="1">
+  <h3 class="sub3" id="standing">Consents and self-ID: your standing answers</h3>
+  <p class="muted" style="font-size:12.5px;margin:0 0 10px">The agent never answers these. Whatever you save here is pre-filled on
+   each form and shown in a highlighted <b>Check these</b> box on the review page, so you confirm it every time before Submit.
+   Leave a line blank to answer it yourself on each application.</p>
+  <div class="grid g3">
+  {% for k, label, match in standing %}
+   {% if k == 'consent' %}<label class="check fld wide"><input type="checkbox" name="stand::consent" value="1" {% if stand.get('consent') %}checked{% endif %}>
+    <span>Agree to privacy notices, data-processing consent, AI-policy and accuracy acknowledgements</span></label>
+   {% else %}<label class="fld"><span>{{ label }}</span><input type="text" name="stand::{{ k }}" value="{{ stand.get(k, '') }}" list="decline" placeholder="blank = ask me each time"></label>{% endif %}
+  {% endfor %}
+  </div>
+  <datalist id="decline">{% for d in decline %}<option value="{{ d }}">{% endfor %}</datalist>
   <div class="actions"><button class="btn primary">Save</button></div>
  </form>
 </section>
@@ -212,6 +226,6 @@ input[type=file]{font:inherit;font-size:13px;max-width:100%}
 .opt pre{margin:0;font:12.5px ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--surface-2);padding:8px 10px;border-radius:8px;overflow-x:auto}
 .card.good{border-color:color-mix(in srgb,var(--good-dot) 40%,var(--line-2))} .card.good p{margin:0 0 8px}
 .notice{margin:12px 0 0}
-.step{scroll-margin-top:16px} code.sel{user-select:all;word-break:break-all}
+.step{scroll-margin-top:16px} .sub3{font-size:13px;font-weight:650;margin:20px 0 6px} code.sel{user-select:all;word-break:break-all}
 </style>
 {% endblock %}

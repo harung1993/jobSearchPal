@@ -9,7 +9,12 @@ Plan shape:
    "files": {"resume": "/path/resume.pdf", "cover_letter": "/path/cover.pdf"},
    "answers": {"<question label>": "<value>" | ["<checkbox option>", ...]},
    "approved": {"<held question label>": "<value>"},   # consents/demographics you decided
+   "held_reviewed": false,     # true once you've saved the review page: then only "approved" counts
    "approved_by_user": false}
+
+Held questions (consents, self-ID) are never answered by the agent. Before you've reviewed them, the
+filler pre-fills them from your own standing answers (profile.yaml `standing_answers`, set on the Setup
+page) and lists them on the review page for you to check.
 """
 from __future__ import annotations
 
@@ -75,7 +80,7 @@ class Report:
 
     @property
     def blocking(self) -> list:
-        return [u for u in self.unanswered if u["required"]] + [h for h in self.held if h["required"]]
+        return [u for u in self.unanswered if u["required"]] + [h for h in self.held if h["required"] and not h.get("value")]
 
     def as_dict(self) -> dict:
         return {k: getattr(self, k) for k in self.__dataclass_fields__} | {"blocking": self.blocking}
@@ -117,7 +122,15 @@ def resolve(f: dict, plan: dict, profile: dict) -> tuple[object, str]:
     held = any(re.search(p, label, re.I) for p in profile.get("hold_for_review", []))
     if held:
         v = _lookup(plan.get("approved", {}), label)
-        return (v, "approved") if v is not None else (None, "held")
+        if v is not None:
+            return v, "approved"
+        if not plan.get("held_reviewed"):  # once you've reviewed, a blank stays blank
+            for rule in profile.get("standing_answers") or []:
+                if re.search(rule.get("match", "$^"), label, re.I) and rule.get("value") not in (None, ""):
+                    if f["kind"] == "checkbox_single" and str(rule["value"]).lower() not in ("yes", "true", "1"):
+                        continue
+                    return rule["value"], "standing"
+        return None, "held"
     v = _lookup(plan.get("answers", {}), label)
     if v is not None:
         return v, "plan"
@@ -254,7 +267,20 @@ def _fill_page(page: Page, plan: dict, profile: dict, report: Report):
         if source == "held":
             report.held.append(info)
             continue
+        if source in ("standing", "approved"):
+            # Consents and self-ID: filled from your own answers, and always listed for you to check.
+            err = None
+            try:
+                err = _set_one(page, f, value)
+            except Exception as e:
+                err = str(e).splitlines()[0]
+            report.held.append({**info, "value": "" if err else str(value), "prefilled": source == "standing" and not err})
+            if err:
+                report.errors.append({"label": f["label"], "error": err})
+            continue
         if value in (None, ""):
+            if f["kind"] == "file" and not info["required"]:
+                continue  # an optional extra upload (e.g. "autofill from resume"); the resume slot is filled separately
             report.unanswered.append(info)
             continue
         try:

@@ -26,7 +26,22 @@ PROFILE_FIELDS = [
     ("first_name", "First name"), ("last_name", "Last name"), ("email", "Email"), ("phone", "Phone"),
     ("location", "City, State"), ("zip", "ZIP code"), ("linkedin", "LinkedIn URL"), ("github", "GitHub URL"),
     ("website", "Website"), ("current_company", "Current or last employer"),
+    ("name_pronunciation", "Name pronunciation (optional)"),
 ]
+# Your standing answers for questions the agent never answers. The filler pre-fills them and the review
+# page shows them in a highlighted box for you to check before Submit. Blank = left for you each time.
+CONSENT_MATCH = "consent|privacy|personal data|acknowledge|i agree|terms|ai policy|certify"
+STANDING = [
+    ("consent", "Privacy notices, data-processing consent, AI-policy and accuracy acknowledgements", CONSENT_MATCH),
+    ("hispanic", "Hispanic or Latino?", r"hispanic|latin[oax]"),
+    ("race", "Race / ethnicity", r"\brace\b|ethnic"),
+    ("gender", "Gender", r"gender|\bsex\b"),
+    ("orientation", "Sexual orientation", r"sexual orientation"),
+    ("pronouns", "Pronouns", r"pronoun"),
+    ("veteran", "Veteran status", r"veteran"),
+    ("disability", "Disability status", r"disabilit"),
+]
+DECLINE = ["Decline to self-identify", "I don't wish to answer", "Prefer not to say"]
 YES_NO = [("work_authorized", "Authorized to work in the US?"), ("requires_sponsorship", "Need visa sponsorship?"),
           ("willing_to_relocate", "Willing to relocate?")]
 ABOUT_FIELDS = [
@@ -136,6 +151,16 @@ def load_profile(root: Path) -> dict:
     return p if p else _yaml(root / "profile.example.yaml")
 
 
+def standing_values(prof: dict) -> dict:
+    """{key: value} of your saved standing answers, for the Setup form."""
+    out = {}
+    for k, _, match in STANDING:
+        for r in prof.get("standing_answers") or []:
+            if r.get("match") == match:
+                out[k] = r.get("value", "")
+    return out
+
+
 def save_profile(settings, form: dict) -> dict:
     root = settings.root
     prof = load_profile(root)
@@ -145,6 +170,14 @@ def save_profile(settings, form: dict) -> dict:
     for k, _ in YES_NO:
         if form.get(k) in ("Yes", "No"):
             prof[k] = form[k]
+    if "standing_form" in form:
+        rules = []
+        for k, _, match in STANDING:
+            v = "yes" if k == "consent" and form.get(f"stand::{k}") else (
+                "" if k == "consent" else str(form.get(f"stand::{k}") or "").strip()[:120])
+            if v:
+                rules.append({"match": match, "value": v})
+        prof["standing_answers"] = rules
     pay = re.sub(r"[^\d]", "", str(form.get("salary_expectation") or ""))
     prof["salary_expectation"] = pay
     if is_example:
@@ -153,6 +186,8 @@ def save_profile(settings, form: dict) -> dict:
     for r in prof.get("rules") or []:
         if "full name" in str(r.get("match", "")) and "value" in r:
             r["value"] = full  # the example ships "Jane Doe"
+    if prof.get("name_pronunciation") and not any("pronunc" in str(r.get("match", "")) for r in prof.get("rules") or []):
+        prof.setdefault("rules", []).append({"match": "pronunc", "key": "name_pronunciation"})
     head = "# Written by the dashboard's Setup page. Edit here or there.\n"
     (root / "profile.yaml").write_text(head + yaml.safe_dump(prof, sort_keys=False, allow_unicode=True))
     settings.profile.clear()

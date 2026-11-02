@@ -50,7 +50,7 @@ you ─► dashboard ─► check answers, decide consents ─► Submit
 5. **Tailor** a resume and cover letter from your base resume and `CLAUDE.local.md`, plus a
    `notes.md` with the fit/gap table, form answers and pay ask.
 6. **Fill the real form.** Playwright answers the questions, uploads both PDFs, takes a screenshot
-   and stops before Submit. Consent and self-ID questions are left blank for you.
+   and stops before Submit. Consent and self-ID questions get only your own standing answers, highlighted for you to check.
 7. **Brief.** One email (sent to yourself over Gmail SMTP) with what's ready, interview prep
    packs, new replies, your work-search count for the week, and the status of every application.
 8. **You decide.** Open the dashboard, read the answers, tick the review box and press Submit, or
@@ -177,7 +177,9 @@ Light and dark mode, and it works on a phone.
 - **Submit for you.** The CLI has no submit command. The only Submit button is on the dashboard,
   behind a review tick box, and each approval covers one click.
 - **Answer consents or self-ID questions.** Privacy acknowledgements, AI-policy consents and
-  demographic questions are always held for you (`hold_for_review` in `profile.yaml`).
+  demographic questions are never answered by the agent (`hold_for_review` in `profile.yaml`). You can
+  save your own standing answers on Settings > Setup; the filler pre-fills those, and the review page shows
+  them in a highlighted **Check these** box so you confirm them on every application.
 - **Get past bot checks.** No captcha solving, no reading verification codes, no logins, no
   account creation. When a site asks for a code, use `autoapply-finish` and enter it yourself.
 - **Workday and other account-based sites.** Materials are prepared and the role is flagged

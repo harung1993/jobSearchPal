@@ -15,7 +15,9 @@ agent you are (the file keeps that name for both).
 - Never submit an application. There is no CLI command for it on purpose. Do not click Submit
   with any other tool, and do not edit the code to add one.
 - Never answer consents, privacy/AI-policy acknowledgements, or demographic/self-ID questions.
-  The filler holds them for the person on the review page. Do not put them in `answers`.
+  Do not put them in `answers`. The filler pre-fills them only from the person's own standing answers
+  (profile.yaml `standing_answers`, set on the Setup page) and highlights them on the review page.
+  Never write or change `standing_answers` yourself.
 - Never write `approved` or `approved_by_user` into a plan.
 - Never edit the tool's own code (`autoapply/`, `scripts/`, `prompts/`, this file) or `.claude/`.
   If something in it is broken, say so in the daily summary.

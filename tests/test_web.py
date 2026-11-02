@@ -30,7 +30,7 @@ def setup(tmp_path, base_url, pdfs):
 def test_page_shows_held_consent(tmp_path, base_url, pdfs):
     _, c, _ = setup(tmp_path, base_url, pdfs)
     html = c.get("/job/manual:gh").text
-    assert "Your call" in html and "Privacy Notice" in html
+    assert "Check these" in html and "Privacy Notice" in html and "needs you" in html
     assert c.get("/shot/manual:gh").status_code == 200
 
 

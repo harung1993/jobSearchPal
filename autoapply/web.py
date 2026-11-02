@@ -366,7 +366,8 @@ def make_app(settings, db: DB) -> FastAPI:
         except (OSError, ValueError):
             src_stats = {}
         pr = Prefs(settings.data_dir, settings.raw)
-        return page("setup.html", nav="settings", tab="setup", st=st, prof=prof, fields=setup.PROFILE_FIELDS, yes_no=setup.YES_NO,
+        return page("setup.html", nav="settings", tab="setup", st=st, standing=setup.STANDING, decline=setup.DECLINE,
+                    stand=setup.standing_values(prof), prof=prof, fields=setup.PROFILE_FIELDS, yes_no=setup.YES_NO,
                     titles=", ".join(search.get("title_keywords") or []), exclude=", ".join(search.get("exclude_keywords") or []),
                     us_only=search.get("us_only", True), boards=boards, rss=rss, rss_presets=RSS_PRESETS, src_stats=src_stats,
                     keys={k: pr.key_hint(k) for k in ("ADZUNA_APP_ID", "ADZUNA_APP_KEY", "USAJOBS_API_KEY", "USAJOBS_EMAIL")}, feeds=setup.FEED_LABELS,
@@ -524,6 +525,7 @@ def make_app(settings, db: DB) -> FastAPI:
                 new_plan["answers"][k[5:]] = v
         # Held answers come only from this form, never from the JSON box.
         new_plan["approved"] = {k[6:]: v for k, v in form.items() if k.startswith("held::") and v}
+        new_plan["held_reviewed"] = True  # from now on a blank consent stays blank: no standing answer fills it
         new_plan["approved_by_user"] = False
 
         if action == "skip":
