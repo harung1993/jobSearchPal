@@ -42,8 +42,8 @@ you ─► dashboard ─► check answers, decide consents ─► Submit
    IMAP. Keyword rules only pick the candidates. A model then reads each one and files it as a
    confirmation, interview, rejection, offer, recruiter contact or not job-related, and matches it to
    the application it's about (see [Email sorting](#email-sorting)).
-2. **Interview prep.** Any application with a new interview email gets a prep pack (see
-   [Interview prep](#interview-prep)).
+2. **Interview prep and follow-ups.** Any application with a new interview email gets a prep pack, and
+   each [follow-up reminder](#follow-up-reminders) gets a drafted reply (see [Interview prep](#interview-prep)).
 3. **Find roles** from the sources below. Anything already tracked or applied to is skipped.
 4. **Rank and pick** the best one or two, and skip the clear misses with a reason (the Stats page
    shows why roles were skipped).
@@ -105,19 +105,49 @@ and stage (recruiter screen, hiring manager, technical, onsite). It's shown on t
 When a later interview email arrives (the next stage), the pack is updated for it.
 `autoapply list --prep` shows what's due.
 
+### Follow-up reminders
+
+The dashboard's **To do** card and the morning brief remind you when:
+
+- a recruiter wrote and you haven't replied (after a day),
+- you wrote last and a recruiter has gone quiet (after 5 days): check in,
+- an interview invite is waiting for your answer, or a booking link for your time,
+- an application has had no answer beyond the confirmation for two weeks: a short follow-up note, or let it go.
+
+"Replied" is read from your Sent mail (headers only, read-only). The daily run drafts a short reply for
+each one, from your materials only. **Reply in Gmail** opens a compose window with the draft filled in, and you
+send it yourself. Each reminder has **Done** and **Snooze 3 days**. `autoapply list --nudges` shows what
+needs a draft.
+
+### Costs and limits
+
+Everything runs on what you already pay for, plus optional pay-per-token sources, and the Settings
+page shows both:
+
+- **Daily caps:** roles to tailor per day (the heaviest step), interview prep packs per day and follow-up
+  drafts per day, each of which can be switched off. The daily run reads them first (`autoapply list --limits`).
+- **Monthly budget for paid APIs:** once Jev and OpenRouter have billed that much this month, sorting
+  uses only your subscriptions and local models until the 1st.
+- **Usage, last 30 days:** daily runs and tokens, what that would cost at API prices (a gauge of how heavy
+  each step is, since your subscription covers it), and what OpenRouter actually billed, by day.
+
+To spend less: choose Sonnet or Haiku for the daily run, tailor one role a day, and keep email sorting on
+Haiku or a local model.
+
 ### Settings page
 
 | Section | What you set |
 |---|---|
 | Email sorting | which sources are on, their order (↑ ↓), the model for each (OpenRouter's list comes with live prices), Jev's minimum confidence, the Ollama address. Each source has a **Test** button that sorts a sample email and shows the answer, time and cost, plus 30-day counts of emails sorted, cost and failures. |
 | OpenRouter key | for Jev and OpenRouter. It's stored in `data/secrets.json` (owner-only) and never shown again. A key in `.env` wins. |
+| Costs and limits | daily caps for tailoring, prep packs and drafts; the monthly budget for paid APIs; 30-day usage and cost by day. |
 | Daily run | the agent (Claude Code or Codex CLI, with what's installed and signed in) and its model. Opus writes the best cover letters; Sonnet or Haiku go easier on usage limits. |
 
 Choices are saved in `data/settings.json`. Nothing on the page needs a restart.
 
 ### Dashboard pages
 
-- **Dashboard:** what's ready for you, interviews with their prep packs, latest replies, recruiters, applications per week, the full
+- **Dashboard:** a to-do list of follow-ups, what's ready for you, interviews with their prep packs, latest replies, recruiters, applications per week, the full
   application list, and when each job (search, email sync, sorting, brief) last ran.
 - **Stats:** response and interview rates, median time to reply, funnels, results by application
   platform, reply-time buckets, weeks at your work-search minimum, and pipeline trends.
@@ -219,6 +249,7 @@ autoapply emails [--pending]           filed emails as JSON;  emails set ID KIND
 autoapply import-history FILE.json     load past applications (tracker rows)
 autoapply add URL / list / show ID / skip ID
 autoapply list --prep                  interviews that need a prep pack
+autoapply list --nudges / --limits     follow-ups that need a draft; today's caps
 autoapply scan URL                     a form's questions as JSON
 autoapply fill PLAN.json [--job ID]    fill, upload, screenshot, stop before Submit
 autoapply brief [--send]               the morning summary
@@ -237,6 +268,7 @@ autoapply/emailsync.py   gathers candidate emails, proof copies, applies a settl
 autoapply/classify.py    model review of waiting emails (Claude Code, Codex, Jev, OpenRouter, Ollama)
 autoapply/prefs.py       Settings page choices (data/settings.json) and saved API keys
 autoapply/prep.py        interview prep packs: what's due, where they live, safe rendering
+autoapply/nudges.py      follow-up reminders from sorted emails and your Sent mail
 autoapply/stats.py       dashboard and stats numbers
 autoapply/web.py         dashboard, review page, work-search log
 autoapply/templates/     HTML (no build step, no JavaScript framework)

@@ -27,6 +27,7 @@ PROVIDERS = {
     "ollama": {"name": "Ollama", "via": "a local model on this server", "models": [], "default": "", "base_url": "http://localhost:11434"},
 }
 DEFAULT_ORDER = ["claude", "codex", "jev", "openrouter", "ollama"]
+PAID = {"jev", "openrouter"}  # billed per token; the others run on a subscription or locally
 DAILY_MODELS = ["", "opus", "sonnet", "haiku"]  # "" = Claude Code's default
 DAILY_AGENTS = {"claude": "Claude Code (Claude subscription)", "codex": "Codex CLI (ChatGPT subscription)"}
 
@@ -57,7 +58,10 @@ class Prefs:
         agent = "codex" if find_cli("codex") and not find_cli("claude") else "claude"
         base = {"order": list(DEFAULT_ORDER), "enabled": [agent], "models": {}, "min_confidence": 0.7,
                 "daily_agent": agent, "daily_model": "", "daily_codex_model": "",
-                "ollama_url": PROVIDERS["ollama"]["base_url"]}
+                "ollama_url": PROVIDERS["ollama"]["base_url"],
+                # Cost controls: what the daily run may do per day, and a cap on money spent on paid APIs.
+                "picks_per_day": 2, "prep_enabled": True, "prep_per_day": 2, "drafts_enabled": True,
+                "drafts_per_day": 5, "monthly_api_budget": 5.0}
         base.update(_legacy(raw or {}) if not saved else {})
         base.update(saved)
         base["order"] = [p for p in base["order"] if p in PROVIDERS] + [p for p in DEFAULT_ORDER if p not in base["order"]]
@@ -76,9 +80,17 @@ class Prefs:
     def model(self, provider: str) -> str:
         return self.data["models"].get(provider) or PROVIDERS[provider]["default"]
 
-    def chain(self) -> list[str]:
-        """Enabled sources in the order they're tried."""
-        return [p for p in self.data["order"] if p in self.data["enabled"]]
+    def chain(self, spent: float = 0.0) -> list[str]:
+        """Enabled sources in the order they're tried. Paid sources drop out once this month's spend
+        reaches the budget."""
+        over = spent >= float(self.data.get("monthly_api_budget") or 0)
+        return [p for p in self.data["order"] if p in self.data["enabled"] and not (over and p in PAID)]
+
+    def limits(self) -> dict:
+        d = self.data
+        return {"picks_per_day": int(d["picks_per_day"]),
+                "prep_per_day": int(d["prep_per_day"]) if d["prep_enabled"] else 0,
+                "drafts_per_day": int(d["drafts_per_day"]) if d["drafts_enabled"] else 0}
 
     def key(self, name: str) -> str | None:
         return os.environ.get(name) or self._read(self.secrets_path).get(name) or None

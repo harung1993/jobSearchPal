@@ -117,18 +117,36 @@ def parse(reply: str, batch: list[dict], apps: list[dict]) -> list[tuple[str, st
 CLAUDE_NO_TOOLS = ["--disallowedTools", "Bash,Edit,Write,Read,Glob,Grep,WebFetch,WebSearch,NotebookEdit,Task,Agent,TodoWrite"]
 
 
+LAST: dict = {}  # API-price estimate and tokens of the last subscription call, for the usage log
+
+
+def _claude_json(stdout: str) -> str:
+    """Claude Code's --output-format json: the reply plus what it would cost at API prices."""
+    try:
+        d = json.loads(stdout)
+    except ValueError:
+        return stdout
+    u = d.get("usage") or {}
+    LAST.update(est=float(d.get("total_cost_usd") or 0),
+                tokens=int(sum(u.get(k) or 0 for k in ("input_tokens", "output_tokens", "cache_read_input_tokens",
+                                                         "cache_creation_input_tokens"))))
+    if d.get("is_error"):
+        raise RuntimeError(str(d.get("result") or "claude reported an error")[:300])
+    return d.get("result") or ""
+
+
 def _ask_claude(prompt: str, model: str) -> str:
     exe = find_cli("claude")
     if not exe:
         raise RuntimeError("Claude Code isn't installed (claude not found)")
-    base = [exe, "-p", "--model", model or "haiku", "--output-format", "text", "--strict-mcp-config"]
+    base = [exe, "-p", "--model", model or "haiku", "--output-format", "json", "--strict-mcp-config"]
     with tempfile.TemporaryDirectory() as d:  # empty folder, no tools, no MCP: email text can't reach anything
         r = subprocess.run(base + ["--tools", ""] + CLAUDE_NO_TOOLS, input=prompt, capture_output=True, text=True, cwd=d, timeout=300)
         if r.returncode and "unknown option" in (r.stderr or "").lower():  # older Claude Code without --tools
             r = subprocess.run(base + CLAUDE_NO_TOOLS, input=prompt, capture_output=True, text=True, cwd=d, timeout=300)
     if r.returncode:
         raise RuntimeError(f"claude exited {r.returncode}: {(r.stderr or r.stdout).strip()[-300:]}")
-    return r.stdout
+    return _claude_json(r.stdout)
 
 
 def _ask_codex(prompt: str, model: str) -> str:
@@ -225,7 +243,7 @@ def run_source(name: str, prefs: Prefs, batch: list[dict], apps: list[dict]) -> 
 def review(db: DB, prefs: Prefs, limit: int = 80, only: str | None = None) -> dict:
     """Sorts up to `limit` waiting emails through the source chain. Returns counts by kind, 'left' still
     waiting, and 'errors' by source."""
-    chain = [only] if only else prefs.chain()
+    chain = [only] if only else prefs.chain(db.spend_this_month())
     pending = db.pending_events()[:limit]
     counts: dict = {}
     errors: dict[str, str] = {}
@@ -239,13 +257,16 @@ def review(db: DB, prefs: Prefs, limit: int = 80, only: str | None = None) -> di
                 break
             model = prefs.model(name)
             t0 = time.time()
+            LAST.clear()
             try:
                 got, cost = run_source(name, prefs, todo, apps)
             except Exception as e:  # try the next source
                 errors[name] = str(e)[:300]
-                db.log_usage(name, model, len(todo), 0, 0.0, int(1000 * (time.time() - t0)), str(e)[:300])
+                db.log_usage(name, model, len(todo), 0, 0.0, int(1000 * (time.time() - t0)), str(e)[:300],
+                             LAST.get("est", 0.0), LAST.get("tokens", 0))
                 continue
-            db.log_usage(name, model, len(todo), len(got), cost, int(1000 * (time.time() - t0)), None)
+            db.log_usage(name, model, len(todo), len(got), cost, int(1000 * (time.time() - t0)), None,
+                         LAST.get("est", 0.0), LAST.get("tokens", 0))
             for ev_id, kind, job, conf in got:
                 emailsync.review_event(db, ev_id, kind, job_id=job)
                 db.set_event(ev_id, sorted_by=f"{name}:{model}" if model else name, confidence=conf)

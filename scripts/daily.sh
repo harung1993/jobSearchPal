@@ -18,12 +18,13 @@ if [ "$agent" = codex ]; then
   codex exec --skip-git-repo-check --sandbox workspace-write \
     -c sandbox_workspace_write.network_access=true -c approval_policy=never \
     ${model:+-m "$model"} -o "$last" - < prompts/daily.md && ok=1 || ok=0
-  summary=$( [ -s "$last" ] && tail -n 1 "$last" || echo "")
+  summary=$( [ -s "$last" ] && autoapply log-daily codex "$model" < "$last" || echo "")
 else
+  # JSON output carries token counts and the API-price estimate, logged for the Settings page.
   summary=$(claude -p "$(cat prompts/daily.md)" ${model:+--model "$model"} \
     --permission-mode acceptEdits \
     --max-turns 120 \
-    --output-format text | tail -n 1) && ok=1 || ok=0
+    --output-format json | autoapply log-daily claude "$model") && ok=1 || ok=0
 fi
 if [ "$ok" = 1 ]; then
   autoapply log-run daily ok "${summary:-done ($agent)}"

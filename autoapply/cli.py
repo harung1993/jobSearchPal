@@ -16,6 +16,8 @@
   autoapply add URL [--company C --title T]   track a role found elsewhere
   autoapply list [--status S]         show tracked roles
   autoapply list --prep               interviews that need a prep pack, with where to write it
+  autoapply list --nudges             follow-up reminders that need a draft reply, with where to write it
+  autoapply list --limits             today's caps from the Settings page (roles to tailor, packs, drafts)
   autoapply show JOB_ID               full posting text, for tailoring
   autoapply skip JOB_ID [--reason R]  mark a role not worth applying to
   autoapply scan URL [--ats A]        list the form's questions as JSON
@@ -85,12 +87,13 @@ def main(argv=None):
     a = sub.add_parser("sync-email"); a.add_argument("--days", type=int, default=60); a.add_argument("--rebuild", action="store_true"); a.add_argument("--no-review", action="store_true")
     sub.add_parser("review-emails")
     sub.add_parser("daily-model"); sub.add_parser("daily-agent")
+    a = sub.add_parser("log-daily"); a.add_argument("agent"); a.add_argument("model", nargs="?", default="")
     a = sub.add_parser("emails"); a.add_argument("action", nargs="?", choices=["set"]); a.add_argument("event_id", nargs="?")
     a.add_argument("kind", nargs="?"); a.add_argument("--job", default=""); a.add_argument("--pending", action="store_true")
     a = sub.add_parser("import-history"); a.add_argument("file")
     a = sub.add_parser("log-run"); a.add_argument("kind"); a.add_argument("result", choices=["ok", "fail"]); a.add_argument("msg", nargs="?", default="")
     a = sub.add_parser("add"); a.add_argument("url"); a.add_argument("--company", default=""); a.add_argument("--title", default="")
-    a = sub.add_parser("list"); a.add_argument("--status"); a.add_argument("--prep", action="store_true")
+    a = sub.add_parser("list"); a.add_argument("--status"); a.add_argument("--prep", action="store_true"); a.add_argument("--nudges", action="store_true"); a.add_argument("--limits", action="store_true")
     a = sub.add_parser("show"); a.add_argument("job_id")
     a = sub.add_parser("skip"); a.add_argument("job_id"); a.add_argument("--reason", default="")
     a = sub.add_parser("scan"); a.add_argument("url"); a.add_argument("--ats")
@@ -146,6 +149,23 @@ def main(argv=None):
         agent = d.get("daily_agent") if d.get("daily_agent") in DAILY_AGENTS else "claude"
         model = d.get("daily_codex_model" if agent == "codex" else "daily_model") or ""
         print(model if args.cmd == "daily-model" else f"{agent} {model}".strip())
+    elif args.cmd == "log-daily":
+        # daily.sh pipes the agent's output here: log its tokens and API-price estimate, print the summary line.
+        raw = sys.stdin.read()
+        text, est, tokens, err = raw, 0.0, 0, None
+        if args.agent == "claude":
+            from . import classify
+            classify.LAST.clear()
+            try:
+                text = classify._claude_json(raw)
+            except RuntimeError as e:
+                text, err = "", str(e)
+            est, tokens = classify.LAST.get("est", 0.0), classify.LAST.get("tokens", 0)
+        db.log_usage("daily", f"{args.agent}:{args.model}" if args.model else args.agent, 0, 0, 0.0, 0, err, est, tokens)
+        lines = [l for l in text.strip().splitlines() if l.strip()]
+        print(lines[-1] if lines else "")
+        if err:
+            sys.exit(1)
     elif args.cmd == "review-emails":
         _out(_review(s, db))
     elif args.cmd == "emails":
@@ -171,9 +191,17 @@ def main(argv=None):
         db.upsert_job({"id": jid, "ats": detect(args.url).name, "company": args.company, "title": args.title,
                        "location": "", "url": args.url, "apply_url": args.url, "description": ""})
         print(jid)
+    elif args.cmd == "list" and args.limits:
+        from .prefs import Prefs
+        _out(Prefs(s.data_dir, s.raw).limits())
+    elif args.cmd == "list" and args.nudges:
+        from . import nudges
+        from .prefs import Prefs
+        _out(nudges.for_agent(db, s.data_dir, Prefs(s.data_dir, s.raw).limits()["drafts_per_day"]))
     elif args.cmd == "list" and args.prep:
         from . import prep
-        _out(prep.needed(db, s.data_dir))
+        from .prefs import Prefs
+        _out(prep.needed(db, s.data_dir, Prefs(s.data_dir, s.raw).limits()["prep_per_day"]))
     elif args.cmd == "list":
         rows = db.by_status(args.status) if args.status else db.all()
         _out([{k: r[k] for k in ("id", "status", "company", "title", "location", "found_at")} for r in rows])

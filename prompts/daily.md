@@ -1,4 +1,7 @@
 Run today's job application pass. Follow AGENTS.md. Today's summary goes in data/daily/<YYYY-MM-DD>.md.
+First run `autoapply list --limits`: it gives today's caps (roles to tailor, prep packs, drafts) set on the
+Settings page to control cost. Stay within them; a cap of 0 means skip that step. Keep research proportionate:
+a handful of searches per prep pack, not dozens.
 
 0. `autoapply sync-email --days 3` to file new replies, recruiter emails and work-search proof. It sorts them
    with the configured email classifier; emails it couldn't sort show on the dashboard's Emails page.
@@ -22,6 +25,14 @@ Run today's job application pass. Follow AGENTS.md. Today's summary goes in data
    - **Pay**: the ask from the application's notes.md if there is one, and the posted range.
    Mention new or updated packs in the summary.
 
+0c. Follow-ups: `autoapply list --nudges` lists reminders (unanswered recruiter emails, recruiters who went
+   quiet after your last message, interview invites, applications with no news after two weeks) that need a
+   draft. For each, write a short plain-text draft to its `draft_path` (create the folder): first person, 3-6
+   sentences, no subject line, signed with the first name from the profile. Reply to what their email says;
+   for a check-in, ask politely for an update; for an application follow-up, write a short LinkedIn-style
+   note to the recruiter or hiring manager restating fit in one line. Use only facts from `materials/` and
+   `CLAUDE.local.md`. Never send anything: the person sends it from the dashboard.
+
 1. Find roles. Prefer postings on the company's own ATS: aggregator listings are often stale.
    - `autoapply find`: new roles from every watched board, plus the RemoteOK, Remotive and
      HN Who's Hiring feeds. Feed hits (ats "feed") aren't apply-ready.
@@ -36,7 +47,7 @@ Run today's job application pass. Follow AGENTS.md. Today's summary goes in data
      engineering roles on those ATSs (e.g. site:job-boards.greenhouse.io "analytics engineer" remote)
      and `autoapply board add` them.
    - Skip anything already in `autoapply list` or `materials/applications/`.
-2. Rank. Read each candidate (`autoapply show <id>` or the posting) and pick the best 1-2 by fit,
+2. Rank. Read each candidate (`autoapply show <id>` or the posting) and pick the best `picks_per_day` by fit,
    then freshness, then pay. `autoapply skip <id> --reason "..."` the clear misses.
 3. For each pick:
    a. Tailor the resume and write a cover letter into data/applications/<slug>/ (docx + pdf), plus notes.md.
@@ -50,7 +61,7 @@ Run today's job application pass. Follow AGENTS.md. Today's summary goes in data
    d. `autoapply fill data/applications/<slug>/plan.json --job <id>`. If the report lists
       unanswered required questions or errors, fix plan.json and fill again (max 3 tries).
 4. Write the summary. Start with this week's work-search activity count against the weekly minimum, any new
-   replies or recruiter emails since yesterday, and interview prep packs written today, then for each pick, company, title, pay, one line on fit, what you still have
+   replies or recruiter emails since yesterday, interview prep packs written today, and follow-ups waiting for the person, then for each pick, company, title, pay, one line on fit, what you still have
    to decide (held questions), and the review link http://<review host>:8787/job/<id>.
    List roles that need a by-hand apply (Workday etc.) with their materials folder.
 5. Print one short line to stdout for the notification, e.g.

@@ -2,7 +2,7 @@
 {% block title %}Settings{% endblock %}
 {% block body %}
 <div class="ph"><div><h1>Settings</h1>
- <div class="sub">Which models sort your job emails, in what order, and which agent and model run the daily pass.</div></div></div>
+ <div class="sub">Which models sort your job emails, what the daily pass may do and with which agent, and what it all costs.</div></div></div>
 {% if msg %}<p class="notice" role="status">{{ msg }}</p>{% endif %}
 
 <form method="post" action="/settings">
@@ -71,6 +71,38 @@
  </div>
  <div class="actions"><button class="btn primary" name="action" value="save">Save</button>
   {% if pending %}<button class="btn" name="action" value="sort">Sort the {{ pending }} waiting now</button>{% endif %}</div>
+</section>
+
+<section class="card mt" id="costs">
+ <h2>Costs and limits <span class="count">last 30 days</span></h2>
+ <input type="hidden" name="limits_form" value="1">
+ <div class="grid g4">
+  <div class="tile"><div class="lbl">Daily runs</div><div class="num">{{ costs.daily_runs }}</div>
+   <div class="sub">{{ '{:,}'.format(costs.daily_tokens|int) }} tokens</div></div>
+  <div class="tile"><div class="lbl">At API prices</div><div class="num">${{ '%.2f'|format(costs.daily_est + costs.sort_est) }}</div>
+   <div class="sub">what your subscription covered</div></div>
+  <div class="tile"><div class="lbl">Billed (OpenRouter)</div><div class="num">${{ '%.2f'|format(costs.sort_cost) }}</div>
+   <div class="sub">paid per token</div></div>
+  <div class="tile"><div class="lbl">This month</div><div class="num">${{ '%.2f'|format(costs.month_spend) }}<small> / ${{ '%g'|format(p.monthly_api_budget) }}</small></div>
+   <div class="meter {% if costs.month_spend < p.monthly_api_budget %}ok{% endif %}"><span style="width:{{ [100, (100 * costs.month_spend / (p.monthly_api_budget or 1))|round]|min }}%"></span></div>
+   <div class="sub">{% if costs.month_spend >= p.monthly_api_budget %}Budget reached: paid sources are skipped{% else %}paid sources stop at the budget{% endif %}</div></div>
+ </div>
+ {% if costs.by_day %}<details class="mt"><summary>By day</summary><table><thead><tr><th>Day</th><th class="num">Runs</th><th class="num">Tokens</th><th class="num">At API prices</th><th class="num">Billed</th></tr></thead><tbody>
+  {% for r in costs.by_day|reverse %}<tr><td>{{ r.day }}</td><td class="num">{{ r.runs }}</td><td class="num">{{ '{:,}'.format((r.tokens or 0)|int) }}</td><td class="num">${{ '%.2f'|format(r.est or 0) }}</td><td class="num">${{ '%.4f'|format(r.cost or 0) }}</td></tr>{% endfor %}
+ </tbody></table></details>{% endif %}
+ <p class="muted" style="font-size:12.5px;margin:12px 0">Claude and Codex runs use your subscription, so "at API prices" is a gauge, not a bill: it shows
+  which steps are heavy. Your plan's usage limits are what you'd hit first; a smaller model or fewer roles per day goes further.</p>
+ <div class="grid g4">
+  <label class="fld"><span>Roles to tailor per day</span><input type="text" name="picks_per_day" value="{{ p.picks_per_day }}" inputmode="numeric">
+   <small class="muted">The heaviest step: research, resume, cover letter, form.</small></label>
+  <label class="fld"><span><label class="switch"><input type="checkbox" name="prep_enabled" value="1" {% if p.prep_enabled %}checked{% endif %}> Interview prep packs</label></span>
+   <input type="text" name="prep_per_day" value="{{ p.prep_per_day }}" inputmode="numeric"><small class="muted">Per day. Web research, so medium cost.</small></label>
+  <label class="fld"><span><label class="switch"><input type="checkbox" name="drafts_enabled" value="1" {% if p.drafts_enabled %}checked{% endif %}> Follow-up drafts</label></span>
+   <input type="text" name="drafts_per_day" value="{{ p.drafts_per_day }}" inputmode="numeric"><small class="muted">Per day. Short, cheap.</small></label>
+  <label class="fld"><span>Monthly budget for paid APIs ($)</span><input type="text" name="monthly_api_budget" value="{{ p.monthly_api_budget }}" inputmode="decimal">
+   <small class="muted">Jev and OpenRouter stop for the month at this amount.</small></label>
+ </div>
+ <div class="actions"><button class="btn primary" name="action" value="save">Save</button></div>
 </section>
 
 <section class="card mt">

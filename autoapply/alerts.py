@@ -85,3 +85,25 @@ def messages(days: int, senders: list[str], mailbox: str = '"[Gmail]/All Mail"',
 def fetch(days: int = 1, senders: list[str] | None = None, max_chars: int = 8000) -> list[dict]:
     return [{"from": addr, "subject": subject, "date": when.isoformat(), "text": text[:max_chars]}
             for _, _, addr, subject, when, text, _ in messages(days, senders or DEFAULT_SENDERS, "INBOX")]
+
+
+def sent_mail(days: int):
+    """Yields (Message-ID, datetime, [to/cc addresses], subject, In-Reply-To) for mail you sent in the last
+    `days` days. Headers only, read-only: used to tell which emails you've already answered."""
+    user, pw = os.environ.get("GMAIL_USER"), os.environ.get("GMAIL_APP_PASSWORD")
+    if not (user and pw):
+        raise RuntimeError("set GMAIL_USER and GMAIL_APP_PASSWORD in .env")
+    with imaplib.IMAP4_SSL("imap.gmail.com") as m:
+        m.login(user, pw)
+        m.select('"[Gmail]/All Mail"', readonly=True)
+        _, data = m.search(None, "X-GM-RAW", f'"in:sent newer_than:{days}d"')
+        for i in data[0].split():
+            _, d = m.fetch(i, "(BODY.PEEK[HEADER.FIELDS (MESSAGE-ID DATE TO CC SUBJECT IN-REPLY-TO)])")
+            msg = email.message_from_bytes(d[0][1])
+            try:
+                when = email.utils.parsedate_to_datetime(msg.get("Date"))
+            except (TypeError, ValueError):
+                continue
+            to = [a.lower() for _, a in email.utils.getaddresses(msg.get_all("To", []) + msg.get_all("Cc", [])) if a]
+            subject = str(email.header.make_header(email.header.decode_header(msg.get("Subject", ""))))
+            yield (msg.get("Message-ID") or f"imap-sent:{i.decode()}", when, to, subject, (msg.get("In-Reply-To") or "").strip())

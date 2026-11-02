@@ -216,9 +216,22 @@ def rebuild(db: DB, days: int) -> int:
     return n
 
 
+def sync_sent(db: DB, days: int = 60) -> int:
+    """Headers of mail you sent, so reminders know what you've already answered."""
+    n = 0
+    for msg_id, when, to, subject, irt in alerts.sent_mail(days):
+        db.add_sent(msg_id, when.strftime("%Y-%m-%d %H:%M"), to, subject, irt)
+        n += 1
+    return n
+
+
 def sync(db: DB, days: int = 60, extra_senders: list[str] | None = None, proof_root: Path | None = None) -> dict:
     jobs = db.by_status("submitted", "filled")
     counts: dict[str, int] = {}
+    try:
+        sync_sent(db, days)
+    except Exception:  # reminders just get less precise; the reply sync still runs
+        pass
     for msg in alerts.messages(days, ATS_SENDERS + (extra_senders or []), gmail_queries=RECRUITER_QUERIES):
         kind = apply_event(db, jobs, *msg, proof_root=proof_root)
         if kind:

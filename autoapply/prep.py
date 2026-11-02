@@ -43,8 +43,9 @@ def interviews(db: DB, data_dir: Path) -> list[dict]:
     return sorted(out, key=lambda r: r["latest"], reverse=True)
 
 
-def needed(db: DB, data_dir: Path) -> list[dict]:
-    """What the daily run should prepare: everything without a pack, or with one from before the latest stage."""
+def needed(db: DB, data_dir: Path, limit: int | None = None) -> list[dict]:
+    """What the daily run should prepare: everything without a pack, or with one from before the latest stage.
+    `limit` is the Settings page's prep packs per day (0 = off); the newest interviews go first."""
     rows = []
     for r in interviews(db, data_dir):
         if r["state"] == "ready":
@@ -57,7 +58,7 @@ def needed(db: DB, data_dir: Path) -> list[dict]:
             "interview_emails": [{"at": e["at"], "from": e["sender"], "subject": e["subject"], "text": (e["body"] or "")[:2500]}
                                  for e in r["emails"][:3]],
         })
-    return rows
+    return rows if limit is None else rows[:limit]
 
 
 def render(md: str) -> str:

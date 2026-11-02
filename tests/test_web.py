@@ -198,3 +198,51 @@ def test_prep_page_and_dashboard_card(tmp_path, base_url, pdfs):
     assert "<h3>What candidates report</h3>" in html and 'href="https://reddit.com/r/x"' in html and "<img" not in html
     assert "Prep pack" in c.get("/").text
     assert c.get("/prep/nope").status_code == 404
+
+
+def test_cost_limits_budget_and_daily_log(tmp_path, base_url, pdfs, capsys, monkeypatch):
+    import io
+    import yaml as _y
+    from autoapply import cli
+    from autoapply.prefs import Prefs
+    db, c, plan = setup(tmp_path, base_url, pdfs)
+    c.post("/settings", data={"limits_form": "1", "picks_per_day": "1", "prep_enabled": "1", "prep_per_day": "9",
+                              "drafts_per_day": "3", "monthly_api_budget": "2.5", "action": "save"})
+    pr = Prefs(tmp_path / "data")
+    assert pr.limits() == {"picks_per_day": 1, "prep_per_day": 5, "drafts_per_day": 0}  # capped; drafts switched off
+    pr.data["enabled"] = ["claude", "jev", "openrouter"]
+    assert pr.chain(spent=1.0) == ["claude", "jev", "openrouter"] and pr.chain(spent=2.5) == ["claude"]
+    cfg = tmp_path / "config.yaml"
+    cfg.write_text(_y.safe_dump({"data_dir": str(tmp_path / "data")}))
+    out = ('{"type":"result","is_error":false,"result":"Wrote the summary.\\nReady to review: Acme (Sr AE)",'
+           '"total_cost_usd":1.25,"usage":{"input_tokens":1000,"output_tokens":500,"cache_read_input_tokens":20000}}')
+    monkeypatch.setattr("sys.stdin", io.StringIO(out))
+    cli.main(["--config", str(cfg), "log-daily", "claude", "opus"])
+    assert capsys.readouterr().out.strip() == "Ready to review: Acme (Sr AE)"
+    from autoapply.db import DB as _DB
+    u = _DB(tmp_path / "data" / "autoapply.db").usage_summary()["daily"]
+    db.log_usage("daily", "claude:opus", 0, 0, 0.0, 0, None, 1.25, 21500)  # the dashboard's own db in this test
+    assert u["calls"] == 1 and u["tokens"] == 21500 and abs(u["est"] - 1.25) < 1e-9 and (u["cost"] or 0) == 0
+    html = c.get("/settings").text
+    assert "Costs and limits" in html and "$1.25" in html and "21,500 tokens" in html
+    cli.main(["--config", str(cfg), "list", "--limits"])
+    assert '"picks_per_day": 1' in capsys.readouterr().out
+
+
+def test_todo_card_done_and_snooze(tmp_path, base_url, pdfs):
+    from datetime import datetime, timedelta
+    db, c, plan = setup(tmp_path, base_url, pdfs)
+    at = (datetime.now() - timedelta(days=3)).strftime("%Y-%m-%d %H:%M")
+    db.add_event({"id": "r1", "job_id": None, "kind": "recruiter", "at": at, "sender": "Dana Lee <dana@talentco.example>",
+                  "subject": "Analytics role", "body": "Free to chat?"})
+    html = c.get("/").text
+    assert "Reply to Dana Lee" in html and "Reply in Gmail" in html and "mail.google.com/mail/?view=cm" in html
+    from autoapply import nudges
+    key = nudges.compute(db)[0]["key"]
+    assert c.post(f"/nudge/{key}", data={"action": "snooze", "days": "3"}, follow_redirects=False).status_code == 303
+    assert "Reply to Dana Lee" not in c.get("/").text
+    c.post(f"/nudge/{key}", data={"action": "reopen"})
+    assert "Reply to Dana Lee" in c.get("/").text
+    c.post(f"/nudge/{key}", data={"action": "done"})
+    assert "Reply to Dana Lee" not in c.get("/").text
+    assert c.post(f"/nudge/{key}", data={"action": "send"}).status_code == 400

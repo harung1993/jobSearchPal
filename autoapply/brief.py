@@ -37,13 +37,20 @@ def compose(db: DB, review_url: str = "", today: date | None = None, label: str 
             floor: int = 3, data_dir=None) -> tuple[str, str, str]:
     """Returns (subject, text, html)."""
     s = stats.compute(db, today, floor=floor)
+    from . import nudges
     ready, news = s["ready"], _recent_events(db)
+    todo = nudges.compute(db, data_dir) if data_dir else []
     left = max(0, s["dua_floor"] - s["this_week"])
     dua = f"{s['this_week']} of {s['dua_floor']} this week" + (" (done)" if not left else f", {left} to go")
-    subject = f"Job search brief: {len(ready)} ready, {len(news)} new repl{'y' if len(news) == 1 else 'ies'}, {label} {s['this_week']}/{s['dua_floor']}"
+    subject = f"Job search brief: {len(ready)} ready, {len(news)} new repl{'y' if len(news) == 1 else 'ies'}, {label} {s['this_week']}/{s['dua_floor']}" + (
+        f", {len(todo)} to do" if todo else "")
     base = review_url.rstrip("/")
 
     t = [f"{label}: {dua}", ""]
+    if todo:
+        t.append(f"TO DO ({len(todo)})")
+        t += [f"- {n['title']} · {n['about']} · {n['why']}" for n in todo[:8]]
+        t += [f"  {base}/#todo" if base else "", ""]
     t.append(f"READY FOR YOU ({len(ready)})")
     for j in ready:
         t.append(f"- {_co(j['company'])} · {j['title']}" + (f" · {j['pay']}" if j["pay"] else ""))
@@ -79,6 +86,10 @@ def compose(db: DB, review_url: str = "", today: date | None = None, label: str 
     h.append(li([f"<b>{escape(_co(j['company']))}</b> · {escape(j['title'])}{' · ' + escape(j['pay']) if j['pay'] else ''}<br>"
                  f"<a href='{escape(base)}/job/{escape(j['id'])}'>Review</a> · finish on Mac: <code>autoapply-finish {escape(j['id'])}</code>"
                  for j in ready]) or "<li>Nothing new today</li>")
+    if todo:
+        h.append(f"</ul><h3>To do ({len(todo)})</h3><ul>")
+        h.append(li([f"<b>{escape(n['title'])}</b> · {escape(n['about'])}<br><span style='color:#666'>{escape(n['why'])}</span>"
+                     for n in todo[:8]]))
     if ivs:
         h.append(f"</ul><h3>Interviews ({len(ivs)})</h3><ul>")
         h.append(li([f"<b>{escape(_co(r['job']['company']))}</b> · {escape(r['job']['title'])} · " + (

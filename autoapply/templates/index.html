@@ -21,6 +21,21 @@
   <div class="sub">{{ s.rejected }} rejected · {{ s.waiting }} waiting · {{ s.no_reply }} no reply</div></div>
 </section>
 
+{% if todo %}<section class="card mt" id="todo"><h2>To do <span class="count">{{ todo|length }}</span></h2>
+ {% for n in todo %}<div class="todo">
+  <span class="pill {{ 'interview' if n.kind == 'interview' else ('recruiter' if n.kind in ('reply', 'chase') else 'waiting') }}">{{ {'interview': 'interview', 'reply': 'reply', 'chase': 'check in', 'application': 'follow up'}[n.kind] }}</span>
+  <div class="body"><div class="t">{{ n.title }}</div><div class="m">{{ n.about|truncate(90) }} · {{ n.why }}</div>
+   {% if n.draft %}<details><summary>Draft reply</summary><pre class="draft">{{ n.draft }}</pre>
+    <button type="button" class="btn sm" onclick="navigator.clipboard.writeText(this.previousElementSibling.textContent);this.textContent='Copied'">Copy</button></details>{% endif %}</div>
+  <div class="acts">{% if n.compose %}<a class="btn primary sm" href="{{ n.compose }}" target="_blank" rel="noopener">Reply in Gmail</a>{% endif %}
+   <form method="post" action="/nudge/{{ n.key }}"><input type="hidden" name="days" value="3"><button class="btn sm" name="action" value="snooze">Snooze 3 days</button><button class="btn sm" name="action" value="done">Done</button></form></div>
+ </div>{% endfor %}
+</section>
+<style>.todo{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:start;padding:12px 0;border-bottom:1px solid var(--line-2)}.todo:last-child{border-bottom:0}
+.todo .t{font-weight:650}.todo .m{font-size:12.5px;color:var(--ink-2)}.todo .acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.todo form{display:flex;gap:6px;margin:0}
+pre.draft{white-space:pre-wrap;font:inherit;font-size:13px;background:var(--surface-2);border-radius:10px;padding:10px 12px;margin:6px 0}
+@media (max-width:640px){.todo{grid-template-columns:minmax(0,1fr)}.todo .acts{justify-content:flex-start}}</style>{% endif %}
+
 {% if interviews %}<section class="card mt"><h2>Interviews <span class="count">{{ interviews|length }}</span></h2>
  {% for r in interviews %}<div class="ready"><div class="avatar" aria-hidden="true">{{ (r.job.company or '?')[:1]|upper }}</div>
   <div class="body"><div class="t">{{ co(r.job.company) }} · {{ r.job.title }}</div>

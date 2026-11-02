@@ -307,3 +307,52 @@ def test_interview_prep_packs(tmp_path):
     out = prep.render("## Q\n- **Tell me** about [docs](https://ex.com/a?b=1&c=2)\n<script>alert(1)</script>\n[x](javascript:alert(1))")
     assert "<script>" not in out and "&lt;script&gt;" in out and 'href="https://ex.com/a?b=1&amp;c=2"' in out
     assert 'href="javascript' not in out and "</ul>\n<p>" in out and "<h3>Q</h3>" in out and "<b>Tell me</b>" in out
+
+
+def test_follow_up_reminders(tmp_path):
+    from datetime import timedelta as td
+    from autoapply import brief, nudges
+    db = DB(tmp_path / "t.db")
+    history.import_rows(db, ROWS)
+    now = datetime(2026, 11, 2, 9, 0)
+    fmt = lambda d: d.strftime("%Y-%m-%d %H:%M")
+    cobalt = next(j for j in db.by_status("submitted") if j["company"] == "Cobalt Labs")
+    # Dana wrote 3 days ago, no reply yet.
+    db.add_event({"id": "r1", "job_id": None, "kind": "recruiter", "at": fmt(now - td(days=3)),
+                  "sender": "Dana Lee <dana@talentco.example>", "subject": "Analytics role", "body": "Free to chat?"})
+    # Sam wrote 10 days ago, you answered 8 days ago, nothing since: check in.
+    db.add_event({"id": "r2", "job_id": None, "kind": "recruiter", "at": fmt(now - td(days=10)),
+                  "sender": "Sam Rivera <sam@staffco.example>", "subject": "Data role", "body": ""})
+    db.add_sent("s1", fmt(now - td(days=8)), ["sam@staffco.example"], "Re: Data role", "")
+    # Alex wrote, you answered yesterday: nothing to do.
+    db.add_event({"id": "r3", "job_id": None, "kind": "recruiter", "at": fmt(now - td(days=4)),
+                  "sender": "Alex Kim <alex@agency.example>", "subject": "Role", "body": ""})
+    db.add_sent("s2", fmt(now - td(days=1)), ["alex@agency.example"], "Re: Role", "")
+    # An interview invite from a no-reply ATS address: book it, no draft.
+    db.add_event({"id": "i1", "job_id": cobalt["id"], "kind": "interview", "at": fmt(now - td(days=1)),
+                  "sender": "Cobalt <no-reply@ashbyhq.com>", "subject": "Book your screen", "body": "Pick a time"})
+    out = nudges.compute(db, tmp_path, now=now)
+    kinds = [(n["kind"], n["title"]) for n in out]
+    assert kinds[0] == ("interview", "Book your interview time with Cobalt Labs")
+    assert ("reply", "Reply to Dana Lee") in kinds and ("chase", "Check in with Sam Rivera") in kinds
+    assert not any("Alex" in t for _, t in kinds)
+    # Brightline is rejected, Fernwood (10/27) too recent: only the tracker's own follow-ups would show.
+    assert all(n["kind"] != "application" or n["job"]["company"] not in ("Brightline", "Cobalt Labs") for n in out)
+    agent = nudges.for_agent(db, tmp_path)
+    assert {a["kind"] for a in agent} == {"reply", "chase"} and agent[0]["draft_path"].startswith(str(tmp_path / "drafts"))
+    dana = next(n for n in out if "Dana" in n["title"])
+    Path(dana["draft_path"]).parent.mkdir(parents=True, exist_ok=True)
+    Path(dana["draft_path"]).write_text("Hi Dana, thanks for reaching out & yes.")
+    url = nudges.gmail_compose_url(next(n for n in nudges.compute(db, tmp_path, now=now) if "Dana" in n["title"]))
+    assert "to=dana%40talentco.example" in url and "su=Re%3A%20Analytics%20role" in url and "%26%20yes" in url
+    # Done and snooze hide it; a snooze comes back.
+    db.set_nudge(dana["key"], "done")
+    db.set_nudge(next(n for n in out if "Sam" in n["title"])["key"], "snoozed", fmt(now + td(days=3)))
+    left = [n["title"] for n in nudges.compute(db, tmp_path, now=now)]
+    assert "Reply to Dana Lee" not in left and "Check in with Sam Rivera" not in left
+    assert "Check in with Sam Rivera" in [n["title"] for n in nudges.compute(db, tmp_path, now=now + td(days=4))]
+    # Applications with no news after two weeks.
+    later = [n for n in nudges.compute(db, tmp_path, now=datetime(2026, 11, 12)) if n["kind"] == "application"]
+    assert [n["job"]["company"] for n in later] == ["Fernwood Health"]
+    subject, text, _ = brief.compose(db, "http://srv", today=date(2026, 11, 2), data_dir=tmp_path)
+    assert "to do" in subject and "TO DO" in text

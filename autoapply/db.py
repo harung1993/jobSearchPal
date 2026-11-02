@@ -34,6 +34,12 @@ create table if not exists runs (
   kind text primary key,           -- find, sync-email, fill, daily
   at text, ok integer, summary text
 );
+create table if not exists sent (    -- mail you sent (headers only), to tell what you've answered
+  id text primary key, at text, to_addrs text, subject text, in_reply_to text
+);
+create table if not exists nudge_state ( -- reminders you marked done or snoozed
+  key text primary key, state text, until text
+);
 create table if not exists usage (   -- one row per call to an email-sorting model source
   at text default (datetime('now', 'localtime')), source text, model text,
   emails integer, sorted integer, cost real, ms integer, error text
@@ -65,6 +71,10 @@ class DB:
             if col not in ecols:
                 self.conn.execute(f"alter table events add column {col} {typ}")
         self.conn.execute("update events set reviewed = 1 where kind = 'applied'")
+        ucols = {r[1] for r in self.conn.execute("pragma table_info(usage)")}
+        for col in ("est", "tokens"):  # est: what it would cost at API prices (subscription runs); tokens in + out
+            if col not in ucols:
+                self.conn.execute(f"alter table usage add column {col} {'real' if col == 'est' else 'integer'} default 0")
         self.conn.commit()
 
     def upsert_job(self, job: dict) -> bool:
@@ -132,14 +142,45 @@ class DB:
         self.conn.execute("delete from events where id = ?", (event_id,))
         self.conn.commit()
 
-    def log_usage(self, source: str, model: str, emails: int, sorted_n: int, cost: float, ms: int, error: str | None):
-        self.conn.execute("insert into usage (source, model, emails, sorted, cost, ms, error) values (?, ?, ?, ?, ?, ?, ?)",
-                          (source, model, emails, sorted_n, cost, ms, error))
+    def add_sent(self, msg_id: str, at: str, to_addrs: list[str], subject: str, in_reply_to: str):
+        self.conn.execute("insert or ignore into sent (id, at, to_addrs, subject, in_reply_to) values (?, ?, ?, ?, ?)",
+                          (msg_id, at, " ".join(to_addrs), subject[:200], in_reply_to))
         self.conn.commit()
+
+    def sent(self) -> list[dict]:
+        return [dict(r) for r in self.conn.execute("select * from sent order by at")]
+
+    def nudge_states(self) -> dict[str, dict]:
+        return {r["key"]: dict(r) for r in self.conn.execute("select * from nudge_state")}
+
+    def set_nudge(self, key: str, state: str | None, until: str | None = None):
+        if state is None:
+            self.conn.execute("delete from nudge_state where key = ?", (key,))
+        else:
+            self.conn.execute("insert or replace into nudge_state (key, state, until) values (?, ?, ?)", (key, state, until))
+        self.conn.commit()
+
+    def log_usage(self, source: str, model: str, emails: int, sorted_n: int, cost: float, ms: int, error: str | None,
+                  est: float = 0.0, tokens: int = 0):
+        """cost: money actually billed (OpenRouter); est: API-price equivalent of subscription use."""
+        self.conn.execute("insert into usage (source, model, emails, sorted, cost, ms, error, est, tokens)"
+                          " values (?, ?, ?, ?, ?, ?, ?, ?, ?)", (source, model, emails, sorted_n, cost, ms, error, est, tokens))
+        self.conn.commit()
+
+    def spend_this_month(self) -> float:
+        r = self.conn.execute("select coalesce(sum(cost), 0) from usage where at >= strftime('%Y-%m-01', 'now', 'localtime')").fetchone()
+        return float(r[0] or 0)
+
+    def usage_by_day(self, days: int = 30) -> list[dict]:
+        q = ("select substr(at, 1, 10) day, sum(case when source = 'daily' then 1 else 0 end) runs,"
+             " sum(tokens) tokens, sum(cost) cost, sum(est) est from usage where at >= datetime('now', 'localtime', ?)"
+             " group by day order by day")
+        return [dict(r) for r in self.conn.execute(q, (f"-{days} days",))]
 
     def usage_summary(self, days: int = 30) -> dict[str, dict]:
         """Per source over the last N days: calls, emails sorted, cost, average time, last error."""
         q = ("select source, count(*) calls, sum(sorted) sorted, sum(emails) emails, sum(cost) cost, avg(ms) ms,"
+             " sum(est) est, sum(tokens) tokens,"
              " sum(error is not null) failures, max(at) last from usage where at >= datetime('now', 'localtime', ?)"
              " group by source")
         out = {r["source"]: dict(r) for r in self.conn.execute(q, (f"-{days} days",))}

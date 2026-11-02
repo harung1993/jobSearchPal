@@ -72,8 +72,25 @@ def make_app(settings, db: DB) -> FastAPI:
     @app.get("/")
     def index():
         from . import prep
+        from . import nudges
+        todo = nudges.compute(db, settings.data_dir)
+        for n in todo:
+            n["compose"] = nudges.gmail_compose_url(n)
         return page("index.html", s=stats.compute(db, floor=floor), interviews=prep.interviews(db, settings.data_dir)[:6],
-                    nav="dashboard")
+                    todo=todo, nav="dashboard")
+
+    @app.post("/nudge/{key}")
+    def nudge_action(key: str, action: str = Form(...), days: int = Form(3)):
+        from datetime import timedelta
+        if action == "done":
+            db.set_nudge(key, "done")
+        elif action == "snooze":
+            db.set_nudge(key, "snoozed", (datetime.now() + timedelta(days=max(1, min(days, 30)))).strftime("%Y-%m-%d %H:%M"))
+        elif action == "reopen":
+            db.set_nudge(key, None)
+        else:
+            raise HTTPException(400)
+        return RedirectResponse("/#todo", status_code=303)
 
     @app.get("/stats")
     def stats_page():
@@ -225,7 +242,13 @@ def make_app(settings, db: DB) -> FastAPI:
         st = classify.status(pr)
         orm = classify.openrouter_models(settings.data_dir / "openrouter-models.json") if (
             "openrouter" in pr.data["enabled"] or pr.key("OPENROUTER_API_KEY")) else []
-        return page("settings.html", p=pr.data, prefs=pr, providers=PROVIDERS, status=st, usage=db.usage_summary(30),
+        u30 = db.usage_summary(30)
+        daily = u30.get("daily") or {}
+        sorting = [v for k, v in u30.items() if k != "daily"]
+        costs = {"daily_runs": daily.get("calls") or 0, "daily_tokens": daily.get("tokens") or 0, "daily_est": daily.get("est") or 0,
+                 "sort_est": sum(v.get("est") or 0 for v in sorting), "sort_cost": sum(v.get("cost") or 0 for v in sorting),
+                 "month_spend": db.spend_this_month(), "by_day": db.usage_by_day(14)}
+        return page("settings.html", p=pr.data, prefs=pr, providers=PROVIDERS, status=st, usage=u30, costs=costs,
                     or_models=orm, daily_models=DAILY_MODELS, daily_agents=DAILY_AGENTS, key_hint=pr.key_hint("OPENROUTER_API_KEY"),
                     pending=len(db.pending_events()), msg=msg, nav="settings")
 
@@ -252,6 +275,17 @@ def make_app(settings, db: DB) -> FastAPI:
             cm = str(f.get("daily_codex_model") or "").strip()
             if re.fullmatch(r"[A-Za-z0-9._:/-]{0,80}", cm):  # it ends up on daily.sh's command line
                 d["daily_codex_model"] = cm
+        for k, lo, hi in (("picks_per_day", 0, 5), ("prep_per_day", 0, 5), ("drafts_per_day", 0, 20)):
+            try:
+                d[k] = max(lo, min(hi, int(f.get(k, d[k]))))
+            except (TypeError, ValueError):
+                pass
+        if "limits_form" in f:
+            d["prep_enabled"], d["drafts_enabled"] = bool(f.get("prep_enabled")), bool(f.get("drafts_enabled"))
+        try:
+            d["monthly_api_budget"] = max(0.0, min(1000.0, float(f.get("monthly_api_budget", d["monthly_api_budget"]))))
+        except (TypeError, ValueError):
+            pass
         url = str(f.get("ollama_url") or "").strip()
         if url.startswith(("http://", "https://")):
             d["ollama_url"] = url.rstrip("/")
