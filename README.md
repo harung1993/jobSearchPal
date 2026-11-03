@@ -68,6 +68,11 @@ you ─► dashboard ─► check answers, decide consents ─► Submit
 - **Any RSS or Atom job feed** (`rss_feeds` in `config.yaml`, or the Setup page): We Work Remotely, jobs.ac.uk and
   many others have them. Sites that answer automated requests with a bot check (HigherEdJobs does) are
   left to their job-alert emails; JobSearchPal doesn't try to get around those checks.
+- **Job-alert emails** (LinkedIn, Indeed, Built In, Glassdoor and others): every role in them is saved on the
+  **Leads** page with its location, salary when given, source and a rough fit score, even though only a couple
+  a day get tailored. Sort and filter them, dismiss the misses, and star the ones you want: the next run looks
+  each starred role up on the company's own site and adds it to the roles it can tailor. Parsing is plain
+  Python (no model), from the "View job" blocks these emails use.
 - **Your job-alert emails** from LinkedIn, Built In, Indeed, Glassdoor, Wellfound, HigherEdJobs (Job Agent emails), ZipRecruiter and Dice. For each good
   role, the agent finds the same posting on the company's own careers page and applies there, since
   aggregator listings are often stale.

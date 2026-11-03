@@ -34,6 +34,15 @@ for k in range(6):
 ev=[("interview","Jordan Lee <jordan@cobaltlabs.example>","Next steps: schedule time with the hiring manager"),("rejected","Fernwood Health Talent <no-reply@greenhouse.io>","Update on your application"),("confirmed","Harbor AI <no-reply@ashbyhq.com>","Thank you for applying to Harbor AI"),("recruiter","Sam Rivera <sam@talentco.example>","Senior Analytics Engineer, remote, fintech client"),("recruiter","Priya Nair <priya@recruitpartners.example>","Data platform lead role"),("recruiter","Alex Kim <alex@staffingone.example>","Contract-to-hire analytics engineer")]
 for i,(k,s,sub) in enumerate(ev):
     db.add_event({"id":f"e{i}","job_id":None,"kind":k,"at":(now-timedelta(days=i*2)).strftime("%Y-%m-%d %H:%M"),"sender":s,"subject":sub})
+from autoapply import leads
+demo_leads=[("Senior Analytics Engineer","Quarry Labs","Remote","$165K–$190K","Linkedin"),("Staff Analytics Engineer","Tidewater Bank","Boston, MA","","Linkedin"),
+            ("Analytics Engineering Manager","Lumen Works","Remote","$180K–$210K","Indeed"),("Senior Data Engineer","Orchard Health","Cambridge, MA (Hybrid)","$150K–$175K","Indeed"),
+            ("Lead Data Scientist","Summit Robotics","Waltham, MA","","Linkedin"),("Head of Data","Kestrel Finance","Remote","$200K–$240K","Built In"),
+            ("Data Platform Engineer","Nimbus Retail","New York, NY","","Glassdoor"),("Senior BI Developer","Maple Insurance","Remote","$130K–$150K","Indeed")]
+for i,(t,c,l,sal,src) in enumerate(demo_leads):
+    leads.save(db,[{"title":t,"company":c,"location":l,"salary":sal,"url":"https://example.com"}],src,now-timedelta(days=i%4),{"title_keywords":["analytics engineer","data engineer","head of data"]},set())
+leads.set_status(db,leads.key("Lumen Works","Analytics Engineering Manager"),"starred")
+leads.set_status(db,leads.key("Maple Insurance","Senior BI Developer"),"dismissed")
 for kind in ["daily","find","sync-email","brief"]:
     db.log_run(kind, True, "demo")
 (root/"config.yaml").write_text("data_dir: ./data\nreview: {host: 127.0.0.1, port: 8799}\nwork_search: {label: Work search, weekly_minimum: 3}\n")

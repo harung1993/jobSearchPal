@@ -116,6 +116,8 @@ def main(argv=None):
     a = sub.add_parser("list"); a.add_argument("--status"); a.add_argument("--prep", action="store_true"); a.add_argument("--nudges", action="store_true"); a.add_argument("--limits", action="store_true")
     a = sub.add_parser("show"); a.add_argument("job_id")
     a = sub.add_parser("check"); a.add_argument("job_id")
+    a = sub.add_parser("leads"); a.add_argument("action", nargs="?", default="list", choices=["list", "sync", "lookup"])
+    a.add_argument("--days", type=int, default=14)
     a = sub.add_parser("skip"); a.add_argument("job_id", nargs="+"); a.add_argument("--reason", default="")
     a = sub.add_parser("scan"); a.add_argument("url"); a.add_argument("--ats")
     a = sub.add_parser("fill"); a.add_argument("plan"); a.add_argument("--job")
@@ -176,6 +178,11 @@ def main(argv=None):
             db.log_run("sync-email", False, str(e))
             raise
         out = {"filed": counts}
+        try:  # every role in the alert emails, kept as a lead (Dashboard > Leads)
+            from . import leads
+            out["leads"] = leads.sync(db, s, min(args.days, 14))
+        except Exception as e:
+            out["leads"] = {"error": str(e)[:200]}
         if not args.no_review:
             out["reviewed"] = _review(s, db)
         db.log_run("sync-email", True, _summary(out))
@@ -378,6 +385,20 @@ def main(argv=None):
         _out([{k: r[k] for k in ("id", "status", "company", "title", "location", "found_at")} for r in rows])
     elif args.cmd == "show":
         _out(db.get(args.job_id) or sys.exit(f"no job {args.job_id}"))
+    elif args.cmd == "leads":
+        from . import leads
+        if args.action == "sync":
+            _out(leads.sync(db, s, args.days))
+        elif args.action == "lookup":
+            # Starred leads for the alerts step to find on the company's own site; prints how many.
+            todo = leads.starred_for_lookup(db)
+            if todo:
+                (s.data_dir / "daily").mkdir(parents=True, exist_ok=True)
+                (s.data_dir / "daily" / "alert-roles.json").write_text(json.dumps(todo, indent=1))
+            print(len(todo))
+        else:
+            for r in leads.rows(db)[:200]:
+                print(f"{r['score']:5.1f}  {r['status']:9}  {r['company']} | {r['title']} | {r['location']} | {r['source']}")
     elif args.cmd == "check":
         from . import preflight
         checks = preflight.for_job(db, s, args.job_id)

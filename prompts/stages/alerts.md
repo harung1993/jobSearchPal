@@ -1,7 +1,7 @@
-Today's job search, one short step: look up roles from yesterday's job-alert emails. Follow AGENTS.md.
-Be brief and economical: a few minutes. A cheap model already read the emails and listed the roles that fit.
+Today's job search, one short step: look up roles from the job-alert emails, or leads the person starred on the
+dashboard. Follow AGENTS.md. Be brief and economical: a few minutes.
 
-1. Read data/daily/alert-roles.json: [{"company", "title", "link", "why"}].
+1. Read data/daily/alert-roles.json: [{"company", "title", "link", "why"}] (from the alert emails, or leads the person starred).
 2. For each, find the same posting on the company's own careers page (its ATS: Greenhouse, Lever, Ashby,
    Workday...). The email link usually goes to LinkedIn or Indeed; don't log in there. If the role isn't on the
    company's site any more, skip it.

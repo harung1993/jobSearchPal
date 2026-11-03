@@ -135,6 +135,27 @@ def make_app(settings, db: DB) -> FastAPI:
             raise HTTPException(400)
         return RedirectResponse("/#todo", status_code=303)
 
+    @app.get("/leads")
+    def leads_page(show: str = "open"):
+        from . import leads
+        every = leads.rows(db)
+        groups = {"open": [r for r in every if r["status"] in ("new", "starred") and not r["job_id"]],
+                  "starred": [r for r in every if r["status"] == "starred"],
+                  "tracked": [r for r in every if r["job_id"]],
+                  "dismissed": [r for r in every if r["status"] == "dismissed"], "all": every}
+        show = show if show in groups else "open"
+        tabs = [("open", "To look at"), ("starred", "Starred"), ("tracked", "Tracked"), ("dismissed", "Dismissed"), ("all", "All")]
+        return page("leads.html", rows=groups[show][:500], tabs=[(k, l, len(groups[k])) for k, l in tabs], show=show, nav="leads")
+
+    @app.post("/leads")
+    def lead_action(key: str = Form(...), status: str = Form(...), show: str = Form("open")):
+        from . import leads
+        try:
+            leads.set_status(db, key, status)
+        except ValueError:
+            raise HTTPException(400)
+        return RedirectResponse(f"/leads?show={show}#leads", status_code=303)
+
     @app.get("/stats")
     def stats_page():
         return page("stats.html", s=stats.detail(db, floor=floor), nav="stats")
@@ -224,6 +245,11 @@ def make_app(settings, db: DB) -> FastAPI:
         try:
             counts = await run_in_threadpool(emailsync.sync, db, 7, settings.raw.get("recruiter_senders"), proof_root)
             db.log_run("sync-email", True, ", ".join(f"{v} {k}" for k, v in counts.items()) or "nothing new")
+            try:
+                from . import leads
+                await run_in_threadpool(leads.sync, db, settings, 3)
+            except Exception:
+                pass
             from .cli import _review
             await run_in_threadpool(_review, settings, db)
         except Exception as e:  # shown on the strip; no traceback page

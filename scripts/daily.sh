@@ -71,6 +71,10 @@ run_stage() {
   echo "- $stage${job:+ $job}: $line" >> "$today"
 }
 
+# Leads you starred on the dashboard: a short light step finds them on the company's own site first.
+if [ "$(autoapply leads lookup 2>/dev/null || echo 0)" -gt 0 ] 2>/dev/null; then
+  run_stage alerts || true; echo "- starred leads: $line" >> "$today"
+fi
 for stage in $(autoapply daily-stages 2>/dev/null); do
   if [ "$stage" = rank ]; then
     # Quick pick (Settings > Daily run): a cheap OpenRouter model reads the alert emails, a short light agent
