@@ -115,6 +115,7 @@ def main(argv=None):
     a = sub.add_parser("add"); a.add_argument("url"); a.add_argument("--company", default=""); a.add_argument("--title", default="")
     a = sub.add_parser("list"); a.add_argument("--status"); a.add_argument("--prep", action="store_true"); a.add_argument("--nudges", action="store_true"); a.add_argument("--limits", action="store_true")
     a = sub.add_parser("show"); a.add_argument("job_id")
+    a = sub.add_parser("check"); a.add_argument("job_id")
     a = sub.add_parser("skip"); a.add_argument("job_id", nargs="+"); a.add_argument("--reason", default="")
     a = sub.add_parser("scan"); a.add_argument("url"); a.add_argument("--ats")
     a = sub.add_parser("fill"); a.add_argument("plan"); a.add_argument("--job")
@@ -372,6 +373,14 @@ def main(argv=None):
         _out([{k: r[k] for k in ("id", "status", "company", "title", "location", "found_at")} for r in rows])
     elif args.cmd == "show":
         _out(db.get(args.job_id) or sys.exit(f"no job {args.job_id}"))
+    elif args.cmd == "check":
+        from . import preflight
+        checks = preflight.for_job(db, s, args.job_id)
+        for c in checks:
+            mark = "ok  " if c["ok"] else ("FAIL" if c["hard"] else "warn")
+            print(f"{mark} {c['group']}: {c['name']}" + (f" ({c['detail']})" if c["detail"] and not c["ok"] else ""))
+        if preflight.blocking(checks):
+            sys.exit(1)
     elif args.cmd == "skip":
         for jid in args.job_id:
             db.update(jid, status="skipped", error=args.reason)
@@ -386,10 +395,13 @@ def main(argv=None):
             plan["url"] = db.get(args.job)["apply_url"]
         report = fill(plan, s.profile, s.data_dir / "screenshots", headless)
         db.log_run("fill", not report.errors, f"{plan.get('url', '')[:80]}: {len(report.filled)} filled, {len(report.errors)} errors")
+        out = report.as_dict()
         if args.job:
-            db.update(args.job, status="filled", plan_json=plan, report_json=report.as_dict(),
+            db.update(args.job, status="filled", plan_json=plan, report_json=out,
                       screenshot=report.screenshot, error=None)
-        _out(report.as_dict())
+            from . import preflight
+            out["checks_failed"] = [f"{c['group']}: {c['name']} ({c['detail']})" for c in preflight.for_job(db, s, args.job) if not c["ok"]]
+        _out(out)
     elif args.cmd == "brief":
         from . import brief
         from .web import work_search

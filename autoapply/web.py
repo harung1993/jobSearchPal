@@ -108,7 +108,10 @@ def make_app(settings, db: DB) -> FastAPI:
         job, plan, report = load(job_id)
         shown = {k: v for k, v in plan.items() if k not in ("approved", "approved_by_user")}
         files = [(slot, Path(p).name) for slot, p in plan.get("files", {}).items() if _servable(p)]
-        return page("job.html", nav="", job=job, report=report, approved=plan.get("approved", {}), files=files,
+        from . import preflight
+        checks = preflight.for_job(db, settings, job_id) if job["status"] != "submitted" else []
+        return page("job.html", nav="", job=job, report=report, approved=plan.get("approved", {}), files=files, checks=checks,
+                    blocked=preflight.blocking(checks),
                     notes=_notes(plan), plan_text=json.dumps(shown, indent=1), handoff=_handoff(job, report))
 
     def _handoff(job: dict, report: dict) -> str:
@@ -559,6 +562,12 @@ def make_app(settings, db: DB) -> FastAPI:
                 return RedirectResponse(f"/job/{job_id}", status_code=303)
             if approve != "yes":
                 db.update(job_id, plan_json=new_plan, error="Tick the review box to submit.")
+                return RedirectResponse(f"/job/{job_id}", status_code=303)
+            from . import preflight
+            db.update(job_id, plan_json=new_plan)  # check what you just chose, not the old answers
+            stop = preflight.blocking(preflight.for_job(db, settings, job_id))
+            if stop:
+                db.update(job_id, error="Not submitted. Fix these first: " + "; ".join(f"{c['group']}: {c['name']}" for c in stop))
                 return RedirectResponse(f"/job/{job_id}", status_code=303)
             new_plan["approved_by_user"] = True
             r = await run_in_threadpool(submit, new_plan, settings.profile, shots, headless)

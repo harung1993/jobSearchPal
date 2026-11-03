@@ -45,7 +45,7 @@ def test_json_box_cannot_smuggle_approval(tmp_path, base_url, pdfs):
     sneaky = {**plan, "approved": {CONSENT: "yes"}}
     c.post("/job/manual:gh", data={"action": "submit", "approve": "yes", "plan": json.dumps(sneaky)})
     job = db.get("manual:gh")
-    assert job["status"] == "filled" and "required" in job["error"]
+    assert job["status"] == "filled" and "required" in job["error"].lower()
 
 
 def test_submit_with_consent_and_tick(tmp_path, base_url, pdfs):
@@ -301,3 +301,18 @@ def test_daily_run_on_openrouter(tmp_path, base_url, pdfs, capsys, monkeypatch):
     assert capsys.readouterr().out.strip() == "claude - subscription"
     cli.main(["--config", str(cfg), "daily-env"])
     assert capsys.readouterr().out == ""
+
+
+def test_failed_check_keeps_submit_locked(tmp_path, base_url, pdfs):
+    import os, time
+    db, c, plan = setup(tmp_path, base_url, pdfs)
+    resume = Path(next(p for k, p in plan["files"].items() if "resume" in k))
+    twin = resume.with_suffix(".docx")
+    twin.write_bytes(b"x")
+    os.utime(twin, (time.time() + 60, time.time() + 60))  # Word file changed after the PDF was made
+    html = c.get("/job/manual:gh").text
+    assert "Fix before you submit" in html and "PDF is up to date" in html and "data-blocked" in html
+    c.post("/job/manual:gh", data={"action": "submit", "approve": "yes", "plan": json.dumps(plan),
+                                    f"held::{CONSENT}": "yes", "held::Gender": "Decline to self-identify"})
+    job = db.get("manual:gh")
+    assert job["status"] == "filled" and "Fix these first" in job["error"]

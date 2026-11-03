@@ -13,6 +13,9 @@ first). Work only on this role.
     "answers": {"<question label exactly as scanned>": "<answer>", ...}}
    Answer every question the profile doesn't already cover, short and specific. Leave out consents and
    self-ID questions: the filler handles those from the person's own standing answers.
-6. `autoapply fill data/applications/<slug>/plan.json --job {{JOB_ID}}`. If the report lists unanswered required
-   questions or errors, fix plan.json and fill again (max 2 more tries).
-7. Print one line: "<Company> (<title>): ready to review" or "<Company>: apply by hand" or what went wrong.
+   Build the PDFs last, after the final .docx edit (`soffice --headless --convert-to pdf --outdir <folder> <docx>`).
+6. `autoapply fill data/applications/<slug>/plan.json --job {{JOB_ID}}`. Its output ends with "checks_failed": the
+   pre-submit checks (stale or over-long PDFs, missing job dates, placeholders, unanswered required questions).
+   Fix what you can (rebuild a PDF, restore a date line, answer a question) and fill again (max 2 more tries).
+   Consent and self-ID checks are the person's to settle: leave those.
+7. Print one line, naming any check still failing: "<Company> (<title>): ready to review" or "<Company>: apply by hand" or what went wrong.

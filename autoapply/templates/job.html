@@ -17,6 +17,7 @@
 {% set need_n = report.held|rejectattr('value')|list|length %}
 <div class="bar" role="region" aria-label="Review and decide">
  <div class="chips">
+  {% if blocked %}<a href="#preflight" class="chip bad">Fix first <b>{{ blocked|length }}</b></a>{% elif checks %}<a href="#preflight" class="chip ok">Checks pass</a>{% endif %}
   {% if report.held %}<a href="#check" class="chip warn">Check these <b>{{ report.held|length }}</b>{% if need_n %} · {{ need_n }} need you{% endif %}</a>{% endif %}
   {% if report.unanswered %}<a href="#unanswered" class="chip">Unanswered <b>{{ report.unanswered|length }}</b>{% set req = report.unanswered|selectattr('required')|list|length %}{% if req %} · {{ req }} required{% endif %}</a>{% endif %}
   {% if report.errors %}<a href="#problems" class="chip bad">Problems <b>{{ report.errors|length }}</b></a>{% endif %}
@@ -30,9 +31,9 @@
   <span class="sep" aria-hidden="true"></span>
   {% if report.submit_clicked and not report.submitted %}<label class="tick warn"><input type="checkbox" name="resubmit" value="yes"> Submit was pressed once with no confirmation: I checked my email, submit again</label>{% endif %}
   <label class="tick"><input type="checkbox" name="approve" value="yes" id="approve"> I reviewed everything, including the consents</label>
-  {% if handoff %}<button class="btn" name="action" value="submit" data-needs-approve disabled>Submit here</button>
+  {% if handoff %}<button class="btn" name="action" value="submit" data-needs-approve {% if blocked %}data-blocked{% endif %} disabled>Submit here</button>
   <button class="btn primary" name="action" value="manual">I applied by hand</button>
-  {% else %}<button class="btn primary" name="action" value="submit" data-needs-approve disabled>Submit</button>{% endif %}
+  {% else %}<button class="btn primary" name="action" value="submit" data-needs-approve {% if blocked %}data-blocked title="Fix the checks above first"{% endif %} disabled>Submit</button>{% endif %}
  </div>{% endif %}
 </div>
 {% if job.error %}<p class="notice">{{ job.error }}</p>{% endif %}
@@ -56,6 +57,17 @@
 
 <div class="grid g2 mt">
 <div>
+ {% if checks %}{% set bad = checks|rejectattr('ok')|list %}<section class="card pre {{ 'stop' if blocked else ('warn' if bad else 'go') }}" id="preflight">
+  <h2>{% if blocked %}Fix before you submit{% elif bad %}Ready to submit, with {{ bad|length }} warning{{ '' if bad|length == 1 else 's' }}{% else %}Everything checks out{% endif %}
+   <span class="count">{{ checks|selectattr('ok')|list|length }} of {{ checks|length }} pass</span></h2>
+  {% if bad %}<ul class="checks">{% for c in bad %}<li class="{{ 'fail' if c.hard else 'warnc' }}"><b>{{ c.group }}:</b> {{ c.name }}{% if c.detail %} <span class="ink2">· {{ c.detail }}</span>{% endif %}</li>{% endfor %}</ul>{% endif %}
+  <details><summary>All checks</summary><ul class="checks">{% for c in checks %}<li class="{{ 'okc' if c.ok else ('fail' if c.hard else 'warnc') }}"><b>{{ c.group }}:</b> {{ c.name }}{% if c.detail %} <span class="ink2">· {{ c.detail }}</span>{% endif %}</li>{% endfor %}</ul></details>
+ </section>
+ <style>.pre h2{font-size:15px}.pre.stop{border-color:color-mix(in srgb,var(--bad-dot) 45%,var(--line))}.pre.go h2{color:var(--good)}
+  .checks{list-style:none;margin:4px 0 8px;padding:0;display:grid;gap:6px;font-size:13px}
+  .checks li{display:flex;gap:8px;align-items:baseline}.checks li::before{flex:none;font-weight:700;width:14px}
+  .checks .okc::before{content:"✓";color:var(--good)}.checks .fail::before{content:"✕";color:var(--bad)}.checks .warnc::before{content:"!";color:var(--warn)}</style>
+ {% endif %}
  {% if report.held %}{% set pre = report.held|selectattr('prefilled')|list %}<section class="card check-these" id="check">
   <h2>Check these: consents and self-ID {% if pre %}<span class="pill waiting" style="text-transform:none">{{ pre|length }} pre-filled</span>{% endif %}</h2>
   <p style="margin-top:0">{% if pre %}Pre-filled from your standing answers (Settings &gt; Setup). The agent never answers these.
@@ -114,12 +126,12 @@
 .ptabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:-6px 0 12px}
 .ptabs button{font:inherit;font-size:13px;font-weight:600;border:0;background:none;color:var(--ink-2);padding:8px 10px;border-bottom:2px solid transparent;cursor:pointer}
 .ptabs button[aria-selected="true"]{color:var(--accent-ink);border-bottom-color:var(--accent)}
-.side-tabs{position:sticky;top:76px} .side-tabs .doc{height:70vh}
-#check,#unanswered,#problems,#answers{scroll-margin-top:90px}
+.side-tabs{position:sticky;top:16px} .side-tabs .doc{height:calc(100vh - 120px);min-height:520px}
+#preflight,#check,#unanswered,#problems,#answers{scroll-margin-top:90px}
 @media (max-width:860px){.side-tabs{position:static}.bar{position:static}}
 </style>
 <script>
-(()=>{const a=document.getElementById("approve");if(!a)return;const go=()=>document.querySelectorAll("[data-needs-approve]").forEach(b=>b.disabled=!a.checked);a.addEventListener("change",go);go()})();
+(()=>{const a=document.getElementById("approve");if(!a)return;const go=()=>document.querySelectorAll("[data-needs-approve]").forEach(b=>b.disabled=!a.checked||b.hasAttribute("data-blocked"));a.addEventListener("change",go);go()})();
 document.addEventListener("click",e=>document.querySelectorAll("details.menu[open]").forEach(d=>{if(!d.contains(e.target))d.open=false}));
 document.querySelectorAll(".ptabs button").forEach(b=>b.onclick=()=>{const box=b.closest(".card");
  box.querySelectorAll(".ptabs button").forEach(x=>x.setAttribute("aria-selected",x===b));
