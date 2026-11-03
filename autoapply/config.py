@@ -44,6 +44,24 @@ def apply_secrets(data_dir: Path):
             FROM_SECRETS.add(k)
 
 
+def apply_dotenv(root: Path):
+    """The folder's .env, for commands run by hand (daily.sh and the service load it themselves). Set values win."""
+    try:
+        lines = (root / ".env").read_text().splitlines()
+    except OSError:
+        return
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        k, v = line.removeprefix("export ").split("=", 1)
+        k, v = k.strip(), v.strip()
+        if len(v) >= 2 and v[0] == v[-1] and v[0] in "'\"":
+            v = v[1:-1]
+        if k and k not in os.environ:
+            os.environ[k] = v
+
+
 def load(config_path: str = "config.yaml", profile_path: str | None = None, allow_example: bool = False) -> Settings:
     """allow_example: with no config.yaml yet (a fresh install), start from config.example.yaml so the
     dashboard can open its Setup page. Nothing else runs on the example."""
@@ -59,5 +77,6 @@ def load(config_path: str = "config.yaml", profile_path: str | None = None, allo
     prof = Path(profile_path).resolve() if profile_path else cfg.parent / "profile.yaml"
     profile = (yaml.safe_load(prof.read_text()) or {}) if prof.exists() else {}
     s = Settings(root=cfg.parent, raw=raw, profile=profile)
+    apply_dotenv(s.root)
     apply_secrets(s.data_dir)
     return s

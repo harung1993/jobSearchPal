@@ -35,3 +35,17 @@ def test_reads_spam_and_trash_once_each(monkeypatch):
     got = alerts.fetch(days=1)
     assert FakeIMAP.selected == ['"[Gmail]/All Mail"', '"[Gmail]/Spam"', '"[Gmail]/Bin"']
     assert len(got) == 1 and "Hooli" in got[0]["text"]  # same Message-ID in several folders: once
+
+
+def test_cli_reads_dotenv(tmp_path, monkeypatch):
+    from autoapply import config
+    (tmp_path / ".env").write_text('# comment\nexport GMAIL_USER="me@example.com"\nGMAIL_APP_PASSWORD=abcd efgh\nBIND=already\n')
+    (tmp_path / "config.yaml").write_text("data_dir: data\n")
+    for k in ("GMAIL_USER", "GMAIL_APP_PASSWORD"):  # set then unset, so the test's values are undone afterwards
+        monkeypatch.setenv(k, "x")
+        monkeypatch.delenv(k)
+    monkeypatch.setenv("BIND", "set-by-shell")
+    config.load(str(tmp_path / "config.yaml"))
+    import os
+    assert os.environ["GMAIL_USER"] == "me@example.com" and os.environ["GMAIL_APP_PASSWORD"] == "abcd efgh"
+    assert os.environ["BIND"] == "set-by-shell"
