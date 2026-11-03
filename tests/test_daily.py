@@ -158,3 +158,13 @@ def test_todo_line_for_phone_push(tmp_path, capsys):
     cli.main(["--config", str(cfg), "todo-line"])
     out = capsys.readouterr().out
     assert out.startswith("1 to do: ") and "Pat Lee" in out
+
+
+def test_permission_denial_fails_the_step(tmp_path, capsys, monkeypatch):
+    s, db, cfg = make(tmp_path)
+    out = {"type": "result", "result": "If you allow `autoapply candidates` I'll rerun.", "usage": {}, "total_cost_usd": 0.1,
+           "permission_denials": [{"tool_name": "Bash", "tool_input": {"command": "autoapply candidates --limit 12"}}]}
+    monkeypatch.setattr("sys.stdin", __import__("io").StringIO(json.dumps(out)))
+    with pytest.raises(SystemExit) as e:
+        cli.main(["--config", str(cfg), "log-daily", "claude", "sonnet", "--stage", "rank"])
+    assert e.value.code == 1 and "autoapply candidates" in capsys.readouterr().out

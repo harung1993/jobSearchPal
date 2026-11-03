@@ -79,6 +79,17 @@ def _summary(out: dict) -> str:
     return ", ".join(bits)
 
 
+def _denied(raw: str) -> str | None:
+    """A step that was refused a command didn't do its job: say which command, so the run shows it as failed."""
+    try:
+        d = json.loads(raw)
+    except ValueError:
+        return None
+    asks = [x.get("tool_input", {}).get("command") or x.get("tool_name") or "?"
+            for x in (d.get("permission_denials") or []) if isinstance(x, dict)]
+    return f"needed permission for {', '.join(sorted(set(map(str, asks))))[:200]}" if asks else None
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="autoapply", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--config", default="config.yaml")
@@ -300,6 +311,7 @@ def main(argv=None):
             except RuntimeError as e:
                 text, err = "", str(e)
             est, tokens = classify.LAST.get("est", 0.0), classify.LAST.get("tokens", 0)
+            err = err or _denied(raw)
         via = args.via
         if via == "openrouter":
             # Real spend: the key's usage now minus before the run. Falls back to the agent's own estimate.
@@ -316,7 +328,7 @@ def main(argv=None):
             label = f"{args.agent}:{args.model or 'default'}:{args.stage}"
         db.log_usage("daily", label + (" (openrouter)" if via == "openrouter" else ""), 0, 0, cost, 0, err, est, tokens)
         lines = [l for l in text.strip().splitlines() if l.strip()]
-        print(lines[-1] if lines else "")
+        print(f"Stopped: {err}" if err and err.startswith("needed permission") else (lines[-1] if lines else ""))
         if err:
             sys.exit(1)
     elif args.cmd == "review-emails":
