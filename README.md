@@ -201,6 +201,47 @@ Code, `.claude/settings.json` also blocks edits to the tool's own code; Codex ru
 this folder, so for it that rule is an instruction only. Either way these are guardrails, not a sandbox:
 the review step is the real safety net.
 
+## Permissions: what you hand over
+
+Know what each piece can reach before you turn it on.
+
+**The daily agent (Claude Code).** It runs unattended with `--permission-mode acceptEdits`, so it can
+create and edit files in this folder without asking. Commands it may run come from the `allow` list in
+`.claude/settings.json`: the `autoapply` steps it needs, `soffice` for PDFs, `python3` (used to build the
+tailored .docx), `mkdir`, `ls` and `cat`, plus web search and fetch for company research. Anything
+else stops the step, and the dashboard shows that step as failed. The `deny` list blocks
+`autoapply serve`, `sqlite3`, and edits to `autoapply/` and `.claude/`. Be aware that `python3:*` is broad: Python
+can do whatever your user account can. If that's too much for you, run it in Docker or as a separate
+low-privilege user.
+
+**The daily agent (Codex).** Runs with `--sandbox workspace-write`, network on and no approval prompts:
+writes are limited to this folder, but there is no command allow list.
+
+**Gmail (app password, optional).** An app password grants full IMAP and SMTP access to the mailbox,
+the same as your password, minus the 2-step check. JobSearchPal uses it to read job emails (mailbox opened read-only,
+messages fetched with `BODY.PEEK` so they stay unread) and to send you the morning brief. It never
+sends anything else, never deletes and never marks as read. It is stored in `.env` or `data/secrets.json`
+(owner-only). It also reads the headers (not bodies) of mail you sent, to tell when you've replied. A separate
+job-search Gmail limits what the password can reach. To cut it off, revoke it at myaccount.google.com/apppasswords.
+
+**OpenRouter key (optional).** Pay per token. Email sorting and Quick pick stop for the month at
+the budget on Settings > Costs & limits; set a credit limit on the key itself too.
+
+**The dashboard.** It shows your applications, emails and answers. It listens on `127.0.0.1` unless you
+set `BIND`. Set a dashboard password (Settings > Setup, step 7) before you open it to your phone or network,
+and prefer a private network such as Tailscale.
+
+**What leaves your server.** Job emails, your resume and notes go to the model you pick (your Claude or
+ChatGPT subscription, or OpenRouter/Jev if you turn them on); Ollama stays local. Postings are fetched from
+public job boards. The form filler types your real name, email and files into the company's own form, and
+nothing is sent until you press Submit.
+
+**What stays on disk, unencrypted.** Resumes, tailored documents, answers, copies of job emails and form
+screenshots live in `materials/` and `data/`. Keep the folder private and back it up.
+
+**Adding a step?** If a prompt uses a new `autoapply` command, add it to the `allow` list. A test
+(`tests/test_daily.py`) fails if a prompt uses a command the agent isn't allowed to run.
+
 ## Setup (about 30 minutes)
 
 You need an always-on Linux box (Ubuntu 24.04 tested), **either** a Claude subscription (Pro or Max,
