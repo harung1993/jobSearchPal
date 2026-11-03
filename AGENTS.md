@@ -12,6 +12,7 @@ Personal facts (work authorization, titles, pay asks, location, file naming) liv
 agent you are (the file keeps that name for both).
 
 ## Hard rules
+- Run each shell command on its own. Commands chained with `;`, `&&` or `|` are refused and stop the step.
 - Never submit an application. There is no CLI command for it on purpose. Do not click Submit
   with any other tool, and do not edit the code to add one.
 - Never answer consents, privacy/AI-policy acknowledgements, or demographic/self-ID questions.

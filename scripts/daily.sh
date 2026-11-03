@@ -56,7 +56,7 @@ run_stage() {
   else
     line=$(claude -p "$(autoapply daily-prompt "$stage" $job)" ${model:+--model "$model"} \
       --permission-mode acceptEdits --max-turns "$turns" \
-      --output-format json | autoapply log-daily claude "$model" "$via" --stage "$stage") || ok=0
+      --output-format json < /dev/null | autoapply log-daily claude "$model" "$via" --stage "$stage") || ok=0
   fi
   echo "- $stage${job:+ $job}: $line" >> "$today"
 }

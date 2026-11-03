@@ -12,8 +12,8 @@ Already done before you started: email sync and `autoapply find` (new roles from
    Feed roles (ats "feed") you want to pick need the same hop to the real posting first.
 {{DISCOVER}}
 4. Pick the best N by fit (against materials/ and CLAUDE.local.md), then freshness, then pay. Skip anything
-   already applied to (`autoapply list --status submitted`, materials/applications/). `autoapply skip <id>
-   --reason "..."` clear misses from the candidate list, briefly.
+   already applied to (`autoapply list --status submitted`, materials/applications/). `autoapply skip <id> [<id> ...]
+   --reason "..."` clears misses from the candidate list in one call (one reason per call).
 5. Write data/daily/picks.json: [{"id": "<job id>", "why": "<one line on fit>"}], best first.
    Workday and other account-based sites can't be filled: still pick them if they're the best fit, and add
    "by_hand": true.

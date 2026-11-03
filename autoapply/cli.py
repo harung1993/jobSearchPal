@@ -115,7 +115,7 @@ def main(argv=None):
     a = sub.add_parser("add"); a.add_argument("url"); a.add_argument("--company", default=""); a.add_argument("--title", default="")
     a = sub.add_parser("list"); a.add_argument("--status"); a.add_argument("--prep", action="store_true"); a.add_argument("--nudges", action="store_true"); a.add_argument("--limits", action="store_true")
     a = sub.add_parser("show"); a.add_argument("job_id")
-    a = sub.add_parser("skip"); a.add_argument("job_id"); a.add_argument("--reason", default="")
+    a = sub.add_parser("skip"); a.add_argument("job_id", nargs="+"); a.add_argument("--reason", default="")
     a = sub.add_parser("scan"); a.add_argument("url"); a.add_argument("--ats")
     a = sub.add_parser("fill"); a.add_argument("plan"); a.add_argument("--job")
     a = sub.add_parser("brief"); a.add_argument("--send", action="store_true")
@@ -373,7 +373,8 @@ def main(argv=None):
     elif args.cmd == "show":
         _out(db.get(args.job_id) or sys.exit(f"no job {args.job_id}"))
     elif args.cmd == "skip":
-        db.update(args.job_id, status="skipped", error=args.reason)
+        for jid in args.job_id:
+            db.update(jid, status="skipped", error=args.reason)
     elif args.cmd == "scan":
         _out(scan(args.url, args.ats, headless=headless))
     elif args.cmd == "fill":
