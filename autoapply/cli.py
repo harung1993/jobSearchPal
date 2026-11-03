@@ -202,9 +202,12 @@ def main(argv=None):
         from .prefs import Prefs
         lim = Prefs(s.data_dir, s.raw).limits()
         stages = []
-        if lim["prep_per_day"] and prep.needed(db, s.data_dir, lim["prep_per_day"]):
+        manual = os.environ.get("AUTOAPPLY_TRIGGER") == "manual"  # Run now: just more applications
+        if manual:
+            pass
+        elif lim["prep_per_day"] and prep.needed(db, s.data_dir, lim["prep_per_day"]):
             stages.append("prep")
-        if lim["drafts_per_day"] and nudges.for_agent(db, s.data_dir, lim["drafts_per_day"]):
+        if not manual and lim["drafts_per_day"] and nudges.for_agent(db, s.data_dir, lim["drafts_per_day"]):
             stages.append("drafts")
         if lim["picks_per_day"]:
             stages.append("rank")
@@ -223,7 +226,7 @@ def main(argv=None):
         except (OSError, ValueError):
             picks = []
         n = Prefs(s.data_dir, s.raw).limits()["picks_per_day"]
-        ids = [p["id"] for p in picks if isinstance(p, dict) and p.get("id") and db.get(p["id"])][:n]
+        ids = [p["id"] for p in picks if isinstance(p, dict) and p.get("id") and (db.get(p["id"]) or {}).get("status") == "new"][:n]
         print("\n".join(ids))
     elif args.cmd == "daily-prompt":
         # The stage's prompt with today's details filled in; daily.sh pipes it to the agent.
@@ -233,6 +236,8 @@ def main(argv=None):
             sys.exit(f"no stage {args.stage}")
         text = (root / f"{args.stage}.md").read_text()
         day = Prefs(s.data_dir, s.raw).data.get("discover_weekday", 1)
+        if os.environ.get("AUTOAPPLY_TRIGGER") == "manual":
+            day = 0  # discovery is once a week, on the scheduled run
         text = text.replace("{{DISCOVER}}", (root / "discover.md").read_text() if day and datetime.now().isoweekday() == day else "")
         if args.job_id and not db.get(args.job_id):
             sys.exit(f"no job {args.job_id}")
@@ -243,7 +248,7 @@ def main(argv=None):
         from .prefs import Prefs
         pr = Prefs(s.data_dir, s.raw)
         model, key = pr.data.get("quick_pick_model") or "", pr.key("OPENROUTER_API_KEY")
-        day = pr.data.get("discover_weekday", 1)
+        day = 0 if os.environ.get("AUTOAPPLY_TRIGGER") == "manual" else pr.data.get("discover_weekday", 1)
         if not model or not key or (day and datetime.now().isoweekday() == day):
             sys.exit(2)  # off, no key, or discovery day (that needs the agent's web search)
         if db.spend_this_month() >= float(pr.data.get("monthly_api_budget") or 0):

@@ -181,3 +181,19 @@ def test_permission_denial_fails_the_step(tmp_path, capsys, monkeypatch):
     with pytest.raises(SystemExit) as e:
         cli.main(["--config", str(cfg), "log-daily", "claude", "sonnet", "--stage", "rank"])
     assert e.value.code == 1 and "autoapply candidates" in capsys.readouterr().out
+
+
+def test_manual_run_only_picks_and_applies(tmp_path, capsys, monkeypatch):
+    s, db, cfg = make(tmp_path)
+    monkeypatch.setenv("AUTOAPPLY_TRIGGER", "manual")
+    monkeypatch.setenv("AUTOAPPLY_PICKS", "1")
+    cli.main(["--config", str(cfg), "daily-stages"])
+    assert capsys.readouterr().out.split() == ["rank"]
+    (s.data_dir / "daily").mkdir(exist_ok=True)
+    (s.data_dir / "daily" / "picks.json").write_text(json.dumps([{"id": "gh:a:1"}, {"id": "wd:c:3"}]))
+    db.update("gh:a:1", status="filled")  # filled earlier today: not again
+    cli.main(["--config", str(cfg), "daily-picks"])
+    assert capsys.readouterr().out.split() == ["wd:c:3"]
+    upd(Prefs(s.data_dir), discover_weekday=datetime.now().isoweekday())
+    cli.main(["--config", str(cfg), "daily-prompt", "rank"])
+    assert "Weekly" not in capsys.readouterr().out

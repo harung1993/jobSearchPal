@@ -8,6 +8,13 @@ export PATH="$HOME/.local/bin:$HOME/.npm-global/bin:$PATH"
 [ -f .venv/bin/activate ] && source .venv/bin/activate  # Docker has it on PATH already
 [ -f .env ] && set -a && source .env && set +a
 mkdir -p data/daily
+# One run at a time: the 6:30 cron run and "Run now" on the dashboard share this lock.
+exec 9>data/daily/.lock
+if ! flock -n 9; then echo "$(date -Is) another run is going; not starting a second"; exit 0; fi
+trigger=${AUTOAPPLY_TRIGGER:-cron}
+progress() { printf '%s\t%s\t%s\n' "$started" "$trigger" "$1" > data/daily/.running; }
+started=$(date -Is); progress "starting"
+trap 'rm -f data/daily/.running' EXIT
 # A fresh install does nothing until the dashboard's Setup page has contact details and job interests.
 if ! check=$(autoapply setup-check 2>&1); then
   echo "$(date -Is) $check"
@@ -17,11 +24,13 @@ fi
 
 # The run is split into short agent sessions so no session drags a long history along (that is where most
 # tokens go). Plain steps run first without an agent: email sync and the job search.
+progress "syncing email and searching job boards"
 autoapply sync-email --days 3 >/dev/null 2>&1 || autoapply log-run sync-email fail "sync failed; see data/cron.log" || true
 autoapply find >/dev/null 2>&1 || true
 
 today=data/daily/$(date +%F).md
-echo "# Daily run $(date '+%F %H:%M')" > "$today"
+if [ "$trigger" = manual ]; then echo "
+# Run now $(date '+%F %H:%M')" >> "$today"; else echo "# Daily run $(date '+%F %H:%M')" > "$today"; fi
 ok=1; picked=""; blocked=""
 
 # run_stage STAGE [JOB_ID]: sets line to the stage's last line of output, and ok=0 on failure.
@@ -29,6 +38,7 @@ ok=1; picked=""; blocked=""
 run_stage() {
   local stage=$1 job=${2:-} agent model via turns last=data/daily/.last-message
   line=""
+  progress "$stage${job:+ $job}"
   read -r agent model via < <(autoapply daily-agent --stage "$stage" 2>/dev/null || echo claude) || true
   agent=${agent:-claude}; via=${via:-subscription}; [ "$model" = - ] && model=
   if [ "$via" = blocked ]; then
@@ -94,7 +104,10 @@ fi
 
 echo "$(date -Is) $summary"
 # Morning brief email (today's picks + application status) for the inbox your morning brief reads.
-autoapply brief --send || autoapply log-run brief fail "brief email failed; see data/cron.log"
+# A "Run now" from the dashboard skips it: you're already looking.
+if [ "$trigger" != manual ]; then
+  autoapply brief --send || autoapply log-run brief fail "brief email failed; see data/cron.log"
+fi
 # Optional phone push via ntfy (set NTFY_TOPIC in .env and subscribe in the ntfy app).
 if [ -n "${NTFY_TOPIC:-}" ]; then
   todo=$(autoapply todo-line 2>/dev/null || true)

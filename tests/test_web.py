@@ -316,3 +316,23 @@ def test_failed_check_keeps_submit_locked(tmp_path, base_url, pdfs):
                                     f"held::{CONSENT}": "yes", "held::Gender": "Decline to self-identify"})
     job = db.get("manual:gh")
     assert job["status"] == "filled" and "Fix these first" in job["error"]
+
+
+def test_run_now_starts_one_run(tmp_path, base_url, pdfs, monkeypatch):
+    import fcntl, subprocess
+    db, c, _ = setup(tmp_path, base_url, pdfs)
+    started = []
+    monkeypatch.setattr(subprocess, "Popen", lambda args, **kw: started.append((args, kw["env"])))
+    assert "Run now" in c.get("/").text
+    c.post("/run", data={"picks": "3"})
+    assert len(started) == 1 and started[0][0][-1].endswith("scripts/daily.sh")
+    assert started[0][1]["AUTOAPPLY_TRIGGER"] == "manual" and started[0][1]["AUTOAPPLY_PICKS"] == "3"
+    d = tmp_path / "data" / "daily"
+    d.mkdir(exist_ok=True)
+    (d / ".running").write_text("2026-11-03T14:10:00-05:00\tmanual\tapply gh:warp:1\n")
+    with open(d / ".lock", "w") as f:  # a run holds the lock: the page says so and a second click starts nothing
+        fcntl.flock(f, fcntl.LOCK_EX)
+        html = c.get("/").text
+        assert "Running since 2:10 pm" in html and "apply gh:warp:1" in html
+        c.post("/run", data={"picks": "1"})
+    assert len(started) == 1

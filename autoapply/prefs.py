@@ -119,7 +119,10 @@ class Prefs:
 
     def limits(self) -> dict:
         d = self.data
-        return {"picks_per_day": int(d["picks_per_day"]),
+        picks = int(d["picks_per_day"])
+        if os.environ.get("AUTOAPPLY_PICKS", "").isdigit():  # "Run now" on the dashboard: this many roles, this run
+            picks = max(1, min(5, int(os.environ["AUTOAPPLY_PICKS"])))
+        return {"picks_per_day": picks,
                 "prep_per_day": int(d["prep_per_day"]) if d["prep_enabled"] else 0,
                 "drafts_per_day": int(d["drafts_per_day"]) if d["drafts_enabled"] else 0}
 

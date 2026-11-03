@@ -83,8 +83,44 @@ def make_app(settings, db: DB) -> FastAPI:
         todo = nudges.compute(db, settings.data_dir)
         for n in todo:
             n["compose"] = nudges.gmail_compose_url(n)
+        from .prefs import Prefs
         return page("index.html", s=stats.compute(db, floor=floor), interviews=prep.interviews(db, settings.data_dir)[:6],
-                    todo=todo, nav="dashboard")
+                    todo=todo, nav="dashboard", running=run_state(), picks_default=Prefs(settings.data_dir, settings.raw).limits()["picks_per_day"])
+
+    def run_state() -> dict | None:
+        """The run going right now, from daily.sh's lock and progress line; None when nothing runs."""
+        import fcntl
+        lock = settings.data_dir / "daily" / ".lock"
+        if not lock.exists():
+            return None
+        with open(lock) as f:
+            try:
+                fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                fcntl.flock(f, fcntl.LOCK_UN)
+                return None  # nobody holds it
+            except OSError:
+                pass
+        try:
+            started, trigger, step = (settings.data_dir / "daily" / ".running").read_text().strip().split("\t", 2)
+            at = datetime.fromisoformat(started).strftime("%-I:%M %p").lower()
+        except (OSError, ValueError):
+            started, trigger, step, at = "", "", "", ""
+        return {"at": at, "trigger": trigger, "step": step}
+
+    @app.post("/run")
+    def run_now(picks: int = Form(2)):
+        """Run now: the same pass as the morning run, for more applications today. Never submits anything."""
+        import subprocess
+        if run_state():
+            return RedirectResponse("/", status_code=303)
+        script = Path(__file__).resolve().parent.parent / "scripts" / "daily.sh"
+        log = open(settings.data_dir / "cron.log", "a")
+        env = {**os.environ, "AUTOAPPLY_TRIGGER": "manual", "AUTOAPPLY_PICKS": str(max(1, min(5, picks)))}
+        subprocess.Popen(["bash", str(script)], cwd=script.parent.parent, env=env, stdout=log, stderr=subprocess.STDOUT,
+                         stdin=subprocess.DEVNULL, start_new_session=True)  # keeps going if the dashboard restarts
+        db.log_run("run-now", True, f"started with {picks} role{'s' if picks != 1 else ''}")
+        time.sleep(0.5)  # let it take the lock so the page shows it running
+        return RedirectResponse("/", status_code=303)
 
     @app.post("/nudge/{key}")
     def nudge_action(key: str, action: str = Form(...), days: int = Form(3)):
