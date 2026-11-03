@@ -218,7 +218,7 @@ low-privilege user.
 writes are limited to this folder, but there is no command allow list.
 
 **Gmail (app password, optional).** An app password grants full IMAP and SMTP access to the mailbox,
-the same as your password, minus the 2-step check. JobSearchPal uses it to read job emails (mailbox opened read-only,
+the same as your password, minus the 2-step check. JobSearchPal uses it to read job emails in All Mail, Spam and Trash (each opened read-only,
 messages fetched with `BODY.PEEK` so they stay unread) and to send you the morning brief. It never
 sends anything else, never deletes and never marks as read. It is stored in `.env` or `data/secrets.json`
 (owner-only). It also reads the headers (not bodies) of mail you sent, to tell when you've replied. A separate
