@@ -3,6 +3,8 @@
 #   30 6 * * 1-5  $HOME/auto-apply/scripts/daily.sh >> $HOME/auto-apply/data/cron.log 2>&1
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# The agent CLIs usually install to ~/.local/bin, which cron and `ssh host cmd` leave off PATH.
+export PATH="$HOME/.local/bin:$HOME/.npm-global/bin:$PATH"
 [ -f .venv/bin/activate ] && source .venv/bin/activate  # Docker has it on PATH already
 [ -f .env ] && set -a && source .env && set +a
 mkdir -p data/daily
