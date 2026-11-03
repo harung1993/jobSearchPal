@@ -35,6 +35,10 @@ run_stage() {
     blocked=$(autoapply daily-agent --stage "$stage" 2>&1 >/dev/null | tail -1)
     return 1
   fi
+  if ! command -v "$agent" >/dev/null; then
+    blocked="$agent isn't installed or isn't on PATH (looked in ~/.local/bin too)"
+    ok=0; return 1
+  fi
   case $stage in rank) turns=40;; alerts) turns=30;; apply) turns=60;; prep) turns=40;; *) turns=20;; esac
   [ "$via" = openrouter ] && eval "$(autoapply daily-env)"
   rm -f "$last"
