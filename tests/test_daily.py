@@ -160,6 +160,19 @@ def test_todo_line_for_phone_push(tmp_path, capsys):
     assert out.startswith("1 to do: ") and "Pat Lee" in out
 
 
+def test_every_command_the_prompts_use_is_allowed():
+    """A command the daily agent may not run stops its step (11/3: `autoapply candidates`)."""
+    import re
+    from pathlib import Path
+    root = Path(__file__).resolve().parent.parent
+    allow = json.loads((root / ".claude" / "settings.json").read_text())["permissions"]["allow"]
+    used = set()
+    for f in list((root / "prompts").rglob("*.md")) + [root / "AGENTS.md"]:
+        used |= set(re.findall(r"autoapply ([a-z][a-z-]+)", f.read_text()))
+    missing = [c for c in sorted(used) if not any(a.startswith(f"Bash(autoapply {c}") for a in allow)]
+    assert used and not missing, missing
+
+
 def test_permission_denial_fails_the_step(tmp_path, capsys, monkeypatch):
     s, db, cfg = make(tmp_path)
     out = {"type": "result", "result": "If you allow `autoapply candidates` I'll rerun.", "usage": {}, "total_cost_usd": 0.1,
