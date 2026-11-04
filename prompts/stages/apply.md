@@ -3,6 +3,9 @@ first). Work only on this role.
 
 1. `autoapply show {{JOB_ID}}` for the posting. If its ats is "feed", find the same role on the company's own careers
    page (ATS URL) and work from that; if it's gone there, print "<Company>: posting gone" and stop.
+   Read the base resume from its .docx (python-docx via `python3`), not the PDF. Don't run `pdftotext` or `pdfinfo`:
+   they aren't allowed and stop this step. To check a PDF's text or page count, use `python3` with pypdf, or the
+   checks `autoapply fill` prints.
 2. Tailor the resume and write a cover letter into data/applications/<company-slug>/ (docx + pdf), plus notes.md
    (fit/gap table, pay ask, form answers, short screen prep). Keep it to what's true in materials/.
 3. If the posting is on Workday or another site that needs an account, stop here: say "apply by hand" in notes.md.

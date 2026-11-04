@@ -197,3 +197,22 @@ def test_manual_run_only_picks_and_applies(tmp_path, capsys, monkeypatch):
     upd(Prefs(s.data_dir), discover_weekday=datetime.now().isoweekday())
     cli.main(["--config", str(cfg), "daily-prompt", "rank"])
     assert "Weekly" not in capsys.readouterr().out
+
+
+def test_one_pick_per_company_and_shortlist(tmp_path, capsys):
+    """11/4: both of the day's picks were the same company (two Samsara roles). One per company; the dashboard's
+    shortlist also shows one per company and skips companies you applied to."""
+    s, db, cfg = make(tmp_path)
+    db.upsert_job({"id": "gh:a:9", "ats": "greenhouse", "company": "ACME", "title": "Director, Analytics Engineering",
+                   "location": "Remote", "url": "u", "apply_url": "u", "description": ""})
+    (s.data_dir / "daily").mkdir(exist_ok=True)
+    (s.data_dir / "daily" / "picks.json").write_text(json.dumps([{"id": "gh:a:1", "why": "dbt fit"}, {"id": "gh:a:9"}, {"id": "wd:c:3"}]))
+    cli.main(["--config", str(cfg), "daily-picks"])
+    assert capsys.readouterr().out.split() == ["gh:a:1", "wd:c:3"]
+    short = rank.shortlist(db, s, 5)
+    assert [j["id"] for j in short][:2] == ["gh:a:1", "wd:c:3"] and short[0]["why"] == "dbt fit"
+    assert "gh:a:9" not in [j["id"] for j in short]
+    db.update("gh:a:1", status="filled")  # prepared: Acme is now in Ready for you, so not on the shortlist
+    ids = [j["id"] for j in rank.shortlist(db, s, 5, skip_companies=["Acme"])]
+    assert "gh:a:9" not in ids and "wd:c:3" in ids
+    assert rank.shortlist(db, s, 0) == []

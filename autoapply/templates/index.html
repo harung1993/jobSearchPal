@@ -11,7 +11,17 @@
 <style>.ph-acts{display:flex;gap:8px;align-items:center}.runnow{display:flex;gap:6px;align-items:center;margin:0}.runnow select{width:auto;min-width:60px}
 .running{display:inline-flex;gap:8px;align-items:center;font-size:13px;color:var(--ink-2);background:var(--accent-soft);border-radius:999px;padding:6px 12px}
 .running i{width:8px;height:8px;border-radius:50%;background:var(--accent);animation:pulse 1.2s ease-in-out infinite}
-@keyframes pulse{50%{opacity:.3}}@media (prefers-reduced-motion:reduce){.running i{animation:none}}</style>
+@keyframes pulse{50%{opacity:.3}}@media (prefers-reduced-motion:reduce){.running i{animation:none}}
+.ready .acts{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}.ready .acts form{margin:0}
+.decline{position:relative}.decline summary{list-style:none;cursor:pointer}.decline summary::-webkit-details-marker{display:none}
+.decline .pop{position:absolute;right:0;top:calc(100% + 6px);z-index:5;display:flex;flex-direction:column;align-items:stretch;gap:4px;
+ background:var(--surface);border:1px solid var(--line-2);border-radius:10px;padding:8px;box-shadow:0 8px 24px rgba(0,0,0,.12);min-width:150px}
+.decline .pop span{font-size:12px;padding:0 4px 2px}.decline .pop .btn{justify-content:flex-start;text-align:left}
+.avatar.todo-av{opacity:.55}@media (max-width:600px){.ready{flex-wrap:wrap}.ready .acts{width:100%;justify-content:flex-start;padding-left:50px}.decline .pop{right:auto;left:0}}</style>
+<script>document.addEventListener("submit",e=>{const f=e.target;if(!f.matches("form.prepare"))return;
+ if(!confirm("Prepare: "+f.dataset.role+"\n\nThis runs the agent now: it tailors your resume and cover letter and fills the form. "+
+  "It uses credits, roughly 1M tokens of your Claude plan (or OpenRouter credit, if the daily run uses it). Nothing is submitted until you press Submit."))e.preventDefault()});
+document.addEventListener("click",e=>{document.querySelectorAll("details.decline[open]").forEach(d=>{if(!d.contains(e.target))d.open=false})});</script>
 
 {% if setup_left %}<div class="notice" style="margin:0 0 20px"><span class="grow">Setup isn't finished: {{ setup_left }} required step{{ '' if setup_left == 1 else 's' }} left. The daily run needs them.</span><a class="btn sm" href="/setup">Finish setup</a></div>{% endif %}
 {% set bad = s.runs|selectattr('state', 'equalto', 'fail')|list %}{% set late = s.runs|selectattr('state', 'equalto', 'stale')|list %}
@@ -21,12 +31,22 @@
  {% for r in s.runs %}<span class="run {{ r.state }}" title="{{ r.summary }}"><i aria-hidden="true"></i><b>{{ r.label }}</b> {{ r.when }}{% if r.state == 'fail' %} · failed{% elif r.state == 'stale' %} · overdue{% endif %}</span>{% endfor %}
  </section></details>
 
-<section class="card hero" aria-labelledby="ready-h"><h2 id="ready-h">Ready for you <span class="count">{{ s.ready|length }}</span></h2>
+{% macro decline(j) %}<details class="decline"><summary class="btn ghost sm">Decline</summary>
+ <form method="post" action="/decline/{{ j.id|urlencode }}" class="pop" aria-label="Why decline {{ j.company }}?"><span class="ink2">Why?</span>
+  {% for k, label in decline_reasons.items() %}<button class="btn ghost sm" name="reason" value="{{ k }}">{{ label }}</button>{% endfor %}</form></details>{% endmacro %}
+<section class="card hero" aria-labelledby="ready-h"><h2 id="ready-h">Ready for you <span class="count">{{ s.ready|length + shortlist|length }}</span></h2>
  {% for j in s.ready %}<div class="ready"><div class="avatar" aria-hidden="true">{{ (j.company or '?')[:1]|upper }}</div>
   <div class="body"><div class="t">{{ co(j.company) }} · {{ j.title }}</div>
    <div class="m">{{ j.location or "Location not listed" }}{% if j.pay %} · {{ j.pay }}{% endif %}{% if j.error %} · <span style="color:var(--bad)">{{ j.error|truncate(80) }}</span>{% endif %}</div></div>
-  <a class="btn primary sm" href="/job/{{ j.id|urlencode }}">Review</a></div>
- {% else %}<div class="empty-state"><b>You're all caught up.</b><span>The next daily run finds and prepares more roles.</span></div>{% endfor %}
+  <div class="acts">{{ decline(j) }}<a class="btn primary sm" href="/job/{{ j.id|urlencode }}">Review</a></div></div>
+ {% endfor %}
+ {% for j in shortlist %}<div class="ready"><div class="avatar todo-av" aria-hidden="true">{{ (j.company or '?')[:1]|upper }}</div>
+  <div class="body"><div class="t">{{ co(j.company) }} · <a href="/job/{{ j.id|urlencode }}">{{ j.title }}</a> <span class="pill waiting">not prepared</span></div>
+   <div class="m">{{ j.location or "Location not listed" }}{% if j.why %} · {{ j.why|truncate(90) }}{% else %} · score {{ '%.1f'|format(j.score or 0) }}{% endif %}</div></div>
+  <div class="acts">{{ decline(j) }}{% if not running %}<form method="post" action="/prepare/{{ j.id|urlencode }}" class="prepare" data-role="{{ j.company }} · {{ j.title }}">
+   <button class="btn sm" title="Tailor and fill this one now. Uses credits.">Prepare this one</button></form>{% endif %}</div></div>
+ {% endfor %}
+ {% if not s.ready and not shortlist %}<div class="empty-state"><b>You're all caught up.</b><span>The next daily run finds and prepares more roles.</span></div>{% endif %}
  {% for r in interviews %}<div class="ready"><div class="avatar iv" aria-hidden="true">{{ (r.job.company or '?')[:1]|upper }}</div>
   <div class="body"><div class="t">{{ co(r.job.company) }} · {{ r.job.title }} <span class="pill interview">interview</span></div>
    <div class="m">{{ r.emails[0].subject|truncate(80) }} · {{ r.latest[5:10]|replace('-', '/') }}</div></div>

@@ -27,6 +27,9 @@ env.globals["ws_label"] = "Work search"
 env.filters["label"] = lambda k: {"confirmed": "received"}.get(k, k)
 
 
+SHORTLIST = 5  # roles on "Ready for you" each day: the prepared ones plus the next best to triage
+DECLINE_REASONS = {"fit": "not a fit", "location": "location", "pay": "pay", "applied": "already applied", "other": "other"}
+
 def page(name: str, **ctx) -> HTMLResponse:
     return HTMLResponse(env.get_template(name).render(**ctx))
 
@@ -84,8 +87,46 @@ def make_app(settings, db: DB) -> FastAPI:
         for n in todo:
             n["compose"] = nudges.gmail_compose_url(n)
         from .prefs import Prefs
-        return page("index.html", s=stats.compute(db, floor=floor), interviews=prep.interviews(db, settings.data_dir)[:6],
+        from .rank import shortlist
+        s = stats.compute(db, floor=floor)
+        more = shortlist(db, settings, SHORTLIST - len(s["ready"]), skip_companies=[j["company"] for j in s["ready"]])
+        return page("index.html", s=s, shortlist=more, decline_reasons=DECLINE_REASONS,
+                    interviews=prep.interviews(db, settings.data_dir)[:6],
                     todo=todo, nav="dashboard", running=run_state(), picks_default=Prefs(settings.data_dir, settings.raw).limits()["picks_per_day"])
+
+    def start_run(**extra) -> bool:
+        """Starts scripts/daily.sh in the background (manual trigger). False when a run is already going."""
+        import subprocess
+        if run_state():
+            return False
+        script = Path(__file__).resolve().parent.parent / "scripts" / "daily.sh"
+        log = open(settings.data_dir / "cron.log", "a")
+        env = {**os.environ, "AUTOAPPLY_TRIGGER": "manual", **extra}
+        subprocess.Popen(["bash", str(script)], cwd=script.parent.parent, env=env, stdout=log, stderr=subprocess.STDOUT,
+                         stdin=subprocess.DEVNULL, start_new_session=True)  # keeps going if the dashboard restarts
+        time.sleep(0.5)  # let it take the lock so the page shows it running
+        return True
+
+    @app.post("/decline/{job_id:path}")
+    def decline(job_id: str, reason: str = Form("other")):
+        """Decline from the dashboard: the role leaves Ready for you, and the reason counts in Stats."""
+        job, _, _ = load(job_id)
+        label = DECLINE_REASONS.get(reason, "other")
+        if job["status"] in ("new", "filled"):
+            db.update(job_id, status="skipped", error=f"Declined ({label})")
+            from . import leads
+            leads.ensure(db)
+            db.conn.execute("update leads set status = 'dismissed' where job_id = ?", (job_id,))
+            db.conn.commit()
+        return RedirectResponse("/#ready-h", status_code=303)
+
+    @app.post("/prepare/{job_id:path}")
+    def prepare(job_id: str):
+        """Prepare one shortlisted role now: tailor and fill it. Uses credits; never submits."""
+        job, _, _ = load(job_id)
+        if job["status"] == "new" and start_run(AUTOAPPLY_JOB=job_id, AUTOAPPLY_PICKS="1"):
+            db.log_run("run-now", True, f"prepare: {job_id}")
+        return RedirectResponse("/", status_code=303)
 
     def run_state() -> dict | None:
         """The run going right now, from daily.sh's lock and progress line; None when nothing runs."""
@@ -110,16 +151,8 @@ def make_app(settings, db: DB) -> FastAPI:
     @app.post("/run")
     def run_now(picks: int = Form(2)):
         """Run now: the same pass as the morning run, for more applications today. Never submits anything."""
-        import subprocess
-        if run_state():
-            return RedirectResponse("/", status_code=303)
-        script = Path(__file__).resolve().parent.parent / "scripts" / "daily.sh"
-        log = open(settings.data_dir / "cron.log", "a")
-        env = {**os.environ, "AUTOAPPLY_TRIGGER": "manual", "AUTOAPPLY_PICKS": str(max(1, min(5, picks)))}
-        subprocess.Popen(["bash", str(script)], cwd=script.parent.parent, env=env, stdout=log, stderr=subprocess.STDOUT,
-                         stdin=subprocess.DEVNULL, start_new_session=True)  # keeps going if the dashboard restarts
-        db.log_run("run-now", True, f"started with {picks} role{'s' if picks != 1 else ''}")
-        time.sleep(0.5)  # let it take the lock so the page shows it running
+        if start_run(AUTOAPPLY_PICKS=str(max(1, min(5, picks)))):
+            db.log_run("run-now", True, f"started with {picks} role{'s' if picks != 1 else ''}")
         return RedirectResponse("/", status_code=303)
 
     @app.post("/nudge/{key}")
@@ -156,18 +189,12 @@ def make_app(settings, db: DB) -> FastAPI:
     @app.post("/leads/apply")
     def lead_apply(key: str = Form(...)):
         """Auto apply on one lead: find it on the company's site, tailor and fill. Never submits."""
-        import subprocess
         from . import leads
         if not leads.get(db, key) or run_state():
             return RedirectResponse("/leads", status_code=303)
         leads.set_status(db, key, "starred")
-        script = Path(__file__).resolve().parent.parent / "scripts" / "daily.sh"
-        log = open(settings.data_dir / "cron.log", "a")
-        env = {**os.environ, "AUTOAPPLY_TRIGGER": "manual", "AUTOAPPLY_LEAD": key, "AUTOAPPLY_PICKS": "1"}
-        subprocess.Popen(["bash", str(script)], cwd=script.parent.parent, env=env, stdout=log, stderr=subprocess.STDOUT,
-                         stdin=subprocess.DEVNULL, start_new_session=True)
-        db.log_run("run-now", True, f"auto apply: {key}")
-        time.sleep(0.5)
+        if start_run(AUTOAPPLY_LEAD=key, AUTOAPPLY_PICKS="1"):
+            db.log_run("run-now", True, f"auto apply: {key}")
         return RedirectResponse("/leads?show=starred", status_code=303)
 
     @app.post("/leads")

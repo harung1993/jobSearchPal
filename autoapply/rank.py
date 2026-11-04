@@ -118,8 +118,33 @@ def candidates(db, settings, limit: int = 12, desc_chars: int = 1200) -> list[di
     return out
 
 
+def shortlist(db, settings, n: int = 5, skip_companies=()) -> list[dict]:
+    """Today's best roles not prepared yet, for the dashboard: the run's own picks first, then the best-scored new
+    roles. One per company, none you applied to lately. Read only: no scores or statuses are written."""
+    from .prefs import Prefs
+    if n <= 0:
+        return []
+    applied = Applied(db, int(Prefs(settings.data_dir, settings.raw).data.get("reapply_after_days", 90) or 0))
+    try:
+        picks = json.loads((settings.data_dir / "daily" / "picks.json").read_text())
+    except (OSError, ValueError):
+        picks = []
+    why = {p["id"]: p.get("why", "") for p in picks if isinstance(p, dict) and p.get("id")}
+    pool = [j for j in (db.get(i) for i in why) if j] + db.by_status("new")
+    seen, out = {_norm(c) for c in skip_companies}, []
+    for j in pool:
+        c = _norm(j["company"])
+        if j["status"] != "new" or not c or c in seen or applied.why(j["company"]):
+            continue
+        seen.add(c)
+        out.append({**j, "why": why.get(j["id"], "")})
+        if len(out) >= n:
+            break
+    return out
+
+
 QUICK_PROMPT = """You pick which new job postings are worth applying to today, for the person described below.
-Pick at most {n}. Fit to the person comes first, then freshness, then pay. Skip roles they already applied to.
+Pick at most {n}, at most one per company. Fit to the person comes first, then freshness, then pay. Skip roles they already applied to.
 It's fine to pick fewer, or none, if nothing fits well.
 
 About the person:

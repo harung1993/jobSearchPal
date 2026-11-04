@@ -234,18 +234,22 @@ def main(argv=None):
         except (OSError, ValueError):
             picks = []
         n = Prefs(s.data_dir, s.raw).limits()["picks_per_day"]
+        from . import rank
         from .rank import Applied
         applied = Applied(db, int(Prefs(s.data_dir, s.raw).data.get("reapply_after_days", 90) or 0))
-        ids = []
+        ids, companies = [], set()
         for p in picks:
             j = db.get(p.get("id", "")) if isinstance(p, dict) else None
             if not j or j["status"] != "new":
+                continue
+            if rank._norm(j["company"]) in companies:  # one role per company per run: the rest stay on the shortlist
                 continue
             why = applied.why(j["company"])
             if why:  # last guard before an apply session spends tokens
                 db.update(j["id"], status="skipped", error=why)
                 continue
             ids.append(j["id"])
+            companies.add(rank._norm(j["company"]))
         ids = ids[:n]
         print("\n".join(ids))
     elif args.cmd == "daily-prompt":

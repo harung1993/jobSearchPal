@@ -336,3 +336,31 @@ def test_run_now_starts_one_run(tmp_path, base_url, pdfs, monkeypatch):
         assert "Running since 2:10 pm" in html and "apply gh:warp:1" in html
         c.post("/run", data={"picks": "1"})
     assert len(started) == 1
+
+
+def test_decline_and_prepare_from_dashboard(tmp_path, base_url, pdfs, monkeypatch):
+    import subprocess
+    from autoapply import leads
+    db, c, plan = setup(tmp_path, base_url, pdfs)
+    db.upsert_job({"id": "gh:globex:2", "ats": "greenhouse", "company": "Globex", "title": "Data Eng", "location": "Remote",
+                   "url": "u", "apply_url": "u", "description": ""})
+    leads.ensure(db)
+    db.conn.execute("insert into leads (key, title, company, status, job_id) values ('acme|ae', 'AE', 'Acme', 'tracked', 'manual:gh')")
+    db.conn.commit()
+    html = c.get("/").text
+    assert "Review" in html and "Decline" in html and "Prepare this one" in html and "Globex" in html and "already applied" in html
+    c.post("/decline/manual:gh", data={"reason": "location"})
+    job = db.get("manual:gh")
+    assert job["status"] == "skipped" and job["error"] == "Declined (location)" and json.loads(job["plan_json"])["answers"]
+    assert leads.get(db, "acme|ae")["status"] == "dismissed"
+    assert "/job/manual:gh" not in c.get("/").text
+    c.post("/decline/gh:globex:2", data={"reason": "bogus"})
+    assert db.get("gh:globex:2")["error"] == "Declined (other)"
+    db.update("gh:globex:2", status="new", error=None)
+    started = []
+    monkeypatch.setattr(subprocess, "Popen", lambda args, **kw: started.append(kw["env"]))
+    c.post("/prepare/gh:globex:2")
+    assert len(started) == 1 and started[0]["AUTOAPPLY_JOB"] == "gh:globex:2" and started[0]["AUTOAPPLY_TRIGGER"] == "manual"
+    db.update("gh:globex:2", status="filled")
+    c.post("/prepare/gh:globex:2")  # already prepared: nothing starts
+    assert len(started) == 1

@@ -73,7 +73,9 @@ run_stage() {
 
 # Leads you starred on the dashboard: a short light step finds them on the company's own site first.
 # Auto apply on one lead (AUTOAPPLY_LEAD): just that role, found and then filled; no other steps.
-if [ "$(autoapply leads lookup 2>/dev/null || echo 0)" -gt 0 ] 2>/dev/null; then
+# "Prepare this one" on the dashboard (AUTOAPPLY_JOB): just the apply step for that tracked role.
+one="${AUTOAPPLY_LEAD:-}${AUTOAPPLY_JOB:-}"
+if [ -z "${AUTOAPPLY_JOB:-}" ] && [ "$(autoapply leads lookup 2>/dev/null || echo 0)" -gt 0 ] 2>/dev/null; then
   run_stage alerts || true; echo "- starred leads: $line" >> "$today"
 fi
 if [ -n "${AUTOAPPLY_LEAD:-}" ]; then
@@ -82,7 +84,11 @@ if [ -n "${AUTOAPPLY_LEAD:-}" ]; then
   else picked="Auto apply: couldn't find that role on the company's own site (it may be closed, or only on LinkedIn/Indeed)"; ok=0; fi
   echo "- auto apply: $picked" >> "$today"
 fi
-for stage in $( [ -n "${AUTOAPPLY_LEAD:-}" ] || autoapply daily-stages 2>/dev/null); do
+if [ -n "${AUTOAPPLY_JOB:-}" ]; then
+  run_stage apply "$AUTOAPPLY_JOB" || true; picked="$line"
+  echo "- prepare: $picked" >> "$today"
+fi
+for stage in $( [ -n "$one" ] || autoapply daily-stages 2>/dev/null); do
   if [ "$stage" = rank ]; then
     # Quick pick (Settings > Daily run): a cheap OpenRouter model reads the alert emails, a short light agent
     # step looks up only the roles that fit, then one cheap call picks. Exit 2 = off today, 1 = failed:
@@ -98,7 +104,7 @@ for stage in $( [ -n "${AUTOAPPLY_LEAD:-}" ] || autoapply daily-stages 2>/dev/nu
   run_stage "$stage" || true
   if [ "$stage" = rank ]; then picked="$line"; fi
 done
-if [ -z "$blocked" ] && [ -z "${AUTOAPPLY_LEAD:-}" ]; then
+if [ -z "$blocked" ] && [ -z "$one" ]; then
   for job in $(autoapply daily-picks 2>/dev/null); do
     run_stage apply "$job" || true
   done
