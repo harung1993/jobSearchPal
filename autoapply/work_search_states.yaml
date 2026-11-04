@@ -14,6 +14,7 @@
 #                   Laws", January 2026.
 #   waiting_week    the unpaid first week, if the state has one (DOL Comparison of State UI Laws 2023, Table 3-7)
 #   part_time_earnings_allowed  part-time pay you can earn in a week before benefits are reduced (DOL, Jan 2026)
+#   resea / resea_url  what a RESEA selection involves in that state, where researched (MA so far)
 #   source          official = the agency's own site; confidence: high / medium (agency gives no exact
 #                   number) / low (couldn't confirm on the agency site; check before relying on it)
 #   checked         when the entry was last compared with its source
@@ -35,7 +36,10 @@ general:
   also tax them.
 - Keep filing your weekly or biweekly claim during the waiting week, or it may not count.
 - Severance, vacation or holiday pay can delay or reduce benefits in many states. Report it.
-- If you're selected for RESEA (reemployment) appointments, they're mandatory. Missing one can stop your benefits.
+- 'RESEA (Reemployment Services and Eligibility Assessment) is a federal program every state runs: selected claimants
+  must attend one-on-one meetings at a job center that check eligibility, review the work search log and resume,
+  and set a reemployment plan. Attendance is mandatory; missing a meeting or its deadline can stop benefits. Bring
+  your work search log and resume, and check your state''s notice for the steps and dates.'
 - Report part-time earnings for the week you did the work, not the week you're paid.
 - The notice your state sends about your own claim overrides anything here.
 states:
@@ -418,6 +422,13 @@ states:
     checked: '2026-11-04'
     confidence: high
     exemptions: DUA-approved training.
+    resea: 'If selected (DUA notice + MassHire email): 1) Career Center Seminar (online or in person, book in MassHire
+      JobQuest), 2) one-on-one Initial RESEA review at your local MassHire Career Center, 3) a RESEA Review meeting
+      scheduled at the first one. Each step has a deadline in your notice; missing one stops benefits. Bring: JobQuest
+      registration, resume, your work search log (date, position, pay rate, employer name and address, job ID or
+      contact, email/website/phone, result) with proof, and the forms on mass.gov/info-details/masshire-resea-resources
+      (Career Action Plan, labor market worksheet, needs assessment).'
+    resea_url: https://www.mass.gov/info-details/career-center-seminars-and-resea
     weekly_benefit: $60 to $1,105 (plus dependents)
     max_weeks: 10-30
     waiting_week: One unpaid week; you still request benefits for it.
