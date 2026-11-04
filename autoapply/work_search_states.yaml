@@ -1,0 +1,365 @@
+# Unemployment work-search rules by state, for the Setup page and the work-search log.
+# checked: when the entry was last compared with a source. source: "summary" = a third-party roundup
+# (tealhq.com/post/work-search-requirements-for-unemployment-benefits-by-state), "official" = the agency's own page.
+# Rules change. If yours is wrong, fix the entry, set source: official and today's date, and open a pull request.
+# weekly_minimum: null when the state sets no number or sets it per claimant (varies: true).
+checked: 2026-11-04
+source: summary
+states:
+  AL:
+    name: Alabama
+    weekly_minimum: null
+    varies: false
+    rule: Reasonable active search required; no number stated
+    report: Entered with each weekly certification
+    url: https://labor.alabama.gov/
+  AK:
+    name: Alaska
+    weekly_minimum: null
+    varies: true
+    rule: Two contacts if within 55 road miles of a job center; one outside
+    report: Reported weekly
+    url: https://labor.alaska.gov/unemployment/
+  AZ:
+    name: Arizona
+    weekly_minimum: 4
+    varies: false
+    rule: Four contacts on four different days each week
+    report: Logged in the portal before the weekly claim
+    url: https://des.az.gov/services/employment/unemployment-individual
+  AR:
+    name: Arkansas
+    weekly_minimum: null
+    varies: true
+    rule: Number set by DWS after registration; one contact must be in person
+    report: Job contacts log, when DWS asks
+    url: https://dws.arkansas.gov/workforce-services/unemployment/
+  CA:
+    name: California
+    weekly_minimum: null
+    varies: false
+    rule: Look for suitable work each week; no number stated
+    report: Not submitted; keeping a record is encouraged
+    url: https://edd.ca.gov/unemployment/
+  CO:
+    name: Colorado
+    weekly_minimum: 5
+    varies: false
+    rule: Five work search activities a week
+    report: Reported when requesting payment; may be audited
+    url: https://cdle.colorado.gov/eligibility-and-work-search-requirements
+  CT:
+    name: Connecticut
+    weekly_minimum: 3
+    varies: false
+    rule: Three efforts a week; at least one must be an employer contact
+    report: Documented each week when filing
+    url: https://portal.ct.gov/DOLUI/Work-Search
+  DE:
+    name: Delaware
+    weekly_minimum: 1
+    varies: false
+    rule: At least one new work search contact a week
+    report: Given when requesting weekly benefits
+    url: https://labor.delaware.gov/divisions/unemployment-insurance/
+  DC:
+    name: District of Columbia
+    weekly_minimum: null
+    varies: false
+    rule: Not in the summary used; check with DOES
+    report: null
+    url: https://does.dc.gov/
+  FL:
+    name: Florida
+    weekly_minimum: null
+    varies: false
+    rule: Weekly contacts required; number not in the summary used
+    report: Given with each biweekly benefit request
+    url: https://floridajobs.org/Reemployment-Assistance-Service-Center
+  GA:
+    name: Georgia
+    weekly_minimum: 3
+    varies: false
+    rule: Three new verifiable job contacts a week
+    report: Recorded and submitted for each week claimed
+    url: https://dol.georgia.gov/
+  HI:
+    name: Hawaii
+    weekly_minimum: 3
+    varies: false
+    rule: Three job searches a week
+    report: Keep a log; submit it when asked
+    url: https://labor.hawaii.gov/ui/
+  ID:
+    name: Idaho
+    weekly_minimum: 2
+    varies: false
+    rule: Two employer contacts or work search activities a week
+    report: Entered on the weekly certification
+    url: https://www.labor.idaho.gov/
+  IL:
+    name: Illinois
+    weekly_minimum: null
+    varies: false
+    rule: Active search; resume on IllinoisJobLink; no number stated
+    report: Records given only when asked
+    url: https://ides.illinois.gov/
+  IN:
+    name: Indiana
+    weekly_minimum: null
+    varies: false
+    rule: Register within 10 days of the claim; no number stated
+    report: Keep records; give them if DWD asks
+    url: https://www.in.gov/dwd/indiana-unemployment/
+  IA:
+    name: Iowa
+    weekly_minimum: 4
+    varies: false
+    rule: Four activities, Sunday to Saturday; three must be job applications
+    report: Keep the log one year; give it if asked
+    url: https://www.iowaworkforcedevelopment.gov/continued-eligibility
+  KS:
+    name: Kansas
+    weekly_minimum: 3
+    varies: false
+    rule: Three activities a week; two must be applications or resume submissions
+    report: Keep a written record; may be requested
+    url: https://www.dol.ks.gov/unemployment
+  KY:
+    name: Kentucky
+    weekly_minimum: 1
+    varies: false
+    rule: At least one job contact a week
+    report: Given at the biweekly benefit request
+    url: https://kcc.ky.gov/
+  LA:
+    name: Louisiana
+    weekly_minimum: 3
+    varies: false
+    rule: Contact at least three different employers a week
+    report: Entered on the weekly certification
+    url: https://www.laworks.net/
+  ME:
+    name: Maine
+    weekly_minimum: 1
+    varies: false
+    rule: At least one work search activity a week; random audits
+    report: Documented on the weekly certification
+    url: https://www.maine.gov/unemployment/
+  MD:
+    name: Maryland
+    weekly_minimum: 3
+    varies: false
+    rule: Three activities, including at least one job contact; register with MWE once
+    report: Submitted weekly
+    url: https://labor.maryland.gov/employment/unemployment.shtml
+  MA:
+    name: Massachusetts
+    weekly_minimum: 3
+    varies: false
+    rule: Three work search activities a week; keep a detailed written log
+    report: Keep the log; MassHire or DUA may ask for it
+    url: https://www.mass.gov/info-details/work-search-requirements-for-unemployment-benefits
+  MI:
+    name: Michigan
+    weekly_minimum: 1
+    varies: false
+    rule: At least one work search activity a week
+    report: Reported at the biweekly certification
+    url: https://www.michigan.gov/leo/bureaus-agencies/uia
+  MN:
+    name: Minnesota
+    weekly_minimum: null
+    varies: false
+    rule: Actively look for work; no minimum stated
+    report: Keep a log of your search
+    url: https://www.uimn.org/applicants/
+  MS:
+    name: Mississippi
+    weekly_minimum: 3
+    varies: false
+    rule: Three employer contacts; at least one must be a completed application
+    report: Entered on the weekly certification
+    url: https://mdes.ms.gov/unemployment-claims/
+  MO:
+    name: Missouri
+    weekly_minimum: 3
+    varies: false
+    rule: Three work search activities a week unless told otherwise
+    report: Entered during the week or on the weekly request
+    url: https://labor.mo.gov/unemployment
+  MT:
+    name: Montana
+    weekly_minimum: null
+    varies: false
+    rule: Active effort contacting employers each week; no number stated
+    report: Keep a detailed record; may be audited
+    url: https://uid.dli.mt.gov/
+  NE:
+    name: Nebraska
+    weekly_minimum: 5
+    varies: false
+    rule: Five reemployment activities; at least two must be applications
+    report: Online work search log when filing weekly
+    url: https://dol.nebraska.gov/uibenefits
+  NV:
+    name: Nevada
+    weekly_minimum: null
+    varies: false
+    rule: Several different activities a week; number not stated
+    report: Submitted with the weekly claim online
+    url: https://ui.nv.gov/
+  NH:
+    name: New Hampshire
+    weekly_minimum: null
+    varies: false
+    rule: Actively seek work and contact employers; no number stated
+    report: Entered on the weekly claim
+    url: https://www.nhes.nh.gov/
+  NJ:
+    name: New Jersey
+    weekly_minimum: 1
+    varies: false
+    rule: Contact at least one different employer a week
+    report: Keep proof; give it if asked
+    url: https://www.nj.gov/labor/myunemployment/
+  NM:
+    name: New Mexico
+    weekly_minimum: 2
+    varies: false
+    rule: Two different work search contacts a week; keep a detailed log
+    report: Log may be requested any time
+    url: https://www.dws.state.nm.us/
+  NY:
+    name: New York
+    weekly_minimum: 3
+    varies: false
+    rule: Three activities a week, on different days
+    report: Keep records one year; random reviews
+    url: https://dol.ny.gov/unemployment/unemployment-insurance-assistance
+  NC:
+    name: North Carolina
+    weekly_minimum: 3
+    varies: false
+    rule: Three contacts a week; one may be an approved reemployment activity
+    report: Keep a record of your search
+    url: https://des.nc.gov/
+  ND:
+    name: North Dakota
+    weekly_minimum: 3
+    varies: false
+    rule: Three job contacts a week; resume online within 10 days
+    report: Confirmed on the weekly certification
+    url: https://www.jobsnd.com/unemployment-individuals
+  OH:
+    name: Ohio
+    weekly_minimum: 2
+    varies: false
+    rule: At least two work search activities each week claimed
+    report: Keep documentation
+    url: https://unemployment.ohio.gov/
+  OK:
+    name: Oklahoma
+    weekly_minimum: 2
+    varies: false
+    rule: At least two work search efforts a week
+    report: Attested on the weekly certification; may be audited
+    url: https://oklahoma.gov/oesc.html
+  OR:
+    name: Oregon
+    weekly_minimum: 5
+    varies: false
+    rule: Five activities; at least two must be direct employer contacts
+    report: Reported when filing weekly
+    url: https://unemployment.oregon.gov/
+  PA:
+    name: Pennsylvania
+    weekly_minimum: 3
+    varies: false
+    rule: Two job applications plus one other work search activity a week
+    report: Recorded and reported weekly
+    url: https://www.uc.pa.gov/
+  RI:
+    name: Rhode Island
+    weekly_minimum: 3
+    varies: false
+    rule: Three work search activities a week
+    report: Not submitted weekly; keep records one year
+    url: https://dlt.ri.gov/individuals/work-search-requirement
+  SC:
+    name: South Carolina
+    weekly_minimum: 2
+    varies: false
+    rule: Two work searches a week through SC Works Online
+    report: Entered in SC Works each certification
+    url: https://dew.sc.gov/
+  SD:
+    name: South Dakota
+    weekly_minimum: 2
+    varies: false
+    rule: Two job contacts in each week you request benefits
+    report: Given when filing the weekly request
+    url: https://dlr.sd.gov/ra/
+  TN:
+    name: Tennessee
+    weekly_minimum: 3
+    varies: false
+    rule: At least three searches each week
+    report: Reported on the weekly certification
+    url: https://www.tn.gov/workforce/unemployment.html
+  TX:
+    name: Texas
+    weekly_minimum: null
+    varies: true
+    rule: Minimum set by your local workforce area
+    report: Keep a log; give it if asked
+    url: https://www.twc.texas.gov/jobseekers/unemployment-benefits-services
+  UT:
+    name: Utah
+    weekly_minimum: 4
+    varies: false
+    rule: At least four new full-time job contacts a week
+    report: Given when filing weekly
+    url: https://jobs.utah.gov/ui/jobseeker/claimguide.html
+  VT:
+    name: Vermont
+    weekly_minimum: 3
+    varies: false
+    rule: Three qualified job contacts a week
+    report: Reported with the weekly claim online
+    url: https://labor.vermont.gov/unemployment-insurance/work-search
+  VA:
+    name: Virginia
+    weekly_minimum: 2
+    varies: false
+    rule: Two job contacts a week
+    report: Entered with each weekly claim
+    url: https://www.vec.virginia.gov/
+  WA:
+    name: Washington
+    weekly_minimum: 3
+    varies: false
+    rule: Three approved job search activities a week
+    report: Entered with the weekly claim online
+    url: https://esd.wa.gov/
+  WV:
+    name: West Virginia
+    weekly_minimum: null
+    varies: true
+    rule: Number depends on your occupation and the local job market
+    report: Keep a written record; give it if reviewed
+    url: https://workforcewv.org/
+  WI:
+    name: Wisconsin
+    weekly_minimum: 4
+    varies: false
+    rule: At least four work search activities a week
+    report: Documented each week; must be verifiable
+    url: https://dwd.wisconsin.gov/uiben/
+  WY:
+    name: Wyoming
+    weekly_minimum: 2
+    varies: false
+    rule: Contact two or more different employers a week
+    report: Given on the weekly continued claim
+    url: https://dws.wyo.gov/

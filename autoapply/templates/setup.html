@@ -1,9 +1,10 @@
 {% extends "base.html" %}
 {% block title %}Setup · Settings{% endblock %}
 {% block body %}
+<style>.ws-rule{background:var(--surface-2);border-radius:10px;padding:10px 12px;font-size:13.5px}.ws-rule p{margin:0 0 4px}.ws-rule p:last-child{margin:0}</style>
 {% set s = st.steps %}
 {% set req_done = 4 - st.left|length %}
-{% set tab_sub = "Everything JobSearchPal needs to know about you and your search. Come back and change any of it." %}
+{% set tab_sub = "Everything UnemploymentPal needs to know about you and your search. Come back and change any of it." %}
 {% include "_tabs.html" %}
 
 <div class="setup-top">
@@ -125,11 +126,28 @@
   <script>document.querySelectorAll(".add-rss").forEach(b=>b.onclick=()=>{const t=document.getElementById("rss");
    if(!t.value.includes(b.dataset.line.split(" | ")[1]))t.value=(t.value.trim()?t.value.trim()+"\n":"")+b.dataset.line;b.disabled=true})</script>
 
-  <details class="mt"><summary>Work-search log (for unemployment benefits)</summary>
+  <details class="mt" {% if ws.get('state') %}open{% endif %}><summary>Collecting unemployment? Your state's work-search rule</summary>
+   <label class="fld mt"><span>State</span><select name="ws_state" id="ws_state">
+    <option value="">Not collecting, or not in the US</option>
+    {% for code, r in states.items()|sort(attribute='1.name') %}<option value="{{ code }}" {% if ws.get('state') == code %}selected{% endif %}
+     data-min="{{ r.weekly_minimum if r.weekly_minimum is not none else '' }}">{{ r.name }}</option>{% endfor %}</select></label>
+   <div id="ws_rule" class="ws-rule mt" hidden></div>
    <div class="grid g11 mt">
     <label class="fld"><span>Label</span><input type="text" name="ws_label" value="{{ ws.get('label', 'Work search') }}" placeholder="e.g. DUA"></label>
-    <label class="fld"><span>Applications needed per week</span><input type="text" name="ws_min" value="{{ ws.get('weekly_minimum', 3) }}" inputmode="numeric"></label>
-   </div></details>
+    <label class="fld"><span>Activities needed per week</span><input type="text" name="ws_min" id="ws_min" value="{{ ws.get('weekly_minimum', 3) }}" inputmode="numeric"></label>
+   </div>
+   <small class="muted">Picking a state fills in its weekly number; change it if your agency told you something different.</small></details>
+  <script type="application/json" id="ws_rules">{{ states|tojson }}</script>
+  <script>(()=>{const sel=document.getElementById("ws_state"),box=document.getElementById("ws_rule"),min=document.getElementById("ws_min");
+   const rules=JSON.parse(document.getElementById("ws_rules").textContent);
+   const show=(fill)=>{const r=rules[sel.value];box.hidden=!r;if(!r)return;box.replaceChildren();
+    const add=(t,cls)=>{const p=document.createElement("p");if(cls)p.className=cls;p.textContent=t;box.appendChild(p);return p};
+    add((r.weekly_minimum!=null?r.weekly_minimum+" a week. ":r.varies?"The number is set for each claimant. ":"No set number. ")+r.rule);
+    if(r.report)add("How it's reported: "+r.report,"ink2");
+    const a=document.createElement("a");a.href=r.url;a.target="_blank";a.rel="noopener";a.textContent="Check the official rules";
+    const p=add("Last checked "+r.checked+(r.source==="official"?" on the agency's site. ":" from a summary, not the agency's site. "),"muted");p.appendChild(a);
+    if(fill&&r.weekly_minimum!=null)min.value=r.weekly_minimum};
+   sel.onchange=()=>show(true);show(false)})();</script>
   <div class="actions"><button class="btn primary">Save</button></div>
  </form>
 </section>
@@ -171,7 +189,7 @@
 
 <section class="card mt step" id="gmail">
  <h2><span><span class="n {{ 'done' if s.gmail.done }}">{{ "✓" if s.gmail.done else "6" }}</span> Gmail</span><span class="count">{{ s.gmail.note }}</span></h2>
- <p class="lead">Lets JobSearchPal read job-alert emails (LinkedIn, Indeed and others), sort replies from companies, remind you to
+ <p class="lead">Lets UnemploymentPal read job-alert emails (LinkedIn, Indeed and others), sort replies from companies, remind you to
   follow up, and email you a morning brief. It reads only, never marks anything read, and never sends anything except the brief to you.</p>
  <form method="post" action="/setup/gmail">
   <div class="grid g3">

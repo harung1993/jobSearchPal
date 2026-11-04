@@ -38,6 +38,23 @@ KIND_LABELS = [("confirmed", "Received (auto-reply)"), ("interview", "Interview"
                ("recruiter", "Recruiter"), ("ignored", "Not job-related")]
 
 
+def state_rules() -> dict:
+    """Every state's work-search rule (autoapply/work_search_states.yaml), with when and where it was checked."""
+    import yaml
+    data = yaml.safe_load((Path(__file__).parent / "work_search_states.yaml").read_text())
+    for r in data["states"].values():
+        r["checked"] = str(r.get("checked") or data["checked"])
+        r.setdefault("source", data["source"])
+    return data["states"]
+
+
+def my_state(settings) -> dict | None:
+    """The rule for the state picked on the Setup page, or None."""
+    code = str((settings.raw.get("work_search") or {}).get("state") or "").upper()
+    rules = state_rules()
+    return {"code": code, **rules[code]} if code in rules else None
+
+
 def work_search(settings) -> tuple[str, int]:
     """Label and weekly minimum for the work-search log, e.g. {label: DUA, weekly_minimum: 3}."""
     ws = settings.raw.get("work_search") or {}
@@ -69,7 +86,7 @@ def make_app(settings, db: DB) -> FastAPI:
             raise HTTPException(404)
         return job, json.loads(job["plan_json"] or "{}"), json.loads(job["report_json"] or "{}")
 
-    ws_label, floor = work_search(settings)
+    ws_label, _ = work_search(settings)
     env.globals["ws_label"] = ws_label
 
     def page(name: str, **ctx) -> HTMLResponse:  # noqa: F811  every page shows the waiting-email badge
@@ -88,7 +105,7 @@ def make_app(settings, db: DB) -> FastAPI:
             n["compose"] = nudges.gmail_compose_url(n)
         from .prefs import Prefs
         from .rank import shortlist
-        s = stats.compute(db, floor=floor)
+        s = stats.compute(db, floor=work_search(settings)[1])
         more = shortlist(db, settings, SHORTLIST - len(s["ready"]), skip_companies=[j["company"] for j in s["ready"]])
         return page("index.html", s=s, shortlist=more, decline_reasons=DECLINE_REASONS,
                     interviews=prep.interviews(db, settings.data_dir)[:6],
@@ -208,7 +225,7 @@ def make_app(settings, db: DB) -> FastAPI:
 
     @app.get("/stats")
     def stats_page():
-        return page("stats.html", s=stats.detail(db, floor=floor), nav="stats")
+        return page("stats.html", s=stats.detail(db, floor=work_search(settings)[1]), nav="stats")
 
     @app.get("/job/{job_id:path}")
     def job_page(job_id: str):
@@ -501,7 +518,7 @@ def make_app(settings, db: DB) -> FastAPI:
                     titles=", ".join(search.get("title_keywords") or []), exclude=", ".join(search.get("exclude_keywords") or []),
                     us_only=search.get("us_only", True), boards=boards, rss=rss, rss_presets=RSS_PRESETS, src_stats=src_stats,
                     keys={k: pr.key_hint(k) for k in ("ADZUNA_APP_ID", "ADZUNA_APP_KEY", "USAJOBS_API_KEY", "USAJOBS_EMAIL")}, feeds=setup.FEED_LABELS,
-                    feeds_on=cfg.get("feeds", list(FEEDS)) if cfg else [*FEEDS, "themuse", "himalayas", "jobicy"], ws=cfg.get("work_search") or {},
+                    feeds_on=cfg.get("feeds", list(FEEDS)) if cfg else [*FEEDS, "themuse", "himalayas", "jobicy"], ws=cfg.get("work_search") or {}, states=state_rules(),
                     about=setup.load_about(settings.data_dir), about_fields=setup.ABOUT_FIELDS,
                     resume=setup.base_resume(settings.root), gmail_user=os.environ.get("GMAIL_USER", ""),
                     gmail_env=pr.from_env("GMAIL_APP_PASSWORD"), token_env=pr.from_env("AUTOAPPLY_TOKEN"),
@@ -612,7 +629,7 @@ def make_app(settings, db: DB) -> FastAPI:
 
     @app.get("/dua")
     def dua():
-        return page("dua.html", weeks=stats.dua_weeks(db), floor=floor, nav="work")
+        return page("dua.html", weeks=stats.dua_weeks(db), floor=work_search(settings)[1], rule=my_state(settings), nav="work")
 
     @app.get("/dua/{week}.zip")
     def dua_zip(week: str):

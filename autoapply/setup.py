@@ -251,6 +251,13 @@ def save_interests(settings, form: dict) -> dict:
     missing = [EXTRA[f][1] for f in cfg["feeds"] if f in EXTRA and EXTRA[f][2]
                and not all(form.get(k) or __import__("os").environ.get(k) for k in EXTRA[f][2])]
     ws = cfg.setdefault("work_search", {"label": "Work search", "weekly_minimum": 3})
+    if "ws_state" in form:
+        from .web import state_rules
+        code = str(form.get("ws_state") or "").upper()
+        if code in state_rules():
+            ws["state"] = code
+        else:
+            ws.pop("state", None)
     if form.get("ws_label"):
         ws["label"] = str(form["ws_label"]).strip()[:40]
     try:

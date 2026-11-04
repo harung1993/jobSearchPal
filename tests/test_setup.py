@@ -167,3 +167,15 @@ def test_real_jane_can_finish_contact(tmp_path):
     assert not done()  # the untouched example
     prof.write_text(_y.safe_dump({"first_name": "Jane", "last_name": "Smith", "email": "jane.smith@mail.example"}))
     assert done()
+
+
+def test_pick_state_for_work_search(fresh, tmp_path):
+    s, c = fresh
+    c.post("/setup/interests", data={"titles": "data engineer", "ws_state": "ma", "ws_min": "3", "ws_label": "DUA"})
+    cfg = yaml.safe_load((tmp_path / "config.yaml").read_text())
+    assert cfg["work_search"] == {"label": "DUA", "weekly_minimum": 3, "state": "MA"}
+    html = c.get("/dua").text
+    assert "Massachusetts's rule" in html and "mass.gov" in html and "3 / 3" not in html
+    c.post("/setup/interests", data={"titles": "data engineer", "ws_state": "XX", "ws_min": "2"})
+    cfg = yaml.safe_load((tmp_path / "config.yaml").read_text())
+    assert "state" not in cfg["work_search"] and cfg["work_search"]["weekly_minimum"] == 2

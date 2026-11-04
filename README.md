@@ -1,4 +1,6 @@
-# JobSearchPal
+# UnemploymentPal
+
+Your job search, and the unemployment paperwork that comes with it.
 
 A self-hosted job application assistant. Every weekday morning, an AI agent on your own subscription,
 [Claude Code](https://claude.com/claude-code) or OpenAI's [Codex CLI](https://github.com/openai/codex), runs headless
@@ -67,7 +69,7 @@ you ─► dashboard ─► check answers, decide consents ─► Submit
   the Setup page or in `.env`.
 - **Any RSS or Atom job feed** (`rss_feeds` in `config.yaml`, or the Setup page): We Work Remotely, jobs.ac.uk and
   many others have them. Sites that answer automated requests with a bot check (HigherEdJobs does) are
-  left to their job-alert emails; JobSearchPal doesn't try to get around those checks.
+  left to their job-alert emails; UnemploymentPal doesn't try to get around those checks.
 - **Job-alert emails** (LinkedIn, Indeed, Built In, Glassdoor and others): every role in them is saved on the
   **Leads** page with its location, salary when given, source and a rough fit score, even though only a couple
   a day get tailored. Sort and filter them, dismiss the misses, and star the ones you want: the next run looks
@@ -223,7 +225,7 @@ low-privilege user.
 writes are limited to this folder, but there is no command allow list.
 
 **Gmail (app password, optional).** An app password grants full IMAP and SMTP access to the mailbox,
-the same as your password, minus the 2-step check. JobSearchPal uses it to read job emails in All Mail, Spam and Trash (each opened read-only,
+the same as your password, minus the 2-step check. UnemploymentPal uses it to read job emails in All Mail, Spam and Trash (each opened read-only,
 messages fetched with `BODY.PEEK` so they stay unread) and to send you the morning brief. It never
 sends anything else, never deletes and never marks as read. It is stored in `.env` or `data/secrets.json`
 (owner-only). It also reads the headers (not bodies) of mail you sent, to tell when you've replied. A separate

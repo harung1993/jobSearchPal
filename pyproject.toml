@@ -27,7 +27,7 @@ autoapply = "autoapply.cli:main"
 include = ["autoapply*"]
 
 [tool.setuptools.package-data]
-autoapply = ["fillers/scan.js", "templates/*.html"]
+autoapply = ["fillers/scan.js", "templates/*.html", "work_search_states.yaml"]
 
 [build-system]
 requires = ["setuptools>=68"]

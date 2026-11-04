@@ -4,6 +4,13 @@
 {% block body %}
 <div class="ph"><div><h1>{{ ws_label }} log</h1>
  <div class="sub">Sunday to Saturday weeks, in a work-search log's columns. Each zip has the week's CSV plus the original emails and submit screenshots.</div></div></div>
+{% if rule %}<section class="card" style="margin-bottom:16px"><h2><span>{{ rule.name }}'s rule</span>
+  <span class="pill {{ 'submitted' if rule.source == 'official' else 'waiting' }}" style="text-transform:none">checked {{ rule.checked }}</span></h2>
+ <p style="margin:0 0 6px">{% if rule.weekly_minimum is not none %}<b>{{ rule.weekly_minimum }} a week.</b>{% elif rule.varies %}<b>The number is set for each claimant.</b>{% else %}<b>No set number.</b>{% endif %} {{ rule.rule }}.</p>
+ {% if rule.report %}<p class="ink2" style="margin:0 0 6px">How it's reported: {{ rule.report }}.</p>{% endif %}
+ <p class="muted" style="margin:0;font-size:12.5px">Rules change{% if rule.source != 'official' %}, and this one comes from a summary, not the agency's own site{% endif %}.
+  <a href="{{ rule.url }}" target="_blank" rel="noopener">Check the official rules</a>. This page counts toward {{ floor }} a week; change it on <a href="/setup#interests">Setup</a>.</p></section>
+{% elif floor %}<p class="muted" style="margin:0 0 14px">Collecting unemployment? Pick your state on <a href="/setup#interests">Setup</a> to see its work-search rule.</p>{% endif %}
 {% for w in weeks %}
 <section class="card {% if not loop.first %}mt{% endif %}">
  <h2><span>{{ w.start.strftime("%b %-d") }} – {{ w.end.strftime("%b %-d, %Y") }}{% if w.current %} <span class="pill filled" style="margin-left:6px">this week</span>{% endif %}
