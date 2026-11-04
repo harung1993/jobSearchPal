@@ -138,14 +138,37 @@ def make_app(settings, db: DB) -> FastAPI:
     @app.get("/leads")
     def leads_page(show: str = "open"):
         from . import leads
+        from .prefs import Prefs
+        from .rank import Applied
         every = leads.rows(db)
+        applied = Applied(db, int(Prefs(settings.data_dir, settings.raw).data.get("reapply_after_days", 90) or 0))
+        for r in every:
+            r["applied"] = "" if r["job_id"] else applied.why(r["company"])
         groups = {"open": [r for r in every if r["status"] in ("new", "starred") and not r["job_id"]],
                   "starred": [r for r in every if r["status"] == "starred"],
                   "tracked": [r for r in every if r["job_id"]],
                   "dismissed": [r for r in every if r["status"] == "dismissed"], "all": every}
         show = show if show in groups else "open"
         tabs = [("open", "To look at"), ("starred", "Starred"), ("tracked", "Tracked"), ("dismissed", "Dismissed"), ("all", "All")]
-        return page("leads.html", rows=groups[show][:500], tabs=[(k, l, len(groups[k])) for k, l in tabs], show=show, nav="leads")
+        return page("leads.html", rows=groups[show][:500], tabs=[(k, l, len(groups[k])) for k, l in tabs], show=show, nav="leads",
+                    running=run_state())
+
+    @app.post("/leads/apply")
+    def lead_apply(key: str = Form(...)):
+        """Auto apply on one lead: find it on the company's site, tailor and fill. Never submits."""
+        import subprocess
+        from . import leads
+        if not leads.get(db, key) or run_state():
+            return RedirectResponse("/leads", status_code=303)
+        leads.set_status(db, key, "starred")
+        script = Path(__file__).resolve().parent.parent / "scripts" / "daily.sh"
+        log = open(settings.data_dir / "cron.log", "a")
+        env = {**os.environ, "AUTOAPPLY_TRIGGER": "manual", "AUTOAPPLY_LEAD": key, "AUTOAPPLY_PICKS": "1"}
+        subprocess.Popen(["bash", str(script)], cwd=script.parent.parent, env=env, stdout=log, stderr=subprocess.STDOUT,
+                         stdin=subprocess.DEVNULL, start_new_session=True)
+        db.log_run("run-now", True, f"auto apply: {key}")
+        time.sleep(0.5)
+        return RedirectResponse("/leads?show=starred", status_code=303)
 
     @app.post("/leads")
     def lead_action(key: str = Form(...), status: str = Form(...), show: str = Form("open")):

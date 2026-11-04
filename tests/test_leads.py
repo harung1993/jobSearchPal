@@ -86,3 +86,69 @@ def test_leads_page_star_and_dismiss(tmp_path):
     c.post("/leads", data={"key": k, "status": "dismissed"})
     assert k not in [r["key"] for r in leads.rows(db) if r["status"] != "dismissed"]
     assert c.post("/leads", data={"key": k, "status": "approved"}).status_code == 400
+
+
+INDEED_DIGEST = """Hi Jane, Your background could be a great match for this Distinguished Engineer, AI position at Hooli. Your experience could be valuable for their team. Apply now or explore other opportunities below.
+Jobs are based on your preferences, profile, and activity on Indeed
+
+Distinguished Engineer, AI
+Hooli - Remote
+$268,000 - $559,000 a year
+Easily apply
+Provide technical guidance for the end-to-end model lifecycle: define engineering standards for model training and evaluation work.
+
+https://www.indeed.com/pagead/clk/dl?from=jobi2a&jrtk=5-abc
+
+Analytics Engineer
+Initech - Boston, MA
+Easily apply
+
+https://www.indeed.com/rc/clk?jk=123
+
+Salaries estimated if unavailable.
+"""
+
+
+def test_parse_indeed_digest():
+    got = [(j["company"], j["title"], j["location"], j["salary"]) for j in leads.parse(INDEED_DIGEST)]
+    assert got == [("Hooli", "Distinguished Engineer, AI", "Remote", "$268,000 - $559,000 a year"),
+                   ("Initech", "Analytics Engineer", "Boston, MA", "")]
+
+
+def test_already_applied_companies_are_skipped(tmp_path, capsys):
+    from autoapply import rank
+    s, db, cfg = make(tmp_path)
+    db.upsert_job({"id": "tracker:acme", "ats": "tracker", "company": "Acme", "title": "Analytics Engineer", "location": "",
+                   "url": "", "apply_url": "", "description": ""})
+    db.update("tracker:acme", status="submitted", submitted_at=datetime.now().strftime("%Y-%m-%d"))
+    db.add_event({"id": "<c@x>", "job_id": None, "kind": "confirmed", "at": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                  "sender": "Initech <no-reply@ashbyhq.com>", "subject": "Thank you for applying to Initech", "reviewed": 1})
+    ids = [c["id"] for c in rank.candidates(db, s)]
+    assert ids == [] or all(i not in ids for i in ("gh:a:1", "wd:c:3"))
+    assert "already applied at Acme" in db.get("gh:a:1")["error"] and "from your email" in db.get("wd:c:3")["error"]
+    db.update("gh:a:1", status="new")  # a pick that slipped through is still stopped before an apply session
+    (s.data_dir / "daily").mkdir(exist_ok=True)
+    (s.data_dir / "daily" / "picks.json").write_text(json.dumps([{"id": "gh:a:1"}]))
+    cli.main(["--config", str(cfg), "daily-picks"])
+    assert capsys.readouterr().out.strip() == "" and db.get("gh:a:1")["status"] == "skipped"
+
+
+def test_auto_apply_one_lead(tmp_path, monkeypatch, capsys):
+    import subprocess
+    s, db, cfg = make(tmp_path)
+    leads.save(db, leads.parse(LINKEDIN), "Linkedin", datetime(2026, 11, 3, 9), {}, set())
+    k = leads.key("Initech", "Staff Data Engineer, Platform")
+    started = []
+    monkeypatch.setattr(subprocess, "Popen", lambda args, **kw: started.append(kw["env"]))
+    c = TestClient(make_app(s, db))
+    assert "Auto apply" in c.get("/leads").text and "uses credits" in c.get("/leads").text
+    c.post("/leads/apply", data={"key": k})
+    assert started and started[0]["AUTOAPPLY_LEAD"] == k and started[0]["AUTOAPPLY_TRIGGER"] == "manual"
+    monkeypatch.setenv("AUTOAPPLY_LEAD", k)
+    cli.main(["--config", str(cfg), "leads", "lookup"])
+    assert capsys.readouterr().out.strip() == "1"
+    assert json.loads((s.data_dir / "daily" / "alert-roles.json").read_text())[0]["company"] == "Initech"
+    db.upsert_job({"id": "gh:initech:9", "ats": "greenhouse", "company": "Initech", "title": "Staff Data Engineer, Platform",
+                   "location": "", "url": "u", "apply_url": "u", "description": ""})
+    cli.main(["--config", str(cfg), "leads", "job", k])
+    assert capsys.readouterr().out.strip() == "gh:initech:9"

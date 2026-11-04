@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 import re
 from collections import Counter
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 STOP = set("""a an and are as at be by for from has have in is it its of on or our that the their this to we will with
@@ -61,12 +61,49 @@ def score(job: dict, search: dict, terms: set[str], now: datetime | None = None)
     return round(s, 2)
 
 
+class Applied:
+    """Companies you've applied to lately: from the tool's own applications (including ones imported from your
+    tracker or marked "applied by hand") and from synced emails like "Thank you for applying to Acme"."""
+
+    EVENT_KINDS = ("confirmed", "rejected", "interview", "offer", "applied")
+
+    def __init__(self, db, days: int = 90, now: datetime | None = None):
+        now = now or datetime.now()
+        cutoff = (now - timedelta(days=days)).strftime("%Y-%m-%d") if days else "0000"
+        self.jobs = {}
+        for j in db.by_status("submitted", "filled"):
+            when = str(j.get("submitted_at") or j.get("found_at") or "")[:10]
+            if j["status"] == "filled" or not when or when >= cutoff:
+                self.jobs.setdefault(_norm(j["company"]), (j["status"], when, j["title"]))
+        self.mail = " | ".join(_norm(f"{e['sender']} {e['subject']}") for e in db.events()
+                               if e["kind"] in self.EVENT_KINDS and str(e["at"])[:10] >= cutoff)
+
+    def why(self, company: str) -> str:
+        """Why to skip this company ("" = fine)."""
+        c = _norm(company)
+        if not c:
+            return ""
+        if c in self.jobs:
+            st, when, title = self.jobs[c]
+            return f"already {'applied' if st == 'submitted' else 'filled a form'} at {company} ({title}{', ' + when if when else ''})"
+        if len(c) >= 3 and re.search(rf"(^| ){re.escape(c)}( |$)", self.mail):
+            return f"already applied at {company} (from your email)"
+        return ""
+
+
 def candidates(db, settings, limit: int = 12, desc_chars: int = 1200) -> list[dict]:
-    """New roles, best first, with trimmed descriptions. Saves each score on the job."""
+    """New roles, best first, with trimmed descriptions. Saves each score on the job. Companies you applied to
+    lately are skipped here, before any model sees them."""
+    from .prefs import Prefs
     search = settings.raw.get("search") or {}
     terms = profile_terms(settings.root)
+    applied = Applied(db, int(Prefs(settings.data_dir, settings.raw).data.get("reapply_after_days", 90) or 0))
     rows = []
     for j in db.by_status("new"):
+        why = applied.why(j["company"])
+        if why:
+            db.update(j["id"], status="skipped", error=why)
+            continue
         sc = score(j, search, terms)
         rows.append((sc, j))
         if j.get("score") != sc:

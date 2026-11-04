@@ -3,8 +3,10 @@
 {% block body %}
 <div class="ph"><div><h1>Leads</h1>
  <div class="sub">Every role from your LinkedIn, Indeed and other job-alert emails. Star the ones you want: the next run finds them on the
-  company's own site and adds them to the roles it can tailor. Score is a rough fit from your titles and resume.</div></div></div>
+  company's own site and adds them to the roles it can tailor. Auto apply does that for one role right away (it uses credits). Score is a rough fit from your titles and resume.</div></div></div>
 
+{% if running %}<p class="notice" style="margin:0 0 14px"><span class="grow">A run is going{% if running.at %} (since {{ running.at }}){% endif %}{% if running.step %}: {{ running.step }}{% endif %}. Auto apply is available again when it finishes.</span></p>
+ <script>setTimeout(()=>location.reload(),20000)</script>{% endif %}
 <nav class="tabs" aria-label="Filter">
  {% for key, label, n in tabs %}<a href="/leads?show={{ key }}" {% if key == show %}aria-current="page"{% endif %}>{{ label }} <span class="count">{{ n }}</span></a>{% endfor %}
 </nav>
@@ -18,16 +20,20 @@
  {% for r in rows %}<tr data-v='{{ [r.company ~ " " ~ r.title, r.location or "", r.source or "", r.score, r.last_seen]|tojson }}'>
   <td><b style="font-weight:600">{{ r.company }}</b> · {% if r.url %}<a href="{{ r.url }}" target="_blank" rel="noopener">{{ r.title }}</a>{% else %}{{ r.title }}{% endif %}
    {% if r.salary %}<div class="ink2" style="font-size:12.5px">{{ r.salary }}</div>{% endif %}
+   {% if r.applied %}<div><span class="pill waiting" style="text-transform:none" title="{{ r.applied }}">applied there</span></div>{% endif %}
    {% if r.job_id %}<div><a class="pill {{ 'submitted' if r.status == 'applied' else 'filled' }}" href="/job/{{ r.job_id|urlencode }}">{{ r.status }}</a></div>{% endif %}</td>
   <td class="ink2 hide-sm">{{ r.location or "" }}</td>
   <td class="ink2 hide-sm">{{ r.source }}{% if r.seen > 1 %} · {{ r.seen }}×{% endif %}</td>
   <td class="num">{{ '%.1f'|format(r.score or 0) }}</td>
   <td class="ink2 hide-sm" style="white-space:nowrap">{{ r.last_seen[5:10]|replace('-', '/') }}</td>
-  <td><form method="post" action="/leads" class="lead-acts"><input type="hidden" name="key" value="{{ r.key }}"><input type="hidden" name="show" value="{{ show }}">
+  <td><div class="lead-acts">
+   {% if not running and (not r.job_id or r.status in ('tracked', 'starred')) and r.status != 'dismissed' %}<form method="post" action="/leads/apply" style="margin:0" class="autoapply" data-role="{{ r.company }} · {{ r.title }}" data-applied="{{ r.applied }}">
+    <input type="hidden" name="key" value="{{ r.key }}"><button class="btn sm" title="Find, tailor and fill this one now. Uses credits.">Auto apply</button></form>{% endif %}
+   <form method="post" action="/leads" class="lead-acts"><input type="hidden" name="key" value="{{ r.key }}"><input type="hidden" name="show" value="{{ show }}">
    {% if r.status == 'starred' %}<button class="btn sm star on" name="status" value="new" aria-label="Unstar" title="Unstar">★</button>
    {% elif not r.job_id %}<button class="btn sm star" name="status" value="starred" aria-label="Star" title="Star: look this up next run">☆</button>{% endif %}
    {% if r.status == 'dismissed' %}<button class="btn ghost sm" name="status" value="new">Restore</button>
-   {% elif not r.job_id %}<button class="btn ghost sm" name="status" value="dismissed" title="Not interested">Dismiss</button>{% endif %}</form></td>
+   {% elif not r.job_id %}<button class="btn ghost sm" name="status" value="dismissed" title="Not interested">Dismiss</button>{% endif %}</form></div></td>
  </tr>{% endfor %}</tbody></table>
  {% else %}<div class="empty-state"><b>No leads here yet.</b><span>They come in with each email sync, from the job-alert emails in Gmail.
   Set up job alerts on LinkedIn or Indeed, and connect Gmail on Settings &gt; Setup.</span></div>{% endif %}
@@ -38,9 +44,13 @@
 .lead-tools{margin:-4px 0 10px}.lead-tools input{max-width:340px}
 table.leads th button{font:inherit;font-weight:600;color:inherit;background:none;border:0;padding:0;cursor:pointer}
 table.leads th button::after{content:"";margin-left:4px}table.leads th button[data-dir="asc"]::after{content:"↑"}table.leads th button[data-dir="desc"]::after{content:"↓"}
-.lead-acts{display:flex;gap:2px;justify-content:flex-end;margin:0}.btn.star{width:30px;padding:0;font-size:15px}.btn.star.on{color:var(--warn-dot);border-color:color-mix(in srgb,var(--warn-dot) 50%,var(--line))}
+.lead-acts{display:flex;gap:4px;justify-content:flex-end;align-items:center;margin:0}.btn.star{width:30px;padding:0;font-size:15px}.btn.star.on{color:var(--warn-dot);border-color:color-mix(in srgb,var(--warn-dot) 50%,var(--line))}
 </style>
 <script>
+document.querySelectorAll("form.autoapply").forEach(f=>f.onsubmit=()=>confirm(
+ "Auto apply: "+f.dataset.role+"\n\nThis runs the agent now. It finds the role on the company's own site, tailors your resume and "+
+ "cover letter, and fills the form.\n\nIt uses credits: roughly 1M tokens of your Claude plan (or OpenRouter credit, if the daily run "+
+ "uses it). Nothing is submitted until you press Submit."+(f.dataset.applied?"\n\nHeads up: "+f.dataset.applied+".":"")));
 (()=>{const t=document.querySelector("table.leads");if(!t)return;const tb=t.tBodies[0];
  document.querySelectorAll("table.leads th button").forEach(b=>b.onclick=()=>{const k=+b.dataset.k,num="num" in b.dataset;
   const dir=b.dataset.dir==="desc"?"asc":"desc";document.querySelectorAll("table.leads th button").forEach(x=>delete x.dataset.dir);b.dataset.dir=dir;

@@ -13,9 +13,12 @@ from datetime import datetime
 from . import alerts
 
 NOISE = re.compile(r"actively hiring|connection|alumni|apply with|easy apply|promoted|your job alert|^hi\b|^hello\b|"
-                   r"work setting:|^new\b.*\bjobs?\b|matches your|be an early applicant|^view job|^apply now|^\W*$", re.I)
+                   r"work setting:|^new\b.*\bjobs?\b|matches your|be an early applicant|^view job|^apply now|^\W*$|"
+                   r"easily apply|responsive employer|urgently hiring|^jobs are based on|^salaries estimated", re.I)
 SEPARATOR = re.compile(r"^-{5,}$|^_{5,}$|^={5,}$")
 VIEW = re.compile(r"^(?:view job|view this job|see job|apply now)\s*:?\s*(https?://\S+)", re.I)
+# Indeed's multi-job digest: no label, just the job's tracking link on its own line under each block.
+BARE = re.compile(r"^(https?://(?:www\.)?indeed\.com/(?:pagead/clk|rc/clk|viewjob|m/viewjob)\S*)$", re.I)
 SCHEMA = """
 create table if not exists leads (
   key text primary key,            -- company|title, normalised: the same role from LinkedIn and Indeed is one lead
@@ -55,12 +58,12 @@ def parse(text: str) -> list[dict]:
     lines = [l.strip() for l in (text or "").splitlines()]
     out = []
     for i, line in enumerate(lines):
-        m = VIEW.match(line)
+        m = VIEW.match(line) or BARE.match(line)
         if not m:
             continue
         block = []
         for prev in reversed(lines[max(0, i - 12):i]):
-            if SEPARATOR.match(prev) or VIEW.match(prev):
+            if SEPARATOR.match(prev) or VIEW.match(prev) or BARE.match(prev) or prev.startswith("http"):
                 break
             block.insert(0, prev)
         salary = next((re.sub(r"(?i)^salary:\s*", "", b) for b in block if re.match(r"(?i)^salary:|^\$\d", b)), "")
@@ -69,6 +72,8 @@ def parse(text: str) -> list[dict]:
             continue
         title, company = keep[0], keep[1]
         location = keep[2] if len(keep) > 2 else ""
+        if " - " in company and (not location or BARE.match(line)):  # Indeed: "Company - Location"
+            company, location = (x.strip() for x in company.split(" - ", 1))
         url = m.group(1).split("?")[0] if "linkedin.com" in m.group(1) else m.group(1)
         out.append({"title": title[:200], "company": company[:120], "location": location[:120],
                     "salary": salary[:80], "url": url[:1000]})
@@ -149,9 +154,19 @@ def set_status(db, k: str, status: str):
     db.conn.commit()
 
 
-def starred_for_lookup(db, limit: int = 8) -> list[dict]:
-    """Starred leads not tracked yet, in the shape the alerts step reads (data/daily/alert-roles.json)."""
+def get(db, k: str) -> dict | None:
+    ensure(db)
+    r = db.conn.execute("select * from leads where key = ?", (k,)).fetchone()
+    return dict(r) if r else None
+
+
+def starred_for_lookup(db, limit: int = 8, only: str = "") -> list[dict]:
+    """Starred leads not tracked yet, in the shape the alerts step reads (data/daily/alert-roles.json).
+    only: one lead's key (Auto apply on the Leads page), starred or not."""
     link_tracked(db)
+    if only:
+        r = get(db, only)
+        return [{"company": r["company"], "title": r["title"], "link": r["url"], "why": "you asked to apply"}] if r and not r["job_id"] else []
     return [{"company": r["company"], "title": r["title"], "link": r["url"], "why": "you starred it"}
             for r in db.conn.execute("select * from leads where status = 'starred' and job_id is null "
                                      "order by score desc limit ?", (limit,))]

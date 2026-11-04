@@ -70,7 +70,8 @@ class Prefs:
                 "ollama_url": PROVIDERS["ollama"]["base_url"],
                 # Cost controls: what the daily run may do per day, and a cap on money spent on paid APIs.
                 "picks_per_day": 2, "prep_enabled": True, "prep_per_day": 2, "drafts_enabled": True,
-                "drafts_per_day": 5, "monthly_api_budget": 5.0}
+                "drafts_per_day": 5, "monthly_api_budget": 5.0,
+                "reapply_after_days": 90}  # don't spend a run on a company you applied to more recently than this
         base.update(_legacy(raw or {}) if not saved else {})
         base.update(saved)
         base["order"] = [p for p in base["order"] if p in PROVIDERS] + [p for p in DEFAULT_ORDER if p not in base["order"]]

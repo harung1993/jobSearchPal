@@ -116,7 +116,8 @@ def main(argv=None):
     a = sub.add_parser("list"); a.add_argument("--status"); a.add_argument("--prep", action="store_true"); a.add_argument("--nudges", action="store_true"); a.add_argument("--limits", action="store_true")
     a = sub.add_parser("show"); a.add_argument("job_id")
     a = sub.add_parser("check"); a.add_argument("job_id")
-    a = sub.add_parser("leads"); a.add_argument("action", nargs="?", default="list", choices=["list", "sync", "lookup"])
+    a = sub.add_parser("leads"); a.add_argument("action", nargs="?", default="list", choices=["list", "sync", "lookup", "job"])
+    a.add_argument("key", nargs="?", default="")
     a.add_argument("--days", type=int, default=14)
     a = sub.add_parser("skip"); a.add_argument("job_id", nargs="+"); a.add_argument("--reason", default="")
     a = sub.add_parser("scan"); a.add_argument("url"); a.add_argument("--ats")
@@ -233,7 +234,19 @@ def main(argv=None):
         except (OSError, ValueError):
             picks = []
         n = Prefs(s.data_dir, s.raw).limits()["picks_per_day"]
-        ids = [p["id"] for p in picks if isinstance(p, dict) and p.get("id") and (db.get(p["id"]) or {}).get("status") == "new"][:n]
+        from .rank import Applied
+        applied = Applied(db, int(Prefs(s.data_dir, s.raw).data.get("reapply_after_days", 90) or 0))
+        ids = []
+        for p in picks:
+            j = db.get(p.get("id", "")) if isinstance(p, dict) else None
+            if not j or j["status"] != "new":
+                continue
+            why = applied.why(j["company"])
+            if why:  # last guard before an apply session spends tokens
+                db.update(j["id"], status="skipped", error=why)
+                continue
+            ids.append(j["id"])
+        ids = ids[:n]
         print("\n".join(ids))
     elif args.cmd == "daily-prompt":
         # The stage's prompt with today's details filled in; daily.sh pipes it to the agent.
@@ -391,11 +404,17 @@ def main(argv=None):
             _out(leads.sync(db, s, args.days))
         elif args.action == "lookup":
             # Starred leads for the alerts step to find on the company's own site; prints how many.
-            todo = leads.starred_for_lookup(db)
+            todo = leads.starred_for_lookup(db, only=os.environ.get("AUTOAPPLY_LEAD", ""))
             if todo:
                 (s.data_dir / "daily").mkdir(parents=True, exist_ok=True)
                 (s.data_dir / "daily" / "alert-roles.json").write_text(json.dumps(todo, indent=1))
             print(len(todo))
+        elif args.action == "job":
+            # The tracked job behind a lead, once the alerts step found it on the company's site.
+            leads.link_tracked(db)
+            r = leads.get(db, args.key)
+            if r and r["job_id"] and (db.get(r["job_id"]) or {}).get("status") == "new":
+                print(r["job_id"])
         else:
             for r in leads.rows(db)[:200]:
                 print(f"{r['score']:5.1f}  {r['status']:9}  {r['company']} | {r['title']} | {r['location']} | {r['source']}")
