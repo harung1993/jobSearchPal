@@ -12,15 +12,32 @@
 #   weekly_benefit  minimum to maximum weekly benefit; max_weeks: weeks payable (ranges depend on wages
 #                   and the state's unemployment rate). From US DOL "Significant Provisions of State UI
 #                   Laws", January 2026.
+#   waiting_week    the unpaid first week, if the state has one (DOL Comparison of State UI Laws 2023, Table 3-7)
+#   part_time_earnings_allowed  part-time pay you can earn in a week before benefits are reduced (DOL, Jan 2026)
 #   source          official = the agency's own site; confidence: high / medium (agency gives no exact
 #                   number) / low (couldn't confirm on the agency site; check before relying on it)
 #   checked         when the entry was last compared with its source
 # Backbone: US DOL Comparison of State UI Laws 2023, Tables 5-14 and 5-15 (work search requirements and
 # reporting). Every state was then re-checked on its agency's site on 2026-11-04; several had changed
 # since 2023 (AR, ID, IA, KY, LA, MI, TN, WV).
+# Applies everywhere (show these on the Setup page):
+#   - Benefits are taxable federal income; most states let you have 10% withheld. Some states tax them too.
+#   - Keep filing your weekly or biweekly claim even during the waiting week, or it may not count.
+#   - Severance, vacation or holiday pay can delay or reduce benefits in many states; report it.
+#   - If you're picked for RESEA (reemployment) appointments, they're mandatory; missing one stops benefits.
+#   - Report all part-time earnings for the week you earned them, not when you're paid.
+#   - Never guess: the notice your state sends you about your own claim overrides anything here.
 # Found a rule that's out of date? Fix the entry, set checked: to today, and open a pull request.
 checked: '2026-11-04'
 source: official
+general:
+- Unemployment benefits are taxable federal income; most states let you choose 10% federal withholding. Some states
+  also tax them.
+- Keep filing your weekly or biweekly claim during the waiting week, or it may not count.
+- Severance, vacation or holiday pay can delay or reduce benefits in many states. Report it.
+- If you're selected for RESEA (reemployment) appointments, they're mandatory. Missing one can stop your benefits.
+- Report part-time earnings for the week you did the work, not the week you're paid.
+- The notice your state sends about your own claim overrides anything here.
 states:
   AL:
     name: Alabama
@@ -37,6 +54,8 @@ states:
     law: Act 2022-218 (SB 224), in effect since Jan 1, 2023
     weekly_benefit: $45 to $275
     max_weeks: '14'
+    waiting_week: One unpaid week before benefits start
+    part_time_earnings_allowed: 1/3 of your weekly benefit
   AK:
     name: Alaska
     agency: Alaska Department of Labor and Workforce Development
@@ -52,6 +71,8 @@ states:
     law: 8 AAC 85.352
     weekly_benefit: $56-$128 to $370-$442
     max_weeks: 16-26
+    waiting_week: One unpaid week before benefits start
+    part_time_earnings_allowed: $50 plus 1/4 of wages over $50
   AZ:
     name: Arizona
     agency: Arizona Department of Economic Security
@@ -66,6 +87,8 @@ states:
     confidence: high
     weekly_benefit: $229 to $320
     max_weeks: 8-24
+    waiting_week: One unpaid week before benefits start
+    part_time_earnings_allowed: $160.49
   AR:
     name: Arkansas
     agency: Arkansas Division of Workforce Services
@@ -82,6 +105,8 @@ states:
     exemptions: Temporary layoff with a recall date may be exempt.
     weekly_benefit: $81 to $451
     max_weeks: 9-12
+    waiting_week: One unpaid week before benefits start
+    part_time_earnings_allowed: 40% of your weekly benefit
   CA:
     name: California
     agency: Employment Development Department (EDD)
@@ -98,6 +123,8 @@ states:
     must_register: Some claimants must register on CalJOBS; your notice says if you do.
     weekly_benefit: $40 to $450
     max_weeks: 14-26
+    waiting_week: One unpaid week; you still certify for it. Can be waived in a declared disaster.
+    part_time_earnings_allowed: $25 or 1/4 of wages, whichever is more
   CO:
     name: Colorado
     agency: Colorado Department of Labor and Employment (CDLE)
@@ -115,6 +142,9 @@ states:
     exemptions: Union- or job-attached claimants may not need to search; approved training can reduce the number.
     weekly_benefit: $25 to $767 ($844 on total wages)
     max_weeks: 13-26
+    waiting_week: One unpaid week. A 2022 law repeals it once the state's trust fund reaches $1 billion; still in
+      effect as of Nov 2026.
+    part_time_earnings_allowed: 1/2 of your weekly benefit
   CT:
     name: Connecticut
     agency: Connecticut Department of Labor
@@ -130,6 +160,8 @@ states:
     keep_records: 3 years
     weekly_benefit: $44-$88 to $721-$796
     max_weeks: '26'
+    waiting_week: None
+    part_time_earnings_allowed: 1/3 of wages
   DE:
     name: Delaware
     agency: Delaware Department of Labor
@@ -145,6 +177,8 @@ states:
     exemptions: Confirmed recall date; active union hiring hall members.
     weekly_benefit: $20 to $450
     max_weeks: 24-26
+    waiting_week: None
+    part_time_earnings_allowed: $10 or 50% of your weekly benefit, whichever is more
   DC:
     name: District of Columbia
     agency: Department of Employment Services (DOES)
@@ -160,6 +194,8 @@ states:
     must_register: Register with your local American Job Center.
     weekly_benefit: $50 to $444
     max_weeks: '26'
+    waiting_week: One unpaid week before benefits start
+    part_time_earnings_allowed: 1/3 of wages plus $50
   FL:
     name: Florida
     agency: FloridaCommerce Reemployment Assistance
@@ -176,6 +212,8 @@ states:
     must_register: Employ Florida profile with a resume is required.
     weekly_benefit: $32 to $275
     max_weeks: 9-12
+    waiting_week: One unpaid week before benefits start
+    part_time_earnings_allowed: 8 x the federal minimum hourly wage
   GA:
     name: Georgia
     agency: Georgia Department of Labor
@@ -189,6 +227,8 @@ states:
     confidence: high
     weekly_benefit: $55 to $365
     max_weeks: 6-26
+    waiting_week: None
+    part_time_earnings_allowed: $50
   HI:
     name: Hawaii
     agency: Hawaii Department of Labor and Industrial Relations
@@ -206,6 +246,8 @@ states:
     exemptions: Still attached to your regular employer on reduced hours; members of a referring labor union.
     weekly_benefit: $5 to $868
     max_weeks: '26'
+    waiting_week: One unpaid week before benefits start
+    part_time_earnings_allowed: $150
   ID:
     name: Idaho
     agency: Idaho Department of Labor
@@ -221,6 +263,8 @@ states:
     must_register: Create an IdahoWorks job seeker account.
     weekly_benefit: $72 to $624
     max_weeks: 10-26
+    waiting_week: One unpaid week before benefits start
+    part_time_earnings_allowed: 1/2 of your weekly benefit
   IL:
     name: Illinois
     agency: Illinois Department of Employment Security (IDES)
@@ -237,6 +281,8 @@ states:
     must_register: Register on IllinoisJobLink with at least one resume, or benefits aren't paid.
     weekly_benefit: $51-$77 to $628-$859
     max_weeks: '26'
+    waiting_week: One unpaid week before benefits start
+    part_time_earnings_allowed: 1/2 of your weekly benefit
   IN:
     name: Indiana
     agency: Indiana Department of Workforce Development
@@ -253,6 +299,8 @@ states:
     exemptions: Approved training; recall within 60 days; union hiring hall members.
     weekly_benefit: $37 to $390
     max_weeks: '26'
+    waiting_week: One unpaid week before benefits start
+    part_time_earnings_allowed: $100
   IA:
     name: Iowa
     agency: Iowa Workforce Development
@@ -268,6 +316,8 @@ states:
     exemptions: Recall within about four weeks; department-approved training.
     weekly_benefit: $93-$112 to $622-$763
     max_weeks: 9-16
+    waiting_week: None
+    part_time_earnings_allowed: 25% of your weekly benefit
   KS:
     name: Kansas
     agency: Kansas Department of Labor
@@ -283,6 +333,8 @@ states:
     exemptions: Approved school or training; Shared Work participants.
     weekly_benefit: $159 to $637
     max_weeks: 10-16
+    waiting_week: One unpaid week before benefits start
+    part_time_earnings_allowed: 25% of your weekly benefit
   KY:
     name: Kentucky
     agency: Kentucky Office of Unemployment Insurance
@@ -299,6 +351,8 @@ states:
     exemptions: Union hiring hall; approved training; definite recall within 16 weeks; workshare.
     weekly_benefit: $39 to $720
     max_weeks: 16-24
+    waiting_week: One unpaid week, paid at the end if your claim balance runs down to it.
+    part_time_earnings_allowed: 1/5 of wages
   LA:
     name: Louisiana
     agency: Louisiana Workforce Commission
@@ -314,6 +368,8 @@ states:
     law: Act 151 of 2025
     weekly_benefit: $35 to $282
     max_weeks: 12-20
+    waiting_week: One unpaid week before benefits start
+    part_time_earnings_allowed: 1/2 of your weekly benefit or $50, whichever is less
   ME:
     name: Maine
     agency: Maine Department of Labor
@@ -330,6 +386,8 @@ states:
     exemptions: Definite return date (waiver up to 6 weeks); union members via the hiring hall for 6 weeks.
     weekly_benefit: $108-$189 to $623-$1,090
     max_weeks: 15-26
+    waiting_week: One unpaid week before benefits start
+    part_time_earnings_allowed: $123
   MD:
     name: Maryland
     agency: Maryland Department of Labor
@@ -344,6 +402,8 @@ states:
     confidence: high
     weekly_benefit: $50-$90 to $430
     max_weeks: '26'
+    waiting_week: None
+    part_time_earnings_allowed: $50
   MA:
     name: Massachusetts
     agency: Department of Unemployment Assistance (DUA)
@@ -360,6 +420,8 @@ states:
     exemptions: DUA-approved training.
     weekly_benefit: $60 to $1,105 (plus dependents)
     max_weeks: 10-30
+    waiting_week: One unpaid week; you still request benefits for it.
+    part_time_earnings_allowed: 1/3 of your weekly benefit
   MI:
     name: Michigan
     agency: Unemployment Insurance Agency (UIA)
@@ -375,6 +437,9 @@ states:
     law: 2026 unemployment law changes
     weekly_benefit: $218-$315 to $530
     max_weeks: 14-26
+    waiting_week: None
+    part_time_earnings_allowed: Benefits drop 50 cents per $1 earned, and benefits plus earnings can't pass 1.5
+      x your weekly benefit
   MN:
     name: Minnesota
     agency: Unemployment Insurance Minnesota
@@ -390,6 +455,8 @@ states:
     exemptions: Referral union members in good standing; approved full-time training.
     weekly_benefit: $37 to $611 ($948 on total wages)
     max_weeks: 9-26
+    waiting_week: One unpaid week before benefits start
+    part_time_earnings_allowed: 'None: benefits drop 50 cents per $1 earned'
   MS:
     name: Mississippi
     agency: Mississippi Department of Employment Security
@@ -405,6 +472,8 @@ states:
     must_register: Register with Mississippi Works.
     weekly_benefit: $30 to $235
     max_weeks: 13-26
+    waiting_week: One unpaid week before benefits start
+    part_time_earnings_allowed: $40
   MO:
     name: Missouri
     agency: Missouri Division of Employment Security
@@ -421,6 +490,8 @@ states:
       times a week.
     weekly_benefit: $35 to $320
     max_weeks: 8-20
+    waiting_week: One unpaid week, paid at the end if your claim balance runs down to it.
+    part_time_earnings_allowed: 20% of your weekly benefit or $20, whichever is more
   MT:
     name: Montana
     agency: Montana Department of Labor & Industry
@@ -437,6 +508,8 @@ states:
     exemptions: Job- or union-attached.
     weekly_benefit: $227 to $767
     max_weeks: 8-24
+    waiting_week: One unpaid week before benefits start
+    part_time_earnings_allowed: 1/4 of your weekly benefit
   NE:
     name: Nebraska
     agency: Nebraska Department of Labor
@@ -452,6 +525,8 @@ states:
     exemptions: Temporary layoff with a definite return date; union hiring hall; approved or TRADE training.
     weekly_benefit: $70 to $582
     max_weeks: 10-26
+    waiting_week: One unpaid week before benefits start
+    part_time_earnings_allowed: 1/4 of your weekly benefit
   NV:
     name: Nevada
     agency: Nevada DETR Employment Security Division
@@ -467,6 +542,8 @@ states:
     exemptions: Union hiring hall members; approved school or training (waiver on request).
     weekly_benefit: $16 to $631
     max_weeks: 8-26
+    waiting_week: One unpaid week (or until any issue holding up payment is resolved).
+    part_time_earnings_allowed: 1/3 of wages
   NH:
     name: New Hampshire
     agency: New Hampshire Employment Security (NHES)
@@ -482,6 +559,8 @@ states:
     exemptions: WorkShare; Pathway to Work.
     weekly_benefit: $32 to $427
     max_weeks: '26'
+    waiting_week: One unpaid week before benefits start
+    part_time_earnings_allowed: 30% of your weekly benefit
   NJ:
     name: New Jersey
     agency: New Jersey Department of Labor
@@ -497,6 +576,8 @@ states:
     minimum_note: At least 1 per current form (3 recommended)
     weekly_benefit: $186-$213 to $905
     max_weeks: 20-26
+    waiting_week: None
+    part_time_earnings_allowed: 20% of your weekly benefit or $5, whichever is more
   NM:
     name: New Mexico
     agency: New Mexico Department of Workforce Solutions
@@ -512,6 +593,8 @@ states:
     keep_records: Up to 5 years
     weekly_benefit: $116-$166 to $624-$674
     max_weeks: 14-26
+    waiting_week: One unpaid week before benefits start
+    part_time_earnings_allowed: 1/5 of your weekly benefit
   NY:
     name: New York
     agency: New York State Department of Labor
@@ -527,6 +610,8 @@ states:
     exemptions: Written return-to-work date within 8 weeks; union hiring hall; approved training.
     weekly_benefit: $140 to $869
     max_weeks: '26'
+    waiting_week: One unpaid week before benefits start
+    part_time_earnings_allowed: Work up to 10 hours a week with earnings at or below the maximum weekly benefit
   NC:
     name: North Carolina
     agency: NC Division of Employment Security
@@ -544,6 +629,8 @@ states:
     must_register: Register with NCWorks.gov.
     weekly_benefit: $15 to $350
     max_weeks: 12-20
+    waiting_week: One unpaid week before benefits start
+    part_time_earnings_allowed: 20% of your weekly benefit
   ND:
     name: North Dakota
     agency: Job Service North Dakota
@@ -558,6 +645,8 @@ states:
     confidence: medium
     weekly_benefit: $43 to $815
     max_weeks: 12-26
+    waiting_week: One unpaid week before benefits start
+    part_time_earnings_allowed: 60% of your weekly benefit
   OH:
     name: Ohio
     agency: Ohio Department of Job and Family Services
@@ -574,6 +663,8 @@ states:
     exemptions: Temporary layoff with return within 45 days; approved training; union hiring hall.
     weekly_benefit: $176 to $624-$842
     max_weeks: 20-26
+    waiting_week: One unpaid week before benefits start
+    part_time_earnings_allowed: 1/5 of your weekly benefit
   OK:
     name: Oklahoma
     agency: Oklahoma Employment Security Commission
@@ -587,6 +678,8 @@ states:
     confidence: high
     weekly_benefit: $16 to $649
     max_weeks: '16'
+    waiting_week: One unpaid week before benefits start
+    part_time_earnings_allowed: $100
   OR:
     name: Oregon
     agency: Oregon Employment Department
@@ -601,6 +694,8 @@ states:
     exemptions: 'Short layoff with return within four weeks: stay in contact with your employer.'
     weekly_benefit: $204 to $872
     max_weeks: 1-26
+    waiting_week: One unpaid week before benefits start
+    part_time_earnings_allowed: 1/3 of your weekly benefit or $163, whichever is more
   PA:
     name: Pennsylvania
     agency: Pennsylvania Office of Unemployment Compensation
@@ -619,6 +714,8 @@ states:
     exemptions: Union hiring hall; Shared-Work; approved or Trade training; written recall date.
     weekly_benefit: $68-$76 to $605-$613
     max_weeks: 18-26
+    waiting_week: One unpaid week before benefits start
+    part_time_earnings_allowed: $21 or 30% of your weekly benefit, whichever is more
   PR:
     name: Puerto Rico
     agency: Departamento del Trabajo y Recursos Humanos
@@ -633,6 +730,8 @@ states:
     must_register: Register with the Servicio de Empleo.
     weekly_benefit: $60 to $240
     max_weeks: '26'
+    waiting_week: One unpaid week before benefits start
+    part_time_earnings_allowed: Up to your weekly benefit
   RI:
     name: Rhode Island
     agency: Rhode Island Department of Labor and Training
@@ -649,6 +748,8 @@ states:
     exemptions: Approved training; union hiring hall; WorkShare; recall within 12 weeks.
     weekly_benefit: $82-$132 to $745-$931
     max_weeks: 17-26
+    waiting_week: One unpaid week before benefits start
+    part_time_earnings_allowed: 1/2 of your weekly benefit
   SC:
     name: South Carolina
     agency: SC Department of Employment and Workforce
@@ -665,6 +766,8 @@ states:
     exemptions: UI-approved training (e.g. WIOA).
     weekly_benefit: $42 to $350
     max_weeks: 13-20
+    waiting_week: One unpaid week before benefits start
+    part_time_earnings_allowed: 1/4 of your weekly benefit
   SD:
     name: South Dakota
     agency: South Dakota Department of Labor & Regulation
@@ -680,6 +783,8 @@ states:
     exemptions: Temporary layoff with a recall date.
     weekly_benefit: $28 to $553
     max_weeks: 15-26
+    waiting_week: One unpaid week before benefits start
+    part_time_earnings_allowed: 1/4 of wages over $25
   TN:
     name: Tennessee
     agency: Tennessee Department of Labor and Workforce Development
@@ -694,6 +799,8 @@ states:
     exemptions: Definite return to work date; union hiring hall; approved training.
     weekly_benefit: $55 to $325
     max_weeks: 12-20
+    waiting_week: One unpaid week, paid back after 3 more consecutive weeks of benefits.
+    part_time_earnings_allowed: $50 or 25% of your weekly benefit, whichever is more
   TX:
     name: Texas
     agency: Texas Workforce Commission
@@ -709,6 +816,8 @@ states:
     minimum_note: Set by county (default 3)
     weekly_benefit: $75 to $605
     max_weeks: 10-26
+    waiting_week: One unpaid week, paid back once you've received benefits equal to 3 weeks.
+    part_time_earnings_allowed: $5 or 1/4 of your weekly benefit, whichever is more
   UT:
     name: Utah
     agency: Utah Department of Workforce Services
@@ -724,6 +833,8 @@ states:
     exemptions: Union-attached; starting a job within 3 weeks; training; seasonal deferral.
     weekly_benefit: $47 to $806
     max_weeks: 10-26
+    waiting_week: One unpaid week before benefits start
+    part_time_earnings_allowed: 30% of your weekly benefit
   VT:
     name: Vermont
     agency: Vermont Department of Labor
@@ -739,6 +850,8 @@ states:
     exemptions: Definite full-time return date within 10 weeks of opening the claim; approved training.
     weekly_benefit: $94 to $757
     max_weeks: 23-26
+    waiting_week: One unpaid week before benefits start
+    part_time_earnings_allowed: 50% of gross wages
   VA:
     name: Virginia
     agency: Virginia Employment Commission
@@ -755,6 +868,8 @@ states:
     exemptions: Partial claimants; union hiring hall members contact the hall weekly.
     weekly_benefit: $112 to $430
     max_weeks: 12-26
+    waiting_week: One unpaid week before benefits start
+    part_time_earnings_allowed: $100
   VI:
     name: US Virgin Islands
     agency: Virgin Islands Department of Labor
@@ -768,6 +883,8 @@ states:
     confidence: low
     weekly_benefit: $33 to $648
     max_weeks: 13-16
+    waiting_week: One unpaid week before benefits start
+    part_time_earnings_allowed: 25% of wages over $15
   WA:
     name: Washington
     agency: Employment Security Department
@@ -782,6 +899,8 @@ states:
     confidence: high
     weekly_benefit: $366 to $1,152
     max_weeks: 1-26
+    waiting_week: One unpaid week before benefits start
+    part_time_earnings_allowed: 1/4 of wages over $5
   WV:
     name: West Virginia
     agency: WorkForce West Virginia
@@ -798,6 +917,8 @@ states:
     exemptions: Jury duty; approved training; union hiring hall; Short-Time Compensation.
     weekly_benefit: $24 to $662
     max_weeks: '26'
+    waiting_week: One unpaid week before benefits start
+    part_time_earnings_allowed: $609
   WI:
     name: Wisconsin
     agency: Wisconsin Department of Workforce Development
@@ -815,6 +936,8 @@ states:
     exemptions: Recall within 8 weeks; verified new job within 4 weeks; working 32+ hours.
     weekly_benefit: $54 to $370
     max_weeks: 14-26
+    waiting_week: One unpaid week before benefits start
+    part_time_earnings_allowed: $30 plus 33% of wages over $30
   WY:
     name: Wyoming
     agency: Wyoming Department of Workforce Services
@@ -830,3 +953,5 @@ states:
     exemptions: Temporary furlough (up to 12 weeks).
     weekly_benefit: $47 to $651
     max_weeks: 11-26
+    waiting_week: None
+    part_time_earnings_allowed: 50% of your weekly benefit
