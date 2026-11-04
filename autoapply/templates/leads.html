@@ -2,8 +2,8 @@
 {% block title %}Leads{% endblock %}
 {% block body %}
 <div class="ph"><div><h1>Leads</h1>
- <div class="sub">Every role from your LinkedIn, Indeed and other job-alert emails. Star the ones you want: the next run finds them on the
-  company's own site and adds them to the roles it can tailor. Auto apply does that for one role right away (it uses credits). Score is a rough fit from your titles and resume.</div></div></div>
+ <div class="sub">Every role from your LinkedIn, Indeed and other job-alert emails. Each email sync looks the best ones up on the company's own job board (Greenhouse, Lever, Ashby, Workable; no AI) and
+  adds matches to the roles it can tailor. Star others you want: the next run searches the web for them. Auto apply does that for one role right away (it uses credits). Score is a rough fit from your titles and resume.</div></div></div>
 
 {% if running %}<p class="notice" style="margin:0 0 14px"><span class="grow">A run is going{% if running.at %} (since {{ running.at }}){% endif %}{% if running.step %}: {{ running.step }}{% endif %}. Auto apply is available again when it finishes.</span></p>
  <script>setTimeout(()=>location.reload(),20000)</script>{% endif %}
@@ -18,7 +18,9 @@
   <th class="hide-sm"><button type="button" data-k="2">Source</button></th><th class="num"><button type="button" data-k="3" data-num>Score</button></th>
   <th class="hide-sm"><button type="button" data-k="4">Seen</button></th><th></th></tr></thead><tbody>
  {% for r in rows %}<tr data-v='{{ [r.company ~ " " ~ r.title, r.location or "", r.source or "", r.score, r.last_seen]|tojson }}'>
-  <td><b style="font-weight:600">{{ r.company }}</b> · {% if r.url %}<a href="{{ r.url }}" target="_blank" rel="noopener">{{ r.title }}</a>{% else %}{{ r.title }}{% endif %}
+  <td><b style="font-weight:600">{{ r.company }}</b> · {% if r.apply_url or r.url %}<a href="{{ r.apply_url or r.url }}" target="_blank" rel="noopener">{{ r.title }}</a>{% else %}{{ r.title }}{% endif %}
+   {% if r.apply_url %}<div class="ink2" style="font-size:12.5px"><span class="pill submitted" style="text-transform:none">company site</span>{% if r.url %} · <a href="{{ r.url }}" target="_blank" rel="noopener">{{ (r.source or 'alert').split(', ')[0] }} link</a>{% endif %}</div>
+   {% elif r.ats_checked and not r.job_id %}<div class="ink2" style="font-size:12.5px">company page not found yet{% if r.status != 'starred' %}: star it to look further{% endif %}</div>{% endif %}
    {% if r.salary %}<div class="ink2" style="font-size:12.5px">{{ r.salary }}</div>{% endif %}
    {% if r.applied %}<div><span class="pill waiting" style="text-transform:none" title="{{ r.applied }}">applied there</span></div>{% endif %}
    {% if r.job_id %}<div><a class="pill {{ 'submitted' if r.status == 'applied' else 'filled' }}" href="/job/{{ r.job_id|urlencode }}">{{ r.status }}</a></div>{% endif %}</td>

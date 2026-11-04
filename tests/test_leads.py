@@ -152,3 +152,40 @@ def test_auto_apply_one_lead(tmp_path, monkeypatch, capsys):
                    "location": "", "url": "u", "apply_url": "u", "description": ""})
     cli.main(["--config", str(cfg), "leads", "job", k])
     assert capsys.readouterr().out.strip() == "gh:initech:9"
+
+
+def test_resolve_finds_lead_on_company_board(tmp_path):
+    """11/4: alert leads linked only to LinkedIn. Each sync looks the best ones up on the company's own board, no AI."""
+    s, db, cfg = make(tmp_path)
+    now = datetime(2026, 11, 4, 9)
+    leads.save(db, [{"title": "Sr. Analytics Engineer", "company": "Hooli, Inc.", "location": "Remote", "salary": "",
+                     "url": "https://www.linkedin.com/comm/jobs/view/111/"},
+                    {"title": "Staff Data Engineer", "company": "Initech", "location": "", "salary": "", "url": "u2"},
+                    {"title": "Line Cook", "company": "Hooli, Inc.", "location": "", "salary": "", "url": "u3"}],
+               "Linkedin", now, {}, set())
+    calls = []
+
+    def board(ats):
+        def f(slug):
+            calls.append((ats, slug))
+            if ats == "ashby" and slug == "hooli":
+                return [{"id": "ashby:hooli:9", "ats": "ashby", "company": "hooli", "title": "Senior Analytics Engineer",
+                         "location": None, "url": "https://jobs.ashbyhq.com/hooli/9", "apply_url": "https://jobs.ashbyhq.com/hooli/9/application",
+                         "description": "dbt"}]
+            raise RuntimeError("404")
+        return f
+    fetchers = {a: board(a) for a in ("greenhouse", "lever", "ashby", "workable")}
+    assert leads.slugs("Hooli, Inc.")[0] == "hooli"
+    assert "rocket-money" in leads.slugs("Rocket Money")
+    out = leads.resolve(db, s, fetchers=fetchers, now=now)
+    assert out == {"checked": 3, "found": 1, "companies": 2}
+    assert sum(1 for c in calls if c[1] == "hooli") == 3  # one board per company per run, not one per lead
+    r = leads.get(db, leads.key("Hooli, Inc.", "Sr. Analytics Engineer"))
+    assert r["job_id"] == "ashby:hooli:9" and r["status"] == "tracked" and r["apply_url"] == "https://jobs.ashbyhq.com/hooli/9"
+    job = db.get("ashby:hooli:9")
+    assert job["company"] == "Hooli, Inc." and job["status"] == "new"
+    assert leads.get(db, leads.key("Hooli, Inc.", "Line Cook"))["job_id"] is None
+    calls.clear()
+    assert leads.resolve(db, s, fetchers=fetchers, now=now)["checked"] == 0 and not calls  # tried this week already
+    html = TestClient(make_app(s, db)).get("/leads?show=all").text
+    assert "company site" in html and "https://jobs.ashbyhq.com/hooli/9" in html and "company page not found yet" in html

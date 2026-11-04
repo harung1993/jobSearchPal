@@ -82,6 +82,10 @@ def parse(text: str) -> list[dict]:
 
 def ensure(db):
     db.conn.executescript(SCHEMA)
+    have = {r[1] for r in db.conn.execute("pragma table_info(leads)")}
+    for col in ("apply_url", "ats_checked"):  # added 11/4: the company's own posting, found without AI
+        if col not in have:
+            db.conn.execute(f"alter table leads add column {col} text")
 
 
 def save(db, found: list[dict], source: str, when: datetime, search: dict, terms: set) -> int:
@@ -109,6 +113,9 @@ def save(db, found: list[dict], source: str, when: datetime, search: dict, terms
     return new
 
 
+TRACKED = {"submitted": "applied", "filled": "ready", "skipped": "dismissed"}  # job status -> lead status
+
+
 def link_tracked(db):
     """A lead whose role is now tracked (added from the company's site) points at that job."""
     ensure(db)
@@ -116,7 +123,7 @@ def link_tracked(db):
     for r in db.conn.execute("select key from leads where job_id is null").fetchall():
         j = by_key.get(r["key"])
         if j:
-            st = {"submitted": "applied", "filled": "ready", "skipped": "dismissed"}.get(j["status"], "tracked")
+            st = TRACKED.get(j["status"], "tracked")
             db.conn.execute("update leads set job_id = ?, status = case when status = 'starred' and ? = 'tracked' "
                             "then 'starred' else ? end where key = ?", (j["id"], st, st, r["key"]))
     db.conn.commit()
@@ -170,3 +177,73 @@ def starred_for_lookup(db, limit: int = 8, only: str = "") -> list[dict]:
     return [{"company": r["company"], "title": r["title"], "link": r["url"], "why": "you starred it"}
             for r in db.conn.execute("select * from leads where status = 'starred' and job_id is null "
                                      "order by score desc limit ?", (limit,))]
+
+
+# ---------- finding a lead on the company's own job board, with no AI ----------
+
+SUFFIX = re.compile(r"\b(inc|llc|ltd|limited|corp|corporation|co|company|plc|gmbh|group|holdings|technologies|technology|labs|hq)\b")
+RESOLVE_ATS = ("greenhouse", "lever", "ashby", "workable")
+
+
+def slugs(company: str) -> list[str]:
+    """Board slugs a company probably uses: "Coalition, Inc." -> coalition; "Rocket Money" -> rocketmoney, rocket-money."""
+    full = _norm(company)
+    short = re.sub(r"\s+", " ", SUFFIX.sub(" ", full)).strip() or full
+    out = []
+    for words in (short, full):
+        for s in (words.replace(" ", ""), words.replace(" ", "-")):
+            if s and s not in out:
+                out.append(s)
+    return out
+
+
+def same_title(a: str, b: str) -> float:
+    """How alike two job titles are, 0..1 (word overlap, so "Sr." vs "Senior" and word order matter little)."""
+    syn = {"sr": "senior", "jr": "junior", "mgr": "manager", "eng": "engineer", "engineering": "engineer", "ii": "2", "iii": "3"}
+    ta = {syn.get(w, w) for w in _norm(a).split()}
+    tb = {syn.get(w, w) for w in _norm(b).split()}
+    return len(ta & tb) / len(ta | tb) if ta and tb else 0.0
+
+
+def resolve(db, settings, limit: int = 30, fetchers: dict | None = None, now: datetime | None = None) -> dict:
+    """Looks up the best untracked leads on the company's public Greenhouse, Lever, Ashby or Workable board (plain
+    HTTP, no model). A match is added as a job, so it joins the normal pipeline, and the lead links to it.
+    Each lead is tried once a week; starred leads first, then by score."""
+    from datetime import timedelta
+    from . import finder
+    fetchers = fetchers or {a: finder.FETCHERS[a] for a in RESOLVE_ATS}
+    ensure(db)
+    now = now or datetime.now()
+    week_ago = (now - timedelta(days=7)).strftime("%Y-%m-%d %H:%M")
+    todo = db.conn.execute("select * from leads where job_id is null and status in ('new', 'starred') "
+                           "and (ats_checked is null or ats_checked < ?) "
+                           "order by (status = 'starred') desc, score desc, last_seen desc limit ?", (week_ago, limit)).fetchall()
+    watched = {_norm(b["slug"]).replace(" ", ""): b for b in finder.boards(settings)}
+    boards: dict[str, list] = {}
+    found = 0
+    for r in todo:
+        co = _norm(r["company"])
+        if co not in boards:
+            tries = [(b["ats"], b["slug"]) for k, b in watched.items() if k in slugs(r["company"]) and b["ats"] in fetchers]
+            tries += [(a, s) for s in slugs(r["company"]) for a in fetchers]
+            boards[co] = []
+            for ats, slug in tries:
+                try:
+                    jobs = fetchers[ats](slug)
+                except Exception:  # no such board (404) or the site is down: try the next
+                    continue
+                if jobs:
+                    boards[co] = jobs
+                    break
+        best = max(boards[co], key=lambda j: same_title(r["title"], j["title"]), default=None)
+        if best and same_title(r["title"], best["title"]) >= 0.75:
+            job = {k: ("" if v is None else v) for k, v in best.items()}
+            job["company"] = r["company"]  # the board only knows its slug
+            db.upsert_job(job)  # already tracked from a watched board: keeps that job and its status
+            st = TRACKED.get(db.get(job["id"])["status"], "tracked")
+            db.conn.execute("update leads set job_id = ?, apply_url = ?, status = case when status = 'starred' and ? = 'tracked' "
+                            "then 'starred' else ? end where key = ?", (job["id"], job["url"], st, st, r["key"]))
+            found += 1
+        db.conn.execute("update leads set ats_checked = ? where key = ?", (now.strftime("%Y-%m-%d %H:%M"), r["key"]))
+    db.conn.commit()
+    return {"checked": len(todo), "found": found, "companies": len(boards)}

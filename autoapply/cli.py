@@ -3,6 +3,7 @@
   autoapply find                      pull new matching roles from boards and feeds
   autoapply board add ATS SLUG        watch another company's job board (checked first)
   autoapply board list                boards being watched
+  autoapply leads resolve [N]         find the top N leads on the company's own job board (no AI)
   autoapply alerts [--days N]         recent job-alert emails as text, to pull roles from
   autoapply sync-email [--days N] [--rebuild] [--no-review]  gather ATS/recruiter emails, then have the
                                       model sort them (--rebuild refiles; your corrections are kept)
@@ -116,7 +117,7 @@ def main(argv=None):
     a = sub.add_parser("list"); a.add_argument("--status"); a.add_argument("--prep", action="store_true"); a.add_argument("--nudges", action="store_true"); a.add_argument("--limits", action="store_true")
     a = sub.add_parser("show"); a.add_argument("job_id")
     a = sub.add_parser("check"); a.add_argument("job_id")
-    a = sub.add_parser("leads"); a.add_argument("action", nargs="?", default="list", choices=["list", "sync", "lookup", "job"])
+    a = sub.add_parser("leads"); a.add_argument("action", nargs="?", default="list", choices=["list", "sync", "resolve", "lookup", "job"])
     a.add_argument("key", nargs="?", default="")
     a.add_argument("--days", type=int, default=14)
     a = sub.add_parser("skip"); a.add_argument("job_id", nargs="+"); a.add_argument("--reason", default="")
@@ -182,6 +183,7 @@ def main(argv=None):
         try:  # every role in the alert emails, kept as a lead (Dashboard > Leads)
             from . import leads
             out["leads"] = leads.sync(db, s, min(args.days, 14))
+            out["leads"]["on_company_site"] = leads.resolve(db, s)["found"]
         except Exception as e:
             out["leads"] = {"error": str(e)[:200]}
         if not args.no_review:
@@ -406,6 +408,9 @@ def main(argv=None):
         from . import leads
         if args.action == "sync":
             _out(leads.sync(db, s, args.days))
+        elif args.action == "resolve":
+            # The best untracked leads, looked up on the company's own job board (no AI). --days is unused here.
+            _out(leads.resolve(db, s, limit=int(args.key or 30)))
         elif args.action == "lookup":
             # Starred leads for the alerts step to find on the company's own site; prints how many.
             todo = leads.starred_for_lookup(db, only=os.environ.get("AUTOAPPLY_LEAD", ""))
