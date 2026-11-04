@@ -113,7 +113,7 @@ def match_job(jobs: list[dict], name: str, addr: str, subject: str, text: str) -
     return best
 
 
-KINDS = ["confirmed", "interview", "rejected", "offer", "recruiter", "ignored"]
+KINDS = ["confirmed", "interview", "rejected", "offer", "recruiter", "agency", "ignored"]
 
 
 def is_own(addr: str) -> bool:
@@ -136,6 +136,16 @@ def apply_event(db: DB, jobs: list[dict], msg_id: str, name: str, addr: str, sub
         return None
     if old and old["reviewed"]:
         return None  # settled already; only a --rebuild (or you, on the Emails page) changes it
+    from . import benefits
+    if benefits.is_agency(addr, subject, text):
+        # A letter from the unemployment agency or a career center: a to-do, not a job reply. Filed as settled.
+        if not old:
+            proof = save_proof(proof_root, when, name or addr, "agency", raw, text,
+                               f"From: {name} <{addr}>\nDate: {when:%Y-%m-%d %H:%M}\nSubject: {subject}")
+            db.add_event({"id": msg_id, "job_id": None, "kind": "agency", "guess": "agency",
+                          "at": when.strftime("%Y-%m-%d %H:%M"), "sender": f"{name} <{addr}>" if name else addr,
+                          "subject": subject[:200], "proof": proof, "body": text[:4000], "reviewed": 1})
+        return "agency"
     from_ats = any(d in addr.lower() for d in ATS_SENDERS)
     if subject.startswith("Job search brief") or NOT_STATUS.search(subject):
         guess, keep = None, False  # our own brief quotes other emails; sign-in links and codes aren't news
@@ -246,7 +256,8 @@ def sync(db: DB, days: int = 60, extra_senders: list[str] | None = None, proof_r
         sync_sent(db, days)
     except Exception:  # reminders just get less precise; the reply sync still runs
         pass
-    for msg in alerts.messages(days, ATS_SENDERS + (extra_senders or []), gmail_queries=RECRUITER_QUERIES):
+    from .benefits import AGENCY_QUERIES
+    for msg in alerts.messages(days, ATS_SENDERS + (extra_senders or []), gmail_queries=RECRUITER_QUERIES + AGENCY_QUERIES):
         kind = apply_event(db, jobs, *msg, proof_root=proof_root)
         if kind:
             counts[kind] = counts.get(kind, 0) + 1

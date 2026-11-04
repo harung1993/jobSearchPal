@@ -69,7 +69,8 @@ document.addEventListener("click",e=>{document.querySelectorAll("details.decline
 
 {% if todo %}<section class="card mt" id="todo"><h2>To do <span class="count">{{ todo|length }}</span></h2>
  {% macro todo_row(n) %}<div class="todo">
-  <span class="pill {{ 'interview' if n.kind == 'interview' else ('recruiter' if n.kind in ('reply', 'chase') else 'waiting') }}">{{ {'interview': 'interview', 'reply': 'reply', 'chase': 'check in', 'application': 'follow up'}[n.kind] }}</span>
+  <span class="pill {{ 'interview' if n.kind == 'interview' else ('recruiter' if n.kind in ('reply', 'chase') else ('rejected' if n.kind in ('appeal', 'resea', 'claim') else 'waiting')) }}">{{ {'interview': 'interview', 'reply': 'reply', 'chase': 'check in', 'application': 'follow up',
+   'claim': 'claim day', 'worksearch': 'work search', 'resea': 'RESEA', 'task': 'benefits', 'agency': 'agency letter', 'appeal': 'decision'}[n.kind] }}</span>
   <div class="body"><div class="t">{{ n.title }}</div><div class="m">{{ n.about|truncate(70) }} · {{ n.why }}</div>
    {% if n.draft %}<details><summary>Draft reply</summary><pre class="draft">{{ n.draft }}</pre>
     <button type="button" class="btn sm" onclick="navigator.clipboard.writeText(this.previousElementSibling.textContent);this.textContent='Copied'">Copy</button></details>{% endif %}</div>

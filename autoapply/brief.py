@@ -34,12 +34,12 @@ def _co(name: str) -> str:
 
 
 def compose(db: DB, review_url: str = "", today: date | None = None, label: str = "Work search",
-            floor: int = 3, data_dir=None) -> tuple[str, str, str]:
+            floor: int = 3, data_dir=None, settings=None) -> tuple[str, str, str]:
     """Returns (subject, text, html)."""
     s = stats.compute(db, today, floor=floor)
     from . import nudges
     ready, news = s["ready"], _recent_events(db)
-    todo = nudges.compute(db, data_dir) if data_dir else []
+    todo = nudges.compute(db, data_dir, settings=settings) if data_dir else []
     left = max(0, s["dua_floor"] - s["this_week"])
     dua = f"{s['this_week']} of {s['dua_floor']} this week" + (" (done)" if not left else f", {left} to go")
     subject = f"Job search brief: {len(ready)} ready, {len(news)} new repl{'y' if len(news) == 1 else 'ies'}, {label} {s['this_week']}/{s['dua_floor']}" + (

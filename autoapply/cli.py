@@ -225,7 +225,7 @@ def main(argv=None):
     elif args.cmd == "todo-line":
         # One line of open follow-up reminders for the phone push, e.g. "3 to do: Reply to ...; Follow up on ...".
         from . import nudges
-        open_ = nudges.compute(db, s.data_dir)
+        open_ = nudges.compute(db, s.data_dir, settings=s)
         if open_:
             names = "; ".join(n["title"] for n in open_[:4]) + ("; ..." if len(open_) > 4 else "")
             print(f"{len(open_)} to do: {names}")
@@ -460,7 +460,7 @@ def main(argv=None):
         from . import brief
         from .web import work_search
         label, floor = work_search(s)
-        subject, text, html = brief.compose(db, os.environ.get("REVIEW_URL", ""), label=label, floor=floor,
+        subject, text, html = brief.compose(db, os.environ.get("REVIEW_URL", ""), label=label, floor=floor, settings=s,
                                           data_dir=s.data_dir)
         if args.send:
             to = brief.send(subject, text, html)

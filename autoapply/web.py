@@ -35,7 +35,7 @@ def page(name: str, **ctx) -> HTMLResponse:
 
 
 KIND_LABELS = [("confirmed", "Received (auto-reply)"), ("interview", "Interview"), ("rejected", "Rejection"), ("offer", "Offer"),
-               ("recruiter", "Recruiter"), ("ignored", "Not job-related")]
+               ("recruiter", "Recruiter"), ("agency", "Unemployment agency"), ("ignored", "Not job-related")]
 
 
 def state_rules() -> dict:
@@ -100,7 +100,7 @@ def make_app(settings, db: DB) -> FastAPI:
             return RedirectResponse("/setup", status_code=303)  # fresh install
         from . import prep
         from . import nudges
-        todo = nudges.compute(db, settings.data_dir)
+        todo = nudges.compute(db, settings.data_dir, settings=settings)
         for n in todo:
             n["compose"] = nudges.gmail_compose_url(n)
         from .prefs import Prefs
@@ -175,6 +175,10 @@ def make_app(settings, db: DB) -> FastAPI:
     @app.post("/nudge/{key}")
     def nudge_action(key: str, action: str = Form(...), days: int = Form(3)):
         from datetime import timedelta
+        if key.startswith("task-") and key[5:].isdigit() and action == "done":  # an unemployment to-do you added
+            from . import benefits
+            benefits.set_task(db, int(key[5:]), done=True)
+            return RedirectResponse("/#todo", status_code=303)
         if action == "done":
             db.set_nudge(key, "done")
         elif action == "snooze":
@@ -330,12 +334,13 @@ def make_app(settings, db: DB) -> FastAPI:
         groups = {"waiting": [e for e in every if not e["reviewed"]],
                   "replies": [e for e in every if e["reviewed"] and e["kind"] in ("confirmed", "interview", "rejected", "offer")],
                   "recruiter": [e for e in every if e["reviewed"] and e["kind"] == "recruiter"],
+                  "agency": [e for e in every if e["reviewed"] and e["kind"] == "agency"],
                   "ignored": [e for e in every if e["reviewed"] and e["kind"] == "ignored"],
                   "all": every}
         if show not in groups:  # land on the first tab with something in it
             show = next((k for k in ("waiting", "replies", "recruiter") if groups[k]), "all")
         tabs = [("waiting", "Not sorted", len(groups["waiting"])), ("replies", "Replies", len(groups["replies"])),
-                ("recruiter", "Recruiters", len(groups["recruiter"])), ("ignored", "Not job-related", len(groups["ignored"])),
+                ("recruiter", "Recruiters", len(groups["recruiter"])), ("agency", "Unemployment", len(groups["agency"])), ("ignored", "Not job-related", len(groups["ignored"])),
                 ("all", "All", len(every))]
         from .prefs import PROVIDERS, Prefs
         chain = Prefs(settings.data_dir, settings.raw).chain()
@@ -629,7 +634,33 @@ def make_app(settings, db: DB) -> FastAPI:
 
     @app.get("/dua")
     def dua():
-        return page("dua.html", weeks=stats.dua_weeks(db), floor=work_search(settings)[1], rule=my_state(settings), nav="work")
+        from . import benefits
+        rule = my_state(settings)
+        return page("dua.html", weeks=stats.dua_weeks(db), floor=work_search(settings)[1], rule=rule, nav="work",
+                    claim=benefits.claim(settings), runway=benefits.runway(settings, rule), days=benefits.DAYS,
+                    tasks=benefits.tasks(db, include_done=True), resources=benefits.RESOURCES,
+                    letters=[e for e in db.events() if e["kind"] == "agency"][:8])
+
+    @app.post("/dua/claim")
+    async def dua_claim(request: Request):
+        from . import benefits
+        benefits.save_claim(settings, dict(await request.form()))
+        return RedirectResponse("/dua#claim", status_code=303)
+
+    @app.post("/dua/task")
+    def dua_task(action: str = Form(...), title: str = Form(""), due: str = Form(""), task_id: int = Form(0)):
+        from . import benefits
+        if action == "add" and title.strip():
+            benefits.add_task(db, title, due)
+        elif action == "resea":
+            benefits.add_resea(db, (my_state(settings) or {}).get("code", ""))
+        elif action == "due" and task_id:
+            d = benefits._date(due)
+            db.conn.execute("update ui_tasks set due = ? where id = ?", (d.isoformat() if d else None, task_id))
+            db.conn.commit()
+        elif action in ("done", "undo", "delete") and task_id:
+            benefits.set_task(db, task_id, done=action == "done" if action != "delete" else None, delete=action == "delete")
+        return RedirectResponse("/dua#tasks", status_code=303)
 
     @app.get("/dua/{week}.zip")
     def dua_zip(week: str):

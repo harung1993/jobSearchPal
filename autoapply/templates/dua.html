@@ -8,9 +8,52 @@
   <span class="pill {{ 'submitted' if rule.source == 'official' else 'waiting' }}" style="text-transform:none">checked {{ rule.checked }}</span></h2>
  <p style="margin:0 0 6px">{% if rule.weekly_minimum is not none %}<b>{{ rule.weekly_minimum }} a week.</b>{% elif rule.varies %}<b>The number is set for each claimant.</b>{% else %}<b>No set number.</b>{% endif %} {{ rule.rule }}.</p>
  {% if rule.report %}<p class="ink2" style="margin:0 0 6px">How it's reported: {{ rule.report }}.</p>{% endif %}
+ {% if rule.waiting_week %}<p class="ink2" style="margin:0 0 6px">The first week of a claim is an unpaid waiting week.</p>{% endif %}
  <p class="muted" style="margin:0;font-size:12.5px">Rules change{% if rule.source != 'official' %}, and this one comes from a summary, not the agency's own site{% endif %}.
   <a href="{{ rule.url }}" target="_blank" rel="noopener">Check the official rules</a>. This page counts toward {{ floor }} a week; change it on <a href="/setup#interests">Setup</a>.</p></section>
 {% elif floor %}<p class="muted" style="margin:0 0 14px">Collecting unemployment? Pick your state on <a href="/setup#interests">Setup</a> to see its work-search rule.</p>{% endif %}
+<div class="grid g2 benefits">
+<section class="card" id="claim"><h2><span>Your claim</span>{% if runway %}<span class="count">week {{ runway.week_no }}</span>{% endif %}</h2>
+ {% if runway %}<div class="runway"><div class="num">{{ runway.left }}<small> of {{ runway.allowed }} weeks left</small></div>
+  <div class="meter" role="img" aria-label="{{ runway.allowed - runway.left }} of {{ runway.allowed }} weeks used"><span style="width:{{ runway.pct }}%"></span></div>
+  <div class="sub">Runs out around {{ runway.ends.strftime("%b %-d, %Y") }}{% if runway.remaining_money %} · about ${{ "{:,}".format(runway.remaining_money) }} left{% endif %}.
+   {% if runway.waiting %} The first week is an unpaid waiting week.{% endif %} An estimate from what you entered; your agency's balance is the real one.</div></div>
+ {% else %}<p class="muted" style="margin:0 0 10px">Add your claim's details to see how many weeks you have left and get a reminder on your claim day. They're on your monetary determination letter.</p>{% endif %}
+ <form method="post" action="/dua/claim" class="claim-form"><div class="grid g11">
+  <label class="fld"><span>Claim start</span><input type="date" name="claim_start" value="{{ claim.start }}"></label>
+  <label class="fld"><span>Weekly benefit ($)</span><input type="text" name="weekly_benefit" value="{{ claim.weekly_benefit }}" inputmode="decimal"></label>
+  <label class="fld"><span>Weeks allowed</span><input type="text" name="weeks_allowed" value="{{ claim.weeks_allowed }}" inputmode="numeric" placeholder="e.g. 26"></label>
+  <label class="fld"><span>Claim day</span><select name="certify_day"><option value="">No reminder</option>
+   {% for d in days %}<option {% if claim.certify_day == d %}selected{% endif %}>{{ d }}</option>{% endfor %}</select></label></div>
+  <div class="actions"><button class="btn sm">Save</button></div></form></section>
+
+<section class="card" id="tasks"><h2><span>Appointments and deadlines</span><span class="count">{{ tasks|rejectattr('done')|list|length }} open</span></h2>
+ {% for t in tasks %}<div class="task {{ 'done' if t.done }}">
+  <form method="post" action="/dua/task"><input type="hidden" name="task_id" value="{{ t.id }}">
+   <button class="tick" name="action" value="{{ 'undo' if t.done else 'done' }}" aria-label="{{ 'Mark not done' if t.done else 'Mark done' }}">{{ '✓' if t.done else '' }}</button></form>
+  <div class="body"><div class="t">{% if t.kind == 'resea' %}<span class="pill rejected" style="text-transform:none">RESEA</span> {% endif %}{{ t.title }}</div>
+   <form method="post" action="/dua/task" class="due"><input type="hidden" name="task_id" value="{{ t.id }}"><input type="hidden" name="action" value="due">
+    <input type="date" name="due" value="{{ t.due or '' }}" aria-label="Due date" onchange="this.form.submit()">{% if not t.due and not t.done %}<span class="muted">add the date from your letter</span>{% endif %}</form></div>
+  <form method="post" action="/dua/task"><input type="hidden" name="task_id" value="{{ t.id }}"><button class="btn ghost sm" name="action" value="delete" aria-label="Remove">✕</button></form>
+ </div>{% else %}<p class="muted" style="margin:0 0 10px">Seminars, RESEA meetings, documents to send: anything with a date. They show on the dashboard's To do two weeks ahead.</p>{% endfor %}
+ <form method="post" action="/dua/task" class="add-task"><input type="text" name="title" placeholder="e.g. Upload ID to the claim portal" aria-label="New appointment or deadline">
+  <input type="date" name="due" aria-label="Due"><button class="btn sm" name="action" value="add">Add</button></form>
+ {% if not tasks|selectattr('kind', 'equalto', 'resea')|list %}<form method="post" action="/dua/task" style="margin-top:8px"><button class="btn ghost sm" name="action" value="resea">Asked to do RESEA? Add its steps</button></form>{% endif %}
+ {% if letters %}<h3 class="mt" style="font-size:13px;margin-bottom:4px">Letters from the agency</h3>
+  {% for e in letters %}<div class="ink2" style="font-size:13px;padding:3px 0">{{ e.at[5:10]|replace('-', '/') }} · {{ e.subject|truncate(70) }}{% if e.proof %} · <a href="/proof/{{ e.proof.split('/')[-2] }}/{{ e.proof.split('/')[-1] }}" target="_blank">open</a>{% endif %}</div>{% endfor %}{% endif %}
+</section></div>
+
+<section class="card mt" style="margin-bottom:16px"><h2>Help people often miss</h2>
+ <div class="grid g3 res">{% for name, what, url in resources %}<a class="res-item" href="{{ url }}" target="_blank" rel="noopener"><b>{{ name }}</b><span>{{ what }}</span></a>{% endfor %}</div></section>
+<style>.benefits{margin-bottom:16px;align-items:start}.runway .num{font-size:28px;font-weight:700}.runway .num small{font-size:13px;font-weight:500;color:var(--ink-2)}
+.runway .sub{font-size:12.5px;color:var(--ink-3);margin:6px 0 12px}.claim-form .actions{margin-top:8px}
+.task{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--line)}.task form{margin:0}.task .body{flex:1;min-width:0}
+.task .t{font-weight:600;font-size:14px}.task.done .t{text-decoration:line-through;color:var(--ink-3)}
+.task .tick{width:22px;height:22px;border-radius:6px;border:1.5px solid var(--line-2);background:var(--surface);cursor:pointer;font-size:13px;color:var(--accent);padding:0}
+.task .due{display:flex;gap:8px;align-items:center;margin-top:4px}.task .due input{width:auto;padding:2px 6px;font-size:12.5px}.task .due span{font-size:12px}
+.add-task{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}.add-task input[type=text]{flex:1;min-width:160px}.add-task input[type=date]{width:auto}
+.res{gap:10px}.res-item{display:flex;flex-direction:column;gap:3px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;color:inherit}
+.res-item:hover{text-decoration:none;background:var(--surface-2)}.res-item span{font-size:12.5px;color:var(--ink-2)}</style>
 {% for w in weeks %}
 <section class="card {% if not loop.first %}mt{% endif %}">
  <h2><span>{{ w.start.strftime("%b %-d") }} – {{ w.end.strftime("%b %-d, %Y") }}{% if w.current %} <span class="pill filled" style="margin-left:6px">this week</span>{% endif %}

@@ -42,7 +42,9 @@ def draft_path(data_dir: Path, key: str) -> Path:
     return data_dir / "drafts" / f"{key}.md"
 
 
-def compute(db: DB, data_dir: Path | None = None, now: datetime | None = None, include_hidden: bool = False) -> list[dict]:
+def compute(db: DB, data_dir: Path | None = None, now: datetime | None = None, include_hidden: bool = False,
+            settings=None) -> list[dict]:
+    """With settings, unemployment to-dos (claim day, work search, RESEA steps, agency letters) come too."""
     now = now or datetime.now()
     states = db.nudge_states()
     sent = [(s, _t(s["at"])) for s in db.sent()]
@@ -100,6 +102,14 @@ def compute(db: DB, data_dir: Path | None = None, now: datetime | None = None, i
                         "event": None, "job": j,
                         "why": f"Applied {age} days ago · no reply yet"})
 
+    if settings is not None:
+        from . import benefits, stats
+        from .web import my_state, work_search
+        weeks = {w["start"]: w["count"] for w in stats.dua_weeks(db, now.date())}
+        this = stats.week_start(now.date())
+        out += benefits.todos(db, settings, my_state(settings), work_search(settings)[1], weeks.get(this, 0),
+                              weeks.get(this - timedelta(days=7), 0), now)
+
     for n in out:
         st = states.get(n["key"])
         n["state"] = (st or {}).get("state") or "open"
@@ -109,7 +119,8 @@ def compute(db: DB, data_dir: Path | None = None, now: datetime | None = None, i
             p = draft_path(data_dir, n["key"])
             n["draft_path"] = str(p)
             n["draft"] = p.read_text() if p.exists() else ""
-    order = {"interview": 0, "reply": 1, "chase": 2, "application": 3}
+    order = {"appeal": 0, "claim": 0, "interview": 1, "resea": 1, "task": 1, "agency": 2, "worksearch": 2,
+             "reply": 3, "chase": 4, "application": 5}
     out.sort(key=lambda n: (order[n["kind"]], -n["days"]))
     return out if include_hidden else [n for n in out if n["state"] == "open"]
 
@@ -118,7 +129,7 @@ def for_agent(db: DB, data_dir: Path, limit: int | None = None) -> list[dict]:
     """Open reminders without a draft yet, with what the agent needs to write one (at most `limit`)."""
     rows = []
     for n in compute(db, data_dir):
-        if n["draft"] or n["kind"] == "interview" and not n["to"]:
+        if n["draft"] or n["kind"] not in ("reply", "chase", "application", "interview") or n["kind"] == "interview" and not n["to"]:
             continue  # booking links need you, not a draft
         e, j = n["event"] or {}, n["job"] or {}
         rows.append({"key": n["key"], "kind": n["kind"], "title": n["title"], "why": n["why"], "draft_path": n["draft_path"],
