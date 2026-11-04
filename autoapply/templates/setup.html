@@ -145,6 +145,7 @@
     add((r.weekly_minimum!=null?r.weekly_minimum+" a week. ":r.varies?"The number is set for each claimant. ":"No set number. ")+r.rule);
     if(r.report)add("How it's reported: "+r.report,"ink2");
     if(r.must_register)add("Register: "+r.must_register,"ink2");
+    if(r.waiting_week)add("Waiting week: "+(r.waiting_week_note||"the first week is unpaid"),"ink2");
     if(r.confidence==="low")add("Couldn't be confirmed on the agency's site: check it before relying on it.","ink2");
     const a=document.createElement("a");a.href=r.url;a.target="_blank";a.rel="noopener";a.textContent="Check the official rules";
     const p=add("Last checked "+r.checked+(r.source==="official"?" on the agency's site. ":" from a summary, not the agency's site. ")+"Your agency's letters to you are what counts. ","muted");p.appendChild(a);

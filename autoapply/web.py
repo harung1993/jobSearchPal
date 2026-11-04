@@ -43,9 +43,18 @@ def state_rules() -> dict:
     import yaml
     data = yaml.safe_load((Path(__file__).parent / "work_search_states.yaml").read_text())
     for r in data["states"].values():
+        ww = r.get("waiting_week")  # text in the checked data ("One unpaid week...", "None"), a bool in older files
+        r["waiting_week_note"] = ww if isinstance(ww, str) and not ww.strip().lower().startswith("none") else ""
+        r["waiting_week"] = bool(r["waiting_week_note"]) if isinstance(ww, str) else bool(ww)
         r["checked"] = str(r.get("checked") or data["checked"])
         r.setdefault("source", data["source"])
     return data["states"]
+
+
+def general_notes() -> list[str]:
+    """Caveats that apply in every state (taxes, severance, reporting part-time pay...)."""
+    import yaml
+    return yaml.safe_load((Path(__file__).parent / "work_search_states.yaml").read_text()).get("general") or []
 
 
 def my_state(settings) -> dict | None:
@@ -638,7 +647,7 @@ def make_app(settings, db: DB) -> FastAPI:
         rule = my_state(settings)
         return page("dua.html", weeks=stats.dua_weeks(db), floor=work_search(settings)[1], rule=rule, nav="work",
                     claim=benefits.claim(settings), runway=benefits.runway(settings, rule), days=benefits.DAYS,
-                    tasks=benefits.tasks(db, include_done=True), resources=benefits.RESOURCES,
+                    tasks=benefits.tasks(db, include_done=True), resources=benefits.RESOURCES, general=general_notes(),
                     letters=[e for e in db.events() if e["kind"] == "agency"][:8])
 
     @app.post("/dua/claim")
@@ -671,9 +680,9 @@ def make_app(settings, db: DB) -> FastAPI:
         with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
             out = io.StringIO()
             w = csv.writer(out)
-            w.writerow(["Date", "Activity Type", "Company", "Position", "How", "Contact", "Result", "Proof files"])
+            w.writerow(["Date", "Activity Type", "Company", "Position", "Pay rate", "How", "Contact", "Result", "Proof files"])
             for r in wk["rows"]:
-                w.writerow([r["date"].isoformat(), r["type"], r["company"], r["position"], r["how"], r["contact"],
+                w.writerow([r["date"].isoformat(), r["type"], r["company"], r["position"], r.get("pay", ""), r["how"], r["contact"],
                             r["result"], "; ".join(Path(p).name for p in r["proof"])])
             z.writestr(f"work-search-{week}.csv", out.getvalue())
             d = proof_root / week

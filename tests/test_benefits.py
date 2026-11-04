@@ -86,3 +86,17 @@ def test_work_search_page_claim_and_tasks(tmp_path):
     tid = benefits.tasks(db)[-1]["id"]
     c.post("/dua/task", data={"action": "delete", "task_id": str(tid)})
     assert all(t["id"] != tid for t in benefits.tasks(db, include_done=True))
+
+
+def test_done_resea_meeting_counts_in_the_log(tmp_path):
+    from autoapply import stats
+    s, db = _settings(tmp_path)
+    benefits.add_resea(db, "MA")
+    t = benefits.tasks(db)[0]
+    db.conn.execute("update ui_tasks set due = '2026-11-03' where id = ?", (t["id"],))
+    benefits.set_task(db, t["id"], done=True)
+    weeks = stats.dua_weeks(db, date(2026, 11, 4))
+    row = weeks[0]["rows"][0]
+    assert row["type"].startswith("Reemployment appointment") and row["date"] == date(2026, 11, 3) and weeks[0]["count"] == 1
+    benefits.set_task(db, t["id"], done=False)
+    assert stats.dua_weeks(db, date(2026, 11, 4)) == []

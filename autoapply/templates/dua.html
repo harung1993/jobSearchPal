@@ -7,14 +7,15 @@
 {% if rule %}<section class="card" style="margin-bottom:16px"><h2><span>{{ rule.name }}'s rule</span>
   <span class="pill {{ 'rejected' if rule.confidence == 'low' else ('submitted' if rule.source == 'official' else 'waiting') }}" style="text-transform:none">{% if rule.confidence == 'low' %}not confirmed · {% endif %}checked {{ rule.checked }}</span></h2>
  {% if rule.agency %}<p class="muted" style="margin:-6px 0 8px;font-size:12.5px">{{ rule.agency }}</p>{% endif %}
- <p style="margin:0 0 6px">{% if rule.weekly_minimum is not none %}<b>{{ rule.weekly_minimum }} a week.</b>{% elif rule.varies %}<b>The number is set for each claimant.</b>{% else %}<b>No set number.</b>{% endif %} {{ rule.rule }}.</p>
- {% if rule.report %}<p class="ink2" style="margin:0 0 6px">How it's reported: {{ rule.report }}.</p>{% endif %}
+ <p style="margin:0 0 6px">{% if rule.weekly_minimum is not none %}<b>{{ rule.weekly_minimum }} a week.</b>{% elif rule.varies %}<b>The number is set for each claimant.</b>{% else %}<b>No set number.</b>{% endif %} {{ rule.rule.rstrip('. ') }}.</p>
+ {% if rule.report %}<p class="ink2" style="margin:0 0 6px">How it's reported: {{ rule.report.rstrip('. ') }}.</p>{% endif %}
  {% if rule.minimum_note %}<p class="ink2" style="margin:0 0 6px">{{ rule.minimum_note }}</p>{% endif %}
  {% if rule.must_register %}<p class="ink2" style="margin:0 0 6px"><b>Register:</b> {{ rule.must_register }}</p>{% endif %}
  {% if rule.keep_records %}<p class="ink2" style="margin:0 0 6px"><b>Keep your log:</b> {{ rule.keep_records }}</p>{% endif %}
  {% if rule.exemptions %}<p class="ink2" style="margin:0 0 6px"><b>Usually excused:</b> {{ rule.exemptions|join('; ') if rule.exemptions is not string else rule.exemptions }}</p>{% endif %}
  {% if rule.weekly_benefit or rule.max_weeks %}<p class="ink2" style="margin:0 0 6px"><b>Benefits:</b> {% if rule.weekly_benefit %}{{ rule.weekly_benefit }} a week{% endif %}{% if rule.weekly_benefit and rule.max_weeks %}, {% endif %}{% if rule.max_weeks %}up to {{ rule.max_weeks }} weeks{% endif %}.</p>{% endif %}
- {% if rule.waiting_week %}<p class="ink2" style="margin:0 0 6px">The first week of a claim is an unpaid waiting week.</p>{% endif %}
+ {% if rule.waiting_week %}<p class="ink2" style="margin:0 0 6px"><b>Waiting week:</b> {{ rule.waiting_week_note or "the first week of a claim is unpaid" }}{% if not (rule.waiting_week_note or '').endswith('.') %}.{% endif %}</p>{% endif %}
+ {% if rule.part_time_earnings_allowed %}<p class="ink2" style="margin:0 0 6px"><b>Part-time work:</b> you can earn up to {{ rule.part_time_earnings_allowed }} in a week before your benefit is reduced. Report it for the week you worked.</p>{% endif %}
  <p class="muted" style="margin:0;font-size:12.5px">Rules change{% if rule.source != 'official' %}, and this one comes from a summary, not the agency's own site{% elif rule.confidence == 'low' %}, and this one couldn't be confirmed on the agency's site{% elif rule.confidence == 'medium' %}, and the agency gives no exact number online{% endif %}. Your agency's letters to you are what counts.
   <a href="{{ rule.url }}" target="_blank" rel="noopener">Check the official rules</a>. This page counts toward {{ floor }} a week; change it on <a href="/setup#interests">Setup</a>.</p></section>
 {% elif floor %}<p class="muted" style="margin:0 0 14px">Collecting unemployment? Pick your state on <a href="/setup#interests">Setup</a> to see its work-search rule.</p>{% endif %}
@@ -49,6 +50,7 @@
   {% for e in letters %}<div class="ink2" style="font-size:13px;padding:3px 0">{{ e.at[5:10]|replace('-', '/') }} · {{ e.subject|truncate(70) }}{% if e.proof %} · <a href="/proof/{{ e.proof.split('/')[-2] }}/{{ e.proof.split('/')[-1] }}" target="_blank">open</a>{% endif %}</div>{% endfor %}{% endif %}
 </section></div>
 
+{% if general %}<section class="card mt"><h2>Good to know, in every state</h2><ul class="general">{% for g in general %}<li>{{ g }}</li>{% endfor %}</ul></section>{% endif %}
 <section class="card mt" style="margin-bottom:16px"><h2>Help people often miss</h2>
  <div class="grid g3 res">{% for name, what, url in resources %}<a class="res-item" href="{{ url }}" target="_blank" rel="noopener"><b>{{ name }}</b><span>{{ what }}</span></a>{% endfor %}</div></section>
 <style>.benefits{margin-bottom:16px;align-items:start}.runway .num{font-size:28px;font-weight:700}.runway .num small{font-size:13px;font-weight:500;color:var(--ink-2)}
@@ -58,7 +60,7 @@
 .task .tick{width:22px;height:22px;border-radius:6px;border:1.5px solid var(--line-2);background:var(--surface);cursor:pointer;font-size:13px;color:var(--accent);padding:0}
 .task .due{display:flex;gap:8px;align-items:center;margin-top:4px}.task .due input{width:auto;padding:2px 6px;font-size:12.5px}.task .due span{font-size:12px}
 .add-task{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}.add-task input[type=text]{flex:1;min-width:160px}.add-task input[type=date]{width:auto}
-.res{gap:10px}.res-item{display:flex;flex-direction:column;gap:3px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;color:inherit}
+.general{margin:0;padding-left:18px;font-size:13.5px;color:var(--ink-2)}.general li{margin:3px 0}.res{gap:10px}.res-item{display:flex;flex-direction:column;gap:3px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;color:inherit}
 .res-item:hover{text-decoration:none;background:var(--surface-2)}.res-item span{font-size:12.5px;color:var(--ink-2)}</style>
 {% for w in weeks %}
 <section class="card {% if not loop.first %}mt{% endif %}">

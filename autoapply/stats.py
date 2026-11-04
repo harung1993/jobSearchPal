@@ -99,7 +99,7 @@ def dua_weeks(db: DB, today: date | None = None) -> list[dict]:
         d = _d(j["submitted_at"])
         if d:
             rows.append({"date": d, "type": "Job application", "company": j["company"], "position": j["title"],
-                         "how": j["ats"] or "", "contact": j["url"] or "", "result": j["outcome"] or "Applied",
+                         "how": j["ats"] or "", "contact": j["url"] or "", "pay": j.get("pay") or "", "result": j["outcome"] or "Applied",
                          "proof": proofs.get(j["id"], []), "counts": True})
     for e in events:
         if e["kind"] in ("recruiter", "interview", "offer"):
@@ -107,6 +107,12 @@ def dua_weeks(db: DB, today: date | None = None) -> list[dict]:
             rows.append({"date": d, "type": ACTIVITY[e["kind"]], "company": e["sender"].split(" <")[0],
                          "position": e["subject"], "how": "Email", "contact": e["sender"], "result": e["kind"],
                          "proof": [e["proof"]] if e["proof"] else [], "counts": True})
+    from . import benefits  # RESEA meetings, seminars and other appointments you marked done count too
+    for t in benefits.tasks(db, include_done=True):
+        d = _d(t.get("done_at")) if t["done"] else None
+        if d and t["kind"] == "resea":
+            rows.append({"date": d, "type": "Reemployment appointment (RESEA)", "company": "Career center", "position": t["title"],
+                         "how": "In person or online", "contact": "", "pay": "", "result": "Attended", "proof": [], "counts": True})
     weeks: dict[date, list[dict]] = {}
     for r in rows:
         weeks.setdefault(week_start(r["date"]), []).append(r)

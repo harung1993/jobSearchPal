@@ -15,7 +15,7 @@ DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sun
 TASKS_SCHEMA = """
 create table if not exists ui_tasks (   -- unemployment appointments and deadlines you add (RESEA, seminars...)
   id integer primary key autoincrement, title text, due text, done integer default 0, kind text default 'task',
-  note text, created text default (datetime('now', 'localtime'))
+  note text, created text default (datetime('now', 'localtime')), done_at text
 );
 """
 
@@ -60,6 +60,8 @@ def _h(s: str) -> str:
 
 def ensure(db):
     db.conn.executescript(TASKS_SCHEMA)
+    if "done_at" not in {r[1] for r in db.conn.execute("pragma table_info(ui_tasks)")}:
+        db.conn.execute("alter table ui_tasks add column done_at text")
 
 
 def claim(settings) -> dict:
@@ -139,7 +141,9 @@ def set_task(db, task_id: int, done: bool | None = None, delete: bool = False):
     if delete:
         db.conn.execute("delete from ui_tasks where id = ?", (task_id,))
     elif done is not None:
-        db.conn.execute("update ui_tasks set done = ? where id = ?", (int(done), task_id))
+        # The day it was done (or its date, if that's already past) is the day it counts in the work-search log.
+        db.conn.execute("update ui_tasks set done = ?, done_at = case when ? then coalesce(case when due <= date('now', 'localtime') "
+                        "then due end, date('now', 'localtime')) end where id = ?", (int(done), int(done), task_id))
     db.conn.commit()
 
 
