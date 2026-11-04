@@ -370,7 +370,7 @@ def test_state_work_search_rule(tmp_path, base_url, pdfs):
     """11/4: pick your state on Setup; the work-search log shows its rule and counts toward its weekly number."""
     from autoapply.web import state_rules
     rules = state_rules()
-    assert len(rules) == 51 and rules["MA"]["weekly_minimum"] == 3
+    assert len(rules) == 53 and rules["MA"]["weekly_minimum"] == 3 and {"PR", "VI"} <= set(rules)
     assert all(r["url"].startswith("https://") and r["rule"] and r["checked"] for r in rules.values())
     db, c, _ = setup(tmp_path, base_url, pdfs)
     assert "Pick your state" in c.get("/dua").text

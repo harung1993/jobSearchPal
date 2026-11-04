@@ -1,365 +1,976 @@
-# Unemployment work-search rules by state, for the Setup page and the work-search log.
-# checked: when the entry was last compared with a source. source: "summary" = a third-party roundup
-# (tealhq.com/post/work-search-requirements-for-unemployment-benefits-by-state), "official" = the agency's own page.
-# Rules change. If yours is wrong, fix the entry, set source: official and today's date, and open a pull request.
-# weekly_minimum: null when the state sets no number or sets it per claimant (varies: true).
-checked: 2026-11-04
-source: summary
+# Unemployment work-search rules for every US state, DC, Puerto Rico and the US Virgin Islands.
+# Used by the Setup page and the work-search log. NOT legal advice: rules change, and your state's
+# notice to you is what counts. Each entry links the agency page it was checked against.
+#
+# Fields
+#   weekly_minimum  activities per week (null = no fixed number, see rule); varies: true when it depends
+#                   on where you live or is assigned per claimant (minimum_note explains)
+#   rule / report   plain-English requirement and how it's reported
+#   must_register   state job-bank registration, when required
+#   keep_records    how long to keep your log, when the state says
+#   exemptions      common waivers (approved training, recall date, union hall...)
+#   weekly_benefit  minimum to maximum weekly benefit; max_weeks: weeks payable (ranges depend on wages
+#                   and the state's unemployment rate). From US DOL "Significant Provisions of State UI
+#                   Laws", January 2026.
+#   waiting_week    true if the first week of a claim is unpaid; waiting_week_note explains quirks (DOL Comparison of State UI Laws 2023, Table 3-7)
+#   part_time_earnings_allowed  part-time pay you can earn in a week before benefits are reduced (DOL, Jan 2026)
+#   resea / resea_url  what a RESEA selection involves in that state, where researched (MA so far)
+#   source          official = the agency's own site; confidence: high / medium (agency gives no exact
+#                   number) / low (couldn't confirm on the agency site; check before relying on it)
+#   checked         when the entry was last compared with its source
+# Backbone: US DOL Comparison of State UI Laws 2023, Tables 5-14 and 5-15 (work search requirements and
+# reporting). Every state was then re-checked on its agency's site on 2026-11-04; several had changed
+# since 2023 (AR, ID, IA, KY, LA, MI, TN, WV).
+# Applies everywhere (show these on the Setup page):
+#   - Benefits are taxable federal income; most states let you have 10% withheld. Some states tax them too.
+#   - Keep filing your weekly or biweekly claim even during the waiting week, or it may not count.
+#   - Severance, vacation or holiday pay can delay or reduce benefits in many states; report it.
+#   - If you're picked for RESEA (reemployment) appointments, they're mandatory; missing one stops benefits.
+#   - Report all part-time earnings for the week you earned them, not when you're paid.
+#   - Never guess: the notice your state sends you about your own claim overrides anything here.
+# Found a rule that's out of date? Fix the entry, set checked: to today, and open a pull request.
+checked: '2026-11-04'
+source: official
+general:
+- Unemployment benefits are taxable federal income; most states let you choose 10% federal withholding. Some states
+  also tax them.
+- Keep filing your weekly or biweekly claim during the waiting week, or it may not count.
+- Severance, vacation or holiday pay can delay or reduce benefits in many states. Report it.
+- 'RESEA (Reemployment Services and Eligibility Assessment) is a federal program every state runs: selected claimants
+  must attend one-on-one meetings at a job center that check eligibility, review the work search log and resume,
+  and set a reemployment plan. Attendance is mandatory; missing a meeting or its deadline can stop benefits. Bring
+  your work search log and resume, and check your state''s notice for the steps and dates.'
+- Report part-time earnings for the week you did the work, not the week you're paid.
+- The notice your state sends about your own claim overrides anything here.
 states:
   AL:
     name: Alabama
-    weekly_minimum: null
+    agency: Alabama Department of Workforce
+    weekly_minimum: 3
     varies: false
-    rule: Reasonable active search required; no number stated
-    report: Entered with each weekly certification
+    rule: Three work search contacts each week. A contact is a job application or other genuine request for an open
+      job; online applications count. Don't repeat an employer unless they've said they're hiring again.
+    report: Reported on each weekly claim. Log employer name, address, date, contact method and result.
     url: https://labor.alabama.gov/
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    law: Act 2022-218 (SB 224), in effect since Jan 1, 2023
+    weekly_benefit: $45 to $275
+    max_weeks: '14'
+    waiting_week: true
+    part_time_earnings_allowed: 1/3 of your weekly benefit
   AK:
     name: Alaska
-    weekly_minimum: null
+    agency: Alaska Department of Labor and Workforce Development
+    weekly_minimum: 2
     varies: true
-    rule: Two contacts if within 55 road miles of a job center; one outside
-    report: Reported weekly
-    url: https://labor.alaska.gov/unemployment/
+    rule: Two work search contacts a week if you live within 55 road miles of a job center; one if you live farther
+      away. Your claim notice states your number.
+    report: 'Reported with each weekly claim: date, employer and method of contact.'
+    url: https://labor.alaska.gov/unemployment/work_search.htm
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    law: 8 AAC 85.352
+    weekly_benefit: $56-$128 to $370-$442
+    max_weeks: 16-26
+    waiting_week: true
+    part_time_earnings_allowed: $50 plus 1/4 of wages over $50
   AZ:
     name: Arizona
+    agency: Arizona Department of Economic Security
     weekly_minimum: 4
     varies: false
-    rule: Four contacts on four different days each week
-    report: Logged in the portal before the weekly claim
+    rule: Four work search contacts each week, made on four different days. Registering with and contacting your
+      union hiring hall counts.
+    report: Logged with each weekly claim. Keep copies of emails and other proof of online applications.
     url: https://des.az.gov/services/employment/unemployment-individual
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    weekly_benefit: $229 to $320
+    max_weeks: 8-24
+    waiting_week: true
+    part_time_earnings_allowed: $160.49
   AR:
     name: Arkansas
-    weekly_minimum: null
-    varies: true
-    rule: Number set by DWS after registration; one contact must be in person
-    report: Job contacts log, when DWS asks
-    url: https://dws.arkansas.gov/workforce-services/unemployment/
+    agency: Arkansas Division of Workforce Services
+    weekly_minimum: 5
+    varies: false
+    rule: 'Five qualifying work search activities each week: applying for a suitable job, interviewing, attending
+      a job fair (one job fair a week counts at most), and similar.'
+    report: Reported in every weekly certification (Launch or ArkLine) and audited.
+    url: https://dws.arkansas.gov/wp-content/uploads/UI-Handbook-2026-Final.pdf
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    law: Act 854 of 2023, in effect since Jan 1, 2024
+    exemptions: Temporary layoff with a recall date may be exempt.
+    weekly_benefit: $81 to $451
+    max_weeks: 9-12
+    waiting_week: true
+    part_time_earnings_allowed: 40% of your weekly benefit
   CA:
     name: California
+    agency: Employment Development Department (EDD)
     weekly_minimum: null
     varies: false
-    rule: Look for suitable work each week; no number stated
-    report: Not submitted; keeping a record is encouraged
-    url: https://edd.ca.gov/unemployment/
+    rule: Look for suitable work every week. California sets no fixed number; your EDD notice explains your own
+      requirement.
+    report: Answer 'Did you look for work?' on each biweekly certification. Keep a record you can show immediately
+      if EDD asks (myEDD has an optional Work Search Record).
+    url: https://edd.ca.gov/en/unemployment/eligibility/
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    must_register: Some claimants must register on CalJOBS; your notice says if you do.
+    weekly_benefit: $40 to $450
+    max_weeks: 14-26
+    waiting_week: true
+    waiting_week_note: One unpaid week; you still certify for it. Can be waived in a declared disaster.
+    part_time_earnings_allowed: $25 or 1/4 of wages, whichever is more
   CO:
     name: Colorado
+    agency: Colorado Department of Labor and Employment (CDLE)
     weekly_minimum: 5
     varies: false
-    rule: Five work search activities a week
-    report: Reported when requesting payment; may be audited
-    url: https://cdle.colorado.gov/eligibility-and-work-search-requirements
+    rule: Colorado law sets no fixed number, but CDLE recommends at least five work search activities a week and
+      every activity must be verifiable.
+    report: Recorded in MyUI+ with each payment request. Keep proof; CDLE can audit your records for up to two years.
+    url: https://cdle.colorado.gov/ui/claimants/weekly-payment-requests/work-search-requirements
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    minimum_note: Recommended, not a legal minimum
+    keep_records: 2 years
+    exemptions: Union- or job-attached claimants may not need to search; approved training can reduce the number.
+    weekly_benefit: $25 to $767 ($844 on total wages)
+    max_weeks: 13-26
+    waiting_week: true
+    waiting_week_note: One unpaid week. A 2022 law repeals it once the state's trust fund reaches $1 billion; still
+      in effect as of Nov 2026.
+    part_time_earnings_allowed: 1/2 of your weekly benefit
   CT:
     name: Connecticut
+    agency: Connecticut Department of Labor
     weekly_minimum: 3
     varies: false
-    rule: Three efforts a week; at least one must be an employer contact
-    report: Documented each week when filing
-    url: https://portal.ct.gov/DOLUI/Work-Search
+    rule: At least three work search activities each week, and at least one must be an employer contact (an interview
+      counts). Other activities include job fairs, American Job Center workshops and uploading a resume to CTHires.
+    report: Reported online with each weekly claim.
+    url: https://portal.ct.gov/dol/unemployment-benefits/work-search/work-search-faqs
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    keep_records: 3 years
+    weekly_benefit: $44-$88 to $721-$796
+    max_weeks: '26'
+    waiting_week: false
+    part_time_earnings_allowed: 1/3 of wages
   DE:
     name: Delaware
+    agency: Delaware Department of Labor
     weekly_minimum: 1
     varies: false
-    rule: At least one new work search contact a week
-    report: Given when requesting weekly benefits
-    url: https://labor.delaware.gov/divisions/unemployment-insurance/
+    rule: At least one NEW employer contact each week. Follow-ups with employers you already contacted don't replace
+      the new one.
+    report: 'Reported when you request weekly benefits: employer name, address, type of work, result and date.'
+    url: https://labor.delaware.gov/divisions/unemployment-insurance/unemployment-benefits-faqs/works-search-frequently-asked-questions/
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    exemptions: Confirmed recall date; active union hiring hall members.
+    weekly_benefit: $20 to $450
+    max_weeks: 24-26
+    waiting_week: false
+    part_time_earnings_allowed: $10 or 50% of your weekly benefit, whichever is more
   DC:
     name: District of Columbia
-    weekly_minimum: null
+    agency: Department of Employment Services (DOES)
+    weekly_minimum: 2
     varies: false
-    rule: Not in the summary used; check with DOES
-    report: null
-    url: https://does.dc.gov/
+    rule: Contact at least two new employers each week about job openings.
+    report: Keep a detailed written log (date, employer, contact person, phone or email, website, result) and provide
+      it when asked.
+    url: https://does.dc.gov/service/claimant-eligibility
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    must_register: Register with your local American Job Center.
+    weekly_benefit: $50 to $444
+    max_weeks: '26'
+    waiting_week: true
+    part_time_earnings_allowed: 1/3 of wages plus $50
   FL:
     name: Florida
-    weekly_minimum: null
-    varies: false
-    rule: Weekly contacts required; number not in the summary used
-    report: Given with each biweekly benefit request
-    url: https://floridajobs.org/Reemployment-Assistance-Service-Center
+    agency: FloridaCommerce Reemployment Assistance
+    weekly_minimum: 5
+    varies: true
+    rule: Five work search contacts a week if your county has more than 75,000 people; three in smaller counties.
+      Meeting with a CareerSource Florida representative can count.
+    report: Reported with each biweekly benefit request.
+    url: https://floridajobs.org/workforce-resources/reemployment-assistance/claimants/request-benefit-payment
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    minimum_note: 5 (3 in counties of 75,000 or fewer)
+    must_register: Employ Florida profile with a resume is required.
+    weekly_benefit: $32 to $275
+    max_weeks: 9-12
+    waiting_week: true
+    part_time_earnings_allowed: 8 x the federal minimum hourly wage
   GA:
     name: Georgia
+    agency: Georgia Department of Labor
     weekly_minimum: 3
     varies: false
-    rule: Three new verifiable job contacts a week
-    report: Recorded and submitted for each week claimed
-    url: https://dol.georgia.gov/
+    rule: Three new, verifiable work search contacts each week, generally with three different employers.
+    report: Reported weekly online.
+    url: https://dol.georgia.gov/learn-about-work-search-requirements
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    weekly_benefit: $55 to $365
+    max_weeks: 6-26
+    waiting_week: false
+    part_time_earnings_allowed: $50
   HI:
     name: Hawaii
+    agency: Hawaii Department of Labor and Industrial Relations
     weekly_minimum: 3
     varies: false
-    rule: Three job searches a week
-    report: Keep a log; submit it when asked
-    url: https://labor.hawaii.gov/ui/
+    rule: 'At least three job search contacts each week: employer contacts, HireNet Hawaii listings, job fairs,
+      workshops or reemployment services.'
+    report: Keep a record (form UC-253 or the online log, which is added to each certification) and produce it when
+      asked.
+    url: https://labor.hawaii.gov/ui/faq/
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    must_register: Register for work in HireNet Hawaii.
+    exemptions: Still attached to your regular employer on reduced hours; members of a referring labor union.
+    weekly_benefit: $5 to $868
+    max_weeks: '26'
+    waiting_week: true
+    part_time_earnings_allowed: $150
   ID:
     name: Idaho
-    weekly_minimum: 2
+    agency: Idaho Department of Labor
+    weekly_minimum: 5
     varies: false
-    rule: Two employer contacts or work search activities a week
-    report: Entered on the weekly certification
-    url: https://www.labor.idaho.gov/
+    rule: 'At least five work search actions each week: applications, resumes, interviews, job fairs, staffing agencies.
+      Just asking a business if it''s hiring doesn''t count.'
+    report: Reported on every weekly certification in the Claimant Portal.
+    url: https://www.labor.idaho.gov/wp-content/uploads/2026/06/Work-search-requirements.pdf
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    must_register: Create an IdahoWorks job seeker account.
+    weekly_benefit: $72 to $624
+    max_weeks: 10-26
+    waiting_week: true
+    part_time_earnings_allowed: 1/2 of your weekly benefit
   IL:
     name: Illinois
+    agency: Illinois Department of Employment Security (IDES)
     weekly_minimum: null
     varies: false
-    rule: Active search; resume on IllinoisJobLink; no number stated
-    report: Records given only when asked
-    url: https://ides.illinois.gov/
+    rule: Actively look for work each week; Illinois judges the quality of the search, not a set number.
+    report: Certify every two weeks. Keep a work search log for each week until one year after it ends and provide
+      it on request.
+    url: https://ides.illinois.gov/unemployment/resources/unemployment-insurance-benefit-handbook/ui-benefit-handbook-work-search-and-availability.html
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    keep_records: 1 year after each week
+    must_register: Register on IllinoisJobLink with at least one resume, or benefits aren't paid.
+    weekly_benefit: $51-$77 to $628-$859
+    max_weeks: '26'
+    waiting_week: true
+    part_time_earnings_allowed: 1/2 of your weekly benefit
   IN:
     name: Indiana
-    weekly_minimum: null
+    agency: Indiana Department of Workforce Development
+    weekly_minimum: 2
     varies: false
-    rule: Register within 10 days of the claim; no number stated
-    report: Keep records; give them if DWD asks
-    url: https://www.in.gov/dwd/indiana-unemployment/
+    rule: Two work search activities each week, such as applications, interviews, creating a resume or registering
+      with placement services.
+    report: Keep a written record and provide it when asked.
+    url: https://www.in.gov/dwd/indiana-unemployment/individuals/work-search
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    keep_records: 6 months
+    exemptions: Approved training; recall within 60 days; union hiring hall members.
+    weekly_benefit: $37 to $390
+    max_weeks: '26'
+    waiting_week: true
+    part_time_earnings_allowed: $100
   IA:
     name: Iowa
+    agency: Iowa Workforce Development
     weekly_minimum: 4
     varies: false
-    rule: Four activities, Sunday to Saturday; three must be job applications
-    report: Keep the log one year; give it if asked
-    url: https://www.iowaworkforcedevelopment.gov/continued-eligibility
+    rule: Four reemployment activities each Sunday-to-Saturday week, and at least three must be job applications.
+      Calling an employer isn't an application.
+    report: Logged and certified in IowaWORKS before you file the weekly claim.
+    url: https://workforce.iowa.gov/unemployment/resources/unemployment-insurance-claimant-handbook/continued-eligibility
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    exemptions: Recall within about four weeks; department-approved training.
+    weekly_benefit: $93-$112 to $622-$763
+    max_weeks: 9-16
+    waiting_week: false
+    part_time_earnings_allowed: 25% of your weekly benefit
   KS:
     name: Kansas
+    agency: Kansas Department of Labor
     weekly_minimum: 3
     varies: false
-    rule: Three activities a week; two must be applications or resume submissions
-    report: Keep a written record; may be requested
-    url: https://www.dol.ks.gov/unemployment
+    rule: 'Three work search activities each week: at least one job application or resume to an employer, plus two
+      other activities (job fairs, Workforce Center services, searching job sites).'
+    report: Reported on each weekly certification; keep records.
+    url: https://www.dol.ks.gov/unemployment/eligibility
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    exemptions: Approved school or training; Shared Work participants.
+    weekly_benefit: $159 to $637
+    max_weeks: 10-16
+    waiting_week: true
+    part_time_earnings_allowed: 25% of your weekly benefit
   KY:
     name: Kentucky
-    weekly_minimum: 1
+    agency: Kentucky Office of Unemployment Insurance
+    weekly_minimum: 5
     varies: false
-    rule: At least one job contact a week
-    report: Given at the biweekly benefit request
-    url: https://kcc.ky.gov/
+    rule: Five verifiable work search activities each week, and at least three must be job applications or interviews.
+    report: Reported with each weekly claim.
+    url: https://kcc.ky.gov/career/Documents/Work%20Search%20Requirements%20Flyer%2012_8_2022.pdf
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    law: HB 146, in effect since Jan 1, 2023; 787 KAR 1:090
+    keep_records: 1 year after each weekly claim
+    exemptions: Union hiring hall; approved training; definite recall within 16 weeks; workshare.
+    weekly_benefit: $39 to $720
+    max_weeks: 16-24
+    waiting_week: true
+    waiting_week_note: One unpaid week, paid at the end if your claim balance runs down to it.
+    part_time_earnings_allowed: 1/5 of wages
   LA:
     name: Louisiana
-    weekly_minimum: 3
+    agency: Louisiana Workforce Commission
+    weekly_minimum: 5
     varies: false
-    rule: Contact at least three different employers a week
-    report: Entered on the weekly certification
-    url: https://www.laworks.net/
+    rule: 'Five work search activities each week for claims filed on or after Jan 4, 2026 (three for older claims):
+      applications, interviews, resume updates, job search or training programs.'
+    report: Reported with each weekly claim; keep a detailed record.
+    url: https://www.laworks.net/faqs/faq_ui_claimantbenefits.asp
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    law: Act 151 of 2025
+    weekly_benefit: $35 to $282
+    max_weeks: 12-20
+    waiting_week: true
+    part_time_earnings_allowed: 1/2 of your weekly benefit or $50, whichever is less
   ME:
     name: Maine
+    agency: Maine Department of Labor
     weekly_minimum: 1
     varies: false
-    rule: At least one work search activity a week; random audits
-    report: Documented on the weekly certification
-    url: https://www.maine.gov/unemployment/
+    rule: 'At least one work search activity each week: applying, interviewing, contacting an employer about an
+      opening, or a CareerCenter job fair or workshop.'
+    report: Record each activity (business address and phone, contact person, position). Random audits.
+    url: https://www.maine.gov/unemployment/faq/worksearch/
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    must_register: Full registration with Maine JobLink.
+    exemptions: Definite return date (waiver up to 6 weeks); union members via the hiring hall for 6 weeks.
+    weekly_benefit: $108-$189 to $623-$1,090
+    max_weeks: 15-26
+    waiting_week: true
+    part_time_earnings_allowed: $123
   MD:
     name: Maryland
+    agency: Maryland Department of Labor
     weekly_minimum: 3
     varies: false
-    rule: Three activities, including at least one job contact; register with MWE once
-    report: Submitted weekly
-    url: https://labor.maryland.gov/employment/unemployment.shtml
+    rule: At least three job search activities each week, and one must be a direct job contact (an application,
+      an in-person visit or an interview).
+    report: Documented in the Maryland Workforce Exchange BEFORE you file the weekly certification in BEACON.
+    url: https://labor.maryland.gov/unemployment-insurance/claimants/job-search.shtml
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    weekly_benefit: $50-$90 to $430
+    max_weeks: '26'
+    waiting_week: false
+    part_time_earnings_allowed: $50
   MA:
     name: Massachusetts
+    agency: Department of Unemployment Assistance (DUA)
     weekly_minimum: 3
     varies: false
-    rule: Three work search activities a week; keep a detailed written log
-    report: Keep the log; MassHire or DUA may ask for it
-    url: https://www.mass.gov/info-details/work-search-requirements-for-unemployment-benefits
+    rule: 'At least three work search activities each week: applications, employer visits, job fairs, interviews,
+      MassHire JobQuest and similar.'
+    report: Reported in the online portal with each weekly claim. Keep a written record of each activity and when
+      you did it.
+    url: https://www.mass.gov/info-details/faqs-about-unemployment-insurance-for-workers
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    exemptions: DUA-approved training.
+    resea: 'If selected (DUA notice + MassHire email): 1) Career Center Seminar (online or in person, book in MassHire
+      JobQuest), 2) one-on-one Initial RESEA review at your local MassHire Career Center, 3) a RESEA Review meeting
+      scheduled at the first one. Each step has a deadline in your notice; missing one stops benefits. Bring: JobQuest
+      registration, resume, your work search log (date, position, pay rate, employer name and address, job ID or
+      contact, email/website/phone, result) with proof, and the forms on mass.gov/info-details/masshire-resea-resources
+      (Career Action Plan, labor market worksheet, needs assessment).'
+    resea_url: https://www.mass.gov/info-details/career-center-seminars-and-resea
+    weekly_benefit: $60 to $1,105 (plus dependents)
+    max_weeks: 10-30
+    waiting_week: true
+    waiting_week_note: One unpaid week; you still request benefits for it.
+    part_time_earnings_allowed: 1/3 of your weekly benefit
   MI:
     name: Michigan
-    weekly_minimum: 1
+    agency: Unemployment Insurance Agency (UIA)
+    weekly_minimum: 3
     varies: false
-    rule: At least one work search activity a week
-    report: Reported at the biweekly certification
-    url: https://www.michigan.gov/leo/bureaus-agencies/uia
+    rule: At least three unique work search activities each week (since the week of July 19, 2026; it was one).
+      Reapplying to the same job within four weeks, asking if a job is open, or just browsing don't count.
+    report: Entered in MiWAM when you certify.
+    url: https://www.michigan.gov/leo/bureaus-agencies/uia/frequently-asked-questions/for-employees/work-search
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    law: 2026 unemployment law changes
+    weekly_benefit: $218-$315 to $530
+    max_weeks: 14-26
+    waiting_week: false
+    part_time_earnings_allowed: Benefits drop 50 cents per $1 earned, and benefits plus earnings can't pass 1.5
+      x your weekly benefit
   MN:
     name: Minnesota
+    agency: Unemployment Insurance Minnesota
     weekly_minimum: null
     varies: false
-    rule: Actively look for work; no minimum stated
-    report: Keep a log of your search
-    url: https://www.uimn.org/applicants/
+    rule: Actively seek suitable work each week; Minnesota sets no fixed number. Part-time claimants may limit the
+      search to part-time work.
+    report: Keep a log; it can be audited at any time during the benefit year. Mandatory reemployment sessions.
+    url: https://www.uimn.org/applicants/getpaid/stay-eligible/seeking.jsp
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    exemptions: Referral union members in good standing; approved full-time training.
+    weekly_benefit: $37 to $611 ($948 on total wages)
+    max_weeks: 9-26
+    waiting_week: true
+    part_time_earnings_allowed: 'None: benefits drop 50 cents per $1 earned'
   MS:
     name: Mississippi
+    agency: Mississippi Department of Employment Security
     weekly_minimum: 3
     varies: false
-    rule: Three employer contacts; at least one must be a completed application
-    report: Entered on the weekly certification
-    url: https://mdes.ms.gov/unemployment-claims/
+    rule: Contact three employers each week about full-time work, and complete an actual application with at least
+      one. Don't report the same employer again within three weeks unless it's part of an ongoing hiring process.
+    report: Record what you did, how, the date, the company and the person's name and phone.
+    url: https://mdes.ms.gov/unemployment-claims/benefit-information/worksearch-requirements/
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    must_register: Register with Mississippi Works.
+    weekly_benefit: $30 to $235
+    max_weeks: 13-26
+    waiting_week: true
+    part_time_earnings_allowed: $40
   MO:
     name: Missouri
+    agency: Missouri Division of Employment Security
     weekly_minimum: 3
     varies: false
-    rule: Three work search activities a week unless told otherwise
-    report: Entered during the week or on the weekly request
-    url: https://labor.mo.gov/unemployment
+    rule: 'Three work search activities each week: searching on MOJobs, Job Center workshops, interviews, job fairs,
+      online applications.'
+    report: Entered during the week or with your weekly request for payment (file within 14 days).
+    url: https://labor.mo.gov/faqs/knowledge-base/do-i-need-search-work
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    exemptions: Recall date from employer; approved training; Shared Work. Union members contact their hall three
+      times a week.
+    weekly_benefit: $35 to $320
+    max_weeks: 8-20
+    waiting_week: true
+    waiting_week_note: One unpaid week, paid at the end if your claim balance runs down to it.
+    part_time_earnings_allowed: 20% of your weekly benefit or $20, whichever is more
   MT:
     name: Montana
-    weekly_minimum: null
-    varies: false
-    rule: Active effort contacting employers each week; no number stated
-    report: Keep a detailed record; may be audited
-    url: https://uid.dli.mt.gov/
-  NE:
-    name: Nebraska
-    weekly_minimum: 5
-    varies: false
-    rule: Five reemployment activities; at least two must be applications
-    report: Online work search log when filing weekly
-    url: https://dol.nebraska.gov/uibenefits
-  NV:
-    name: Nevada
-    weekly_minimum: null
-    varies: false
-    rule: Several different activities a week; number not stated
-    report: Submitted with the weekly claim online
-    url: https://ui.nv.gov/
-  NH:
-    name: New Hampshire
-    weekly_minimum: null
-    varies: false
-    rule: Actively seek work and contact employers; no number stated
-    report: Entered on the weekly claim
-    url: https://www.nhes.nh.gov/
-  NJ:
-    name: New Jersey
+    agency: Montana Department of Labor & Industry
     weekly_minimum: 1
     varies: false
-    rule: Contact at least one different employer a week
-    report: Keep proof; give it if asked
-    url: https://www.nj.gov/labor/myunemployment/
-  NM:
-    name: New Mexico
-    weekly_minimum: 2
-    varies: false
-    rule: Two different work search contacts a week; keep a detailed log
-    report: Log may be requested any time
-    url: https://www.dws.state.nm.us/
-  NY:
-    name: New York
-    weekly_minimum: 3
-    varies: false
-    rule: Three activities a week, on different days
-    report: Keep records one year; random reviews
-    url: https://dol.ny.gov/unemployment/unemployment-insurance-assistance
-  NC:
-    name: North Carolina
-    weekly_minimum: 3
-    varies: false
-    rule: Three contacts a week; one may be an approved reemployment activity
-    report: Keep a record of your search
-    url: https://des.nc.gov/
-  ND:
-    name: North Dakota
-    weekly_minimum: 3
-    varies: false
-    rule: Three job contacts a week; resume online within 10 days
-    report: Confirmed on the weekly certification
-    url: https://www.jobsnd.com/unemployment-individuals
-  OH:
-    name: Ohio
-    weekly_minimum: 2
-    varies: false
-    rule: At least two work search activities each week claimed
-    report: Keep documentation
-    url: https://unemployment.ohio.gov/
-  OK:
-    name: Oklahoma
-    weekly_minimum: 2
-    varies: false
-    rule: At least two work search efforts a week
-    report: Attested on the weekly certification; may be audited
-    url: https://oklahoma.gov/oesc.html
-  OR:
-    name: Oregon
+    rule: One work search contact each week where you actually apply (application or resume) to someone with hiring
+      authority. Don't use the same employer two weeks in a row.
+    report: Keep a record (business, contact, date, position, phone, result).
+    url: https://uid.dli.mt.gov/claimants/work-search-requirements
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    keep_records: 3 years
+    exemptions: Job- or union-attached.
+    weekly_benefit: $227 to $767
+    max_weeks: 8-24
+    waiting_week: true
+    part_time_earnings_allowed: 1/4 of your weekly benefit
+  NE:
+    name: Nebraska
+    agency: Nebraska Department of Labor
     weekly_minimum: 5
     varies: false
-    rule: Five activities; at least two must be direct employer contacts
-    report: Reported when filing weekly
-    url: https://unemployment.oregon.gov/
+    rule: Five work search contacts each week, at least one through NEworks; the required number of applications
+      rises after your first five weeks.
+    report: Logged in NEworks before you submit the weekly claim (you can't add them afterwards). Audited.
+    url: https://dol.nebraska.gov/UIBenefits/Claims/FAQ/WorkSearchFAQ
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    exemptions: Temporary layoff with a definite return date; union hiring hall; approved or TRADE training.
+    weekly_benefit: $70 to $582
+    max_weeks: 10-26
+    waiting_week: true
+    part_time_earnings_allowed: 1/4 of your weekly benefit
+  NV:
+    name: Nevada
+    agency: Nevada DETR Employment Security Division
+    weekly_minimum: null
+    varies: false
+    rule: 'A good-faith search each week: contact several different employers using methods normal for your occupation.
+      No fixed number is published.'
+    report: Keep weekly records (business, date, type of work, method, result) and provide them on request.
+    url: https://detr.nv.gov/Page/Unemployment_Insurance_Benefits
+    source: official
+    checked: '2026-11-04'
+    confidence: medium
+    exemptions: Union hiring hall members; approved school or training (waiver on request).
+    weekly_benefit: $16 to $631
+    max_weeks: 8-26
+    waiting_week: true
+    waiting_week_note: One unpaid week (or until any issue holding up payment is resolved).
+    part_time_earnings_allowed: 1/3 of wages
+  NH:
+    name: New Hampshire
+    agency: New Hampshire Employment Security (NHES)
+    weekly_minimum: null
+    varies: false
+    rule: A weekly work search that includes contacting hiring employers and reemployment activities. NHES doesn't
+      publish a fixed number online; it's covered in the mandatory orientation.
+    report: Proof reported on each weekly claim; keep a log (form NHES 0162).
+    url: https://www.nhes.nh.gov/individuals/unemployment-eligibility
+    source: official
+    checked: '2026-11-04'
+    confidence: low
+    exemptions: WorkShare; Pathway to Work.
+    weekly_benefit: $32 to $427
+    max_weeks: '26'
+    waiting_week: true
+    part_time_earnings_allowed: 30% of your weekly benefit
+  NJ:
+    name: New Jersey
+    agency: New Jersey Department of Labor
+    weekly_minimum: 1
+    varies: false
+    rule: Contact different employers each week. The current form says at least one; older department guidance calls
+      three a reasonable search, so aim for three.
+    report: Keep a log; you can be asked for your contacts at any time.
+    url: https://myunemployment.nj.gov/before/about/howtoapply/worksearch.shtml
+    source: official
+    checked: '2026-11-04'
+    confidence: low
+    minimum_note: At least 1 per current form (3 recommended)
+    weekly_benefit: $186-$213 to $905
+    max_weeks: 20-26
+    waiting_week: false
+    part_time_earnings_allowed: 20% of your weekly benefit or $5, whichever is more
+  NM:
+    name: New Mexico
+    agency: New Mexico Department of Workforce Solutions
+    weekly_minimum: 2
+    varies: false
+    rule: At least two different work search contacts each week; a department workshop can count as one.
+    report: Keep a log (date, employer, method, result); the department can ask for it any time in your benefit
+      year.
+    url: https://www.dws.state.nm.us/Unemployment-Insurance/UI-Information/Work-Search-Requirement-Information
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    keep_records: Up to 5 years
+    weekly_benefit: $116-$166 to $624-$674
+    max_weeks: 14-26
+    waiting_week: true
+    part_time_earnings_allowed: 1/5 of your weekly benefit
+  NY:
+    name: New York
+    agency: New York State Department of Labor
+    weekly_minimum: 3
+    varies: false
+    rule: At least three work search activities each week (Sunday to Saturday).
+    report: Record them in JobZone or on a paper Work Search Record before Saturday midnight.
+    url: https://dol.ny.gov/work-search-frequently-asked-questions
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    keep_records: 1 year (paper records)
+    exemptions: Written return-to-work date within 8 weeks; union hiring hall; approved training.
+    weekly_benefit: $140 to $869
+    max_weeks: '26'
+    waiting_week: true
+    part_time_earnings_allowed: Work up to 10 hours a week with earnings at or below the maximum weekly benefit
+  NC:
+    name: North Carolina
+    agency: NC Division of Employment Security
+    weekly_minimum: 3
+    varies: false
+    rule: At least three job contacts each week from the week you file; one can be an NCWorks Career Center job
+      fair or workshop. Just browsing jobs doesn't count.
+    report: Keep a record (date, company, method, address or website); some newer claims enter it in MyNCUIBenefits
+      before certifying.
+    url: https://www.des.nc.gov/worksearch
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    keep_records: 5 years
+    must_register: Register with NCWorks.gov.
+    weekly_benefit: $15 to $350
+    max_weeks: 12-20
+    waiting_week: true
+    part_time_earnings_allowed: 20% of your weekly benefit
+  ND:
+    name: North Dakota
+    agency: Job Service North Dakota
+    weekly_minimum: 4
+    varies: true
+    rule: Make your assigned number of job contacts each calendar week (often four; higher where jobs are plentiful).
+      The same employer counts at most twice a week, for different posted positions.
+    report: Record every contact and keep it.
+    url: https://www.jobsnd.com/unemployment-individuals/after-my-claim-filed
+    source: official
+    checked: '2026-11-04'
+    confidence: medium
+    weekly_benefit: $43 to $815
+    max_weeks: 12-26
+    waiting_week: true
+    part_time_earnings_allowed: 60% of your weekly benefit
+  OH:
+    name: Ohio
+    agency: Ohio Department of Job and Family Services
+    weekly_minimum: 2
+    varies: false
+    rule: 'Two work search activities each week: applications, resumes, assigned RESEA activities, OhioMeansJobs
+      profile work, job fairs.'
+    report: Documented on each weekly claim.
+    url: https://ohiomeansjobs.ohio.gov/job-seekers/learn-about-benefits/unemployment-claimants/unemployment-requirements
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    must_register: Searchable resume on OhioMeansJobs by week 4, Career Profile by week 8.
+    exemptions: Temporary layoff with return within 45 days; approved training; union hiring hall.
+    weekly_benefit: $176 to $624-$842
+    max_weeks: 20-26
+    waiting_week: true
+    part_time_earnings_allowed: 1/5 of your weekly benefit
+  OK:
+    name: Oklahoma
+    agency: Oklahoma Employment Security Commission
+    weekly_minimum: 2
+    varies: false
+    rule: At least two work search efforts each week. Just asking whether an employer has openings doesn't count.
+    report: Logged on EmployOklahoma.gov or the OESC log; subject to verification.
+    url: https://oklahoma.gov/oesc/individuals/unemployment.html
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    weekly_benefit: $16 to $649
+    max_weeks: '16'
+    waiting_week: true
+    part_time_earnings_allowed: $100
+  OR:
+    name: Oregon
+    agency: Oregon Employment Department
+    weekly_minimum: 5
+    varies: false
+    rule: At least five work search activities each week, and at least two must be direct contacts with employers.
+    report: Entered in Frances Online with each weekly claim; keep your own records.
+    url: https://unemployment.oregon.gov/weekly-claims
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    exemptions: 'Short layoff with return within four weeks: stay in contact with your employer.'
+    weekly_benefit: $204 to $872
+    max_weeks: 1-26
+    waiting_week: true
+    part_time_earnings_allowed: 1/3 of your weekly benefit or $163, whichever is more
   PA:
     name: Pennsylvania
+    agency: Pennsylvania Office of Unemployment Compensation
     weekly_minimum: 3
     varies: false
-    rule: Two job applications plus one other work search activity a week
-    report: Recorded and reported weekly
-    url: https://www.uc.pa.gov/
+    rule: 'From the third week of your benefit year: apply for two jobs and do one other work search activity each
+      week.'
+    report: Keep records of all activities.
+    url: https://www.pa.gov/agencies/dli/resources/for-claimants-workers/benefits-information/using-the-uc-system/claimant-faqs/work-search-job-registration-faqs
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    minimum_note: 2 applications + 1 other activity
+    keep_records: 2 years
+    must_register: Register with PA CareerLink within 30 days of filing.
+    exemptions: Union hiring hall; Shared-Work; approved or Trade training; written recall date.
+    weekly_benefit: $68-$76 to $605-$613
+    max_weeks: 18-26
+    waiting_week: true
+    part_time_earnings_allowed: $21 or 30% of your weekly benefit, whichever is more
+  PR:
+    name: Puerto Rico
+    agency: Departamento del Trabajo y Recursos Humanos
+    weekly_minimum: null
+    varies: false
+    rule: Be able and available and certify your job search activities each week; no fixed number is published.
+    report: Kept and shown on request.
+    url: https://www.trabajo.pr.gov/
+    source: official
+    checked: '2026-11-04'
+    confidence: low
+    must_register: Register with the Servicio de Empleo.
+    weekly_benefit: $60 to $240
+    max_weeks: '26'
+    waiting_week: true
+    part_time_earnings_allowed: Up to your weekly benefit
   RI:
     name: Rhode Island
+    agency: Rhode Island Department of Labor and Training
     weekly_minimum: 3
     varies: false
-    rule: Three work search activities a week
-    report: Not submitted weekly; keep records one year
-    url: https://dlt.ri.gov/individuals/work-search-requirement
+    rule: 'Three work search activities each week: at least one job application to an employer with a suitable opening
+      (full-time, even if you work part-time) plus two other activities.'
+    report: Keep your log; it can be randomly audited.
+    url: https://dlt.ri.gov/individuals/unemployment-insurance/work-search-requirement
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    keep_records: 1 year
+    exemptions: Approved training; union hiring hall; WorkShare; recall within 12 weeks.
+    weekly_benefit: $82-$132 to $745-$931
+    max_weeks: 17-26
+    waiting_week: true
+    part_time_earnings_allowed: 1/2 of your weekly benefit
   SC:
     name: South Carolina
+    agency: SC Department of Employment and Workforce
     weekly_minimum: 2
     varies: false
-    rule: Two work searches a week through SC Works Online
-    report: Entered in SC Works each certification
-    url: https://dew.sc.gov/
+    rule: At least two work searches each week inside SC Works Online Services (jobs.scworks.org); by law only searches
+      there count.
+    report: Recorded electronically in SC Works, Sunday to Saturday.
+    url: https://dew.sc.gov/individuals/search-work
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    must_register: SC Works Online Services account.
+    exemptions: UI-approved training (e.g. WIOA).
+    weekly_benefit: $42 to $350
+    max_weeks: 13-20
+    waiting_week: true
+    part_time_earnings_allowed: 1/4 of your weekly benefit
   SD:
     name: South Dakota
+    agency: South Dakota Department of Labor & Regulation
     weekly_minimum: 2
     varies: false
-    rule: Two job contacts in each week you request benefits
-    report: Given when filing the weekly request
-    url: https://dlr.sd.gov/ra/
+    rule: At least two work search activities each week (applications, resumes, interviews, approved reemployment
+      programs). No repeat employer unless a different position or 30 days later.
+    report: 'Entered with each weekly payment request: business, date, method, position.'
+    url: https://dlr.sd.gov/ra/individuals/work_search_requirements.aspx
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    exemptions: Temporary layoff with a recall date.
+    weekly_benefit: $28 to $553
+    max_weeks: 15-26
+    waiting_week: true
+    part_time_earnings_allowed: 1/4 of wages over $25
   TN:
     name: Tennessee
-    weekly_minimum: 3
+    agency: Tennessee Department of Labor and Workforce Development
+    weekly_minimum: 4
     varies: false
-    rule: At least three searches each week
-    report: Reported on the weekly certification
-    url: https://www.tn.gov/workforce/unemployment.html
+    rule: Four work search activities each week (applications, employer contacts, interviews, Jobs4TN searches).
+    report: Reported in the weekly certification on Jobs4TN.gov.
+    url: https://lwdsupport.tn.gov/hc/en-us/articles/26108509364371-Weekly-Work-Search-Requirements
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    exemptions: Definite return to work date; union hiring hall; approved training.
+    weekly_benefit: $55 to $325
+    max_weeks: 12-20
+    waiting_week: true
+    waiting_week_note: One unpaid week, paid back after 3 more consecutive weeks of benefits.
+    part_time_earnings_allowed: $50 or 25% of your weekly benefit, whichever is more
   TX:
     name: Texas
-    weekly_minimum: null
+    agency: Texas Workforce Commission
+    weekly_minimum: 3
     varies: true
-    rule: Minimum set by your local workforce area
-    report: Keep a log; give it if asked
-    url: https://www.twc.texas.gov/jobseekers/unemployment-benefits-services
+    rule: Your local workforce board sets the number by county (three by default; rural counties may be lower).
+      The letter TWC sends after you apply states your number.
+    report: Keep a work search log; TWC can request any week during your benefit year.
+    url: https://www.twc.texas.gov/programs/unemployment-benefits/required-number-work-search-activities-county
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    minimum_note: Set by county (default 3)
+    weekly_benefit: $75 to $605
+    max_weeks: 10-26
+    waiting_week: true
+    waiting_week_note: One unpaid week, paid back once you've received benefits equal to 3 weeks.
+    part_time_earnings_allowed: $5 or 1/4 of your weekly benefit, whichever is more
   UT:
     name: Utah
+    agency: Utah Department of Workforce Services
     weekly_minimum: 4
     varies: false
-    rule: At least four new full-time job contacts a week
-    report: Given when filing weekly
+    rule: At least four new full-time job contacts each Sunday-to-Saturday week (a new employer, or a newly listed
+      opening).
+    report: Keep a detailed record; employers may be contacted to verify.
     url: https://jobs.utah.gov/ui/jobseeker/claimguide.html
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    exemptions: Union-attached; starting a job within 3 weeks; training; seasonal deferral.
+    weekly_benefit: $47 to $806
+    max_weeks: 10-26
+    waiting_week: true
+    part_time_earnings_allowed: 30% of your weekly benefit
   VT:
     name: Vermont
+    agency: Vermont Department of Labor
     weekly_minimum: 3
     varies: false
-    rule: Three qualified job contacts a week
-    report: Reported with the weekly claim online
+    rule: At least three job contacts each week; each must be an application or job inquiry. A part-time job can
+      count as one.
+    report: Reported online with each weekly claim; random audits.
     url: https://labor.vermont.gov/unemployment-insurance/work-search
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    exemptions: Definite full-time return date within 10 weeks of opening the claim; approved training.
+    weekly_benefit: $94 to $757
+    max_weeks: 23-26
+    waiting_week: true
+    part_time_earnings_allowed: 50% of gross wages
   VA:
     name: Virginia
+    agency: Virginia Employment Commission
     weekly_minimum: 2
     varies: false
-    rule: Two job contacts a week
-    report: Entered with each weekly claim
-    url: https://www.vec.virginia.gov/
-  WA:
-    name: Washington
+    rule: Contact at least two different employers each week. Same employer only for a different opening; blind
+      ads don't count.
+    report: Keep complete records for audits.
+    url: https://www.vec.virginia.gov/unemployed/benefits-roadmap
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    keep_records: 1 year
+    exemptions: Partial claimants; union hiring hall members contact the hall weekly.
+    weekly_benefit: $112 to $430
+    max_weeks: 12-26
+    waiting_week: true
+    part_time_earnings_allowed: $100
+  VI:
+    name: US Virgin Islands
+    agency: Virgin Islands Department of Labor
     weekly_minimum: 3
     varies: false
-    rule: Three approved job search activities a week
-    report: Entered with the weekly claim online
-    url: https://esd.wa.gov/
+    rule: Three work search contacts each week (federal summary of territory rules).
+    report: Kept and shown on request; random audits.
+    url: https://www.vidol.gov/
+    source: official
+    checked: '2026-11-04'
+    confidence: low
+    weekly_benefit: $33 to $648
+    max_weeks: 13-16
+    waiting_week: true
+    part_time_earnings_allowed: 25% of wages over $15
+  WA:
+    name: Washington
+    agency: Employment Security Department
+    weekly_minimum: 3
+    varies: false
+    rule: 'Three job search activities each week: employer contacts, WorkSource activities, approved activities,
+      or any combination. The same activity can''t be repeated.'
+    report: Keep a job search log; ESD can ask for it any time, even after you stop claiming.
+    url: https://esd.wa.gov/get-financial-help/unemployment-benefits/weekly-unemployment-claims/job-search-requirements
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    weekly_benefit: $366 to $1,152
+    max_weeks: 1-26
+    waiting_week: true
+    part_time_earnings_allowed: 1/4 of wages over $5
   WV:
     name: West Virginia
-    weekly_minimum: null
-    varies: true
-    rule: Number depends on your occupation and the local job market
-    report: Keep a written record; give it if reviewed
-    url: https://workforcewv.org/
-  WI:
-    name: Wisconsin
+    agency: WorkForce West Virginia
     weekly_minimum: 4
     varies: false
-    rule: At least four work search activities a week
-    report: Documented each week; must be verifiable
-    url: https://dwd.wisconsin.gov/uiben/
+    rule: At least four work search activities each week (since July 1, 2024).
+    report: Upload proof during each weekly certification or provide it on request.
+    url: https://workforcewv.org/wp-content/uploads/2024/06/Jobs-Reemployment-Act-Notification.pdf
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    law: Jobs and Reemployment Act, W. Va. Code 21A-6-1d
+    keep_records: Benefit year plus 6 months
+    exemptions: Jury duty; approved training; union hiring hall; Short-Time Compensation.
+    weekly_benefit: $24 to $662
+    max_weeks: '26'
+    waiting_week: true
+    part_time_earnings_allowed: $609
+  WI:
+    name: Wisconsin
+    agency: Wisconsin Department of Workforce Development
+    weekly_minimum: 4
+    varies: false
+    rule: At least four work search actions each week; extra actions don't carry over. Mandatory reemployment services
+      count for that week.
+    report: Entered on the weekly work search form in the claimant portal; audited.
+    url: https://dwd.wisconsin.gov/uiben/worksearch-requirements.htm
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    keep_records: 1 year
+    must_register: Job Center of Wisconsin (resume activated) within 14 days, if told to.
+    exemptions: Recall within 8 weeks; verified new job within 4 weeks; working 32+ hours.
+    weekly_benefit: $54 to $370
+    max_weeks: 14-26
+    waiting_week: true
+    part_time_earnings_allowed: $30 plus 33% of wages over $30
   WY:
     name: Wyoming
+    agency: Wyoming Department of Workforce Services
     weekly_minimum: 2
     varies: false
-    rule: Contact two or more different employers a week
-    report: Given on the weekly continued claim
-    url: https://dws.wyo.gov/
+    rule: Contact at least two employers each week.
+    report: Keep a written record (date, business, address, phone, position, outcome); listed employers may be asked
+      to verify.
+    url: https://dws.wyo.gov/dws-division/unemployment-insurance/claimants/faq2/
+    source: official
+    checked: '2026-11-04'
+    confidence: high
+    exemptions: Temporary furlough (up to 12 weeks).
+    weekly_benefit: $47 to $651
+    max_weeks: 11-26
+    waiting_week: false
+    part_time_earnings_allowed: 50% of your weekly benefit
