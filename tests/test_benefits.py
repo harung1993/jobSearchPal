@@ -18,7 +18,7 @@ def _settings(tmp_path, **ws):
 
 def test_runway_counts_the_waiting_week(tmp_path):
     s, db = _settings(tmp_path, claim_start="2026-10-05", weeks_allowed=26, weekly_benefit="1,015")
-    r = benefits.runway(s, my_state(s), today=date(2026, 11, 4))
+    r = benefits.runway(s, {**my_state(s), "waiting_week": True}, today=date(2026, 11, 4))
     # Filed 10/5: 4 weeks behind (10/5..11/1), one of them the unpaid waiting week, so 3 paid and 23 left.
     assert r["week_no"] == 5 and r["left"] == 23 and r["waiting"] and r["remaining_money"] == 23 * 1015
     assert benefits.runway(s, {"waiting_week": False}, today=date(2026, 11, 4))["left"] == 22
@@ -81,7 +81,7 @@ def test_work_search_page_claim_and_tasks(tmp_path):
     c.post("/dua/task", data={"action": "resea"})
     c.post("/dua/task", data={"action": "add", "title": "Upload ID", "due": "2026-11-10"})
     html = c.get("/dua").text
-    assert "weeks left" in html and "unpaid waiting week" in html and "Initial RESEA review" in html and "Upload ID" in html
+    assert "weeks left" in html and "Initial RESEA review" in html and "Upload ID" in html
     assert "healthcare.gov" in html and "Asked to do RESEA" not in html
     tid = benefits.tasks(db)[-1]["id"]
     c.post("/dua/task", data={"action": "delete", "task_id": str(tid)})

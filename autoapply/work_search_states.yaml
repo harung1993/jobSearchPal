@@ -2,7 +2,6 @@
 # checked: when the entry was last compared with a source. source: "summary" = a third-party roundup
 # (tealhq.com/post/work-search-requirements-for-unemployment-benefits-by-state), "official" = the agency's own page.
 # Rules change. If yours is wrong, fix the entry, set source: official and today's date, and open a pull request.
-# waiting_week: true when the first week of a claim is unpaid (null = not checked yet).
 # weekly_minimum: null when the state sets no number or sets it per claimant (varies: true).
 checked: 2026-11-04
 source: summary
@@ -161,7 +160,6 @@ states:
     rule: Three work search activities a week; keep a detailed written log
     report: Keep the log; MassHire or DUA may ask for it
     url: https://www.mass.gov/info-details/work-search-requirements-for-unemployment-benefits
-    waiting_week: true
   MI:
     name: Michigan
     weekly_minimum: 1
