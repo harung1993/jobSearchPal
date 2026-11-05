@@ -1,4 +1,4 @@
-# UnemploymentPal: rules for the agent
+# unemploymentPal: rules for the agent
 
 These rules apply to whichever agent runs the daily pass: Claude Code (CLAUDE.md imports this file)
 or the Codex CLI (which reads AGENTS.md directly).
