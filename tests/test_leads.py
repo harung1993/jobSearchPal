@@ -189,3 +189,18 @@ def test_resolve_finds_lead_on_company_board(tmp_path):
     assert leads.resolve(db, s, fetchers=fetchers, now=now)["checked"] == 0 and not calls  # tried this week already
     html = TestClient(make_app(s, db)).get("/leads?show=all").text
     assert "company site" in html and "https://jobs.ashbyhq.com/hooli/9" in html and "company page not found yet" in html
+
+
+def test_job_sources_overview(tmp_path, monkeypatch):
+    """11/5: every job source in one list on Leads, so new users see LinkedIn/Indeed/HigherEdJobs alerts and the job sites."""
+    from autoapply import jobsources
+    monkeypatch.delenv("GMAIL_USER", raising=False)
+    monkeypatch.delenv("GMAIL_APP_PASSWORD", raising=False)
+    s, db, cfg = make(tmp_path)
+    o = jobsources.overview(s, db)
+    names = {i["name"]: i for g in o["groups"] for i in g["items"]}
+    assert {"LinkedIn", "Indeed", "HigherEdJobs", "USAJOBS", "The Muse"} <= set(names)
+    assert names["HigherEdJobs"]["status"] == "needs" and names["HigherEdJobs"]["href"] == "/setup#gmail"  # no Gmail yet
+    assert 0 <= o["on"] <= o["total"] == len(names)
+    html = TestClient(make_app(s, db)).get("/leads").text
+    assert "Where your jobs come from" in html and "HigherEdJobs" in html
