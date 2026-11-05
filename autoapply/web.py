@@ -119,6 +119,10 @@ def make_app(settings, db: DB) -> FastAPI:
         from .rank import shortlist
         s = stats.compute(db, floor=work_search(settings)[1])
         more = shortlist(db, settings, SHORTLIST - len(s["ready"]), skip_companies=[j["company"] for j in s["ready"]])
+        from . import skills as sk
+        if sk.enabled(Prefs(settings.data_dir, settings.raw)) and (my := sk.mine(settings)):
+            for j in [*s["ready"], *more]:
+                j["skill_line"] = sk.summary(sk.for_job(db.get(j["id"]) or j, my))
         s["now_hour"] = datetime.now().hour
         from . import jobsources
         src = jobsources.overview(settings, db)
@@ -414,7 +418,11 @@ def make_app(settings, db: DB) -> FastAPI:
                  "sort_est": sum(v.get("est") or 0 for v in sorting),
                  "sort_cost": sum(v.get("cost") or 0 for v in sorting) + (daily.get("cost") or 0),
                  "month_spend": db.spend_this_month(), "by_day": db.usage_by_day(14), "by_stage": db.usage_by_stage(30)}
-        return page("settings.html", p=pr.data, prefs=pr, providers=PROVIDERS, status=st, usage=u30, costs=costs,
+        from . import skills as sk
+        return page("settings.html", skills_est=sk.estimate(pr), skills_text=sk.to_lines(sk.mine(settings)),
+                    skills_usage=db.conn.execute("select count(*), coalesce(sum(tokens),0), coalesce(sum(cost),0), coalesce(sum(emails),0)"
+                                                 " from usage where source = 'skills' and at >= date('now', '-30 day')").fetchone(),
+                    p=pr.data, prefs=pr, providers=PROVIDERS, status=st, usage=u30, costs=costs,
                     or_models=orm, daily_models=DAILY_MODELS, daily_agents=DAILY_AGENTS, key_hint=pr.key_hint("OPENROUTER_API_KEY"),
                     pending=len(db.pending_events()), msg=msg, nav="settings", tab=tab,
                     daily=pr.daily(db.spend_this_month()), or_default=__import__("autoapply.prefs", fromlist=["x"]).DAILY_OR_DEFAULT)
@@ -466,6 +474,20 @@ def make_app(settings, db: DB) -> FastAPI:
                 d[k] = max(lo, min(hi, int(f.get(k, d[k]))))
             except (TypeError, ValueError):
                 pass
+        if "skills_form" in f:
+            d["skills_enabled"] = bool(f.get("skills_enabled"))
+            if f.get("skills_via") in ("openrouter", "claude"):
+                d["skills_via"] = f.get("skills_via")
+            sm = str(f.get("skills_model") or "").strip()
+            if re.fullmatch(r"[A-Za-z0-9._:/~\[\]-]{0,120}", sm):
+                d["skills_model"] = sm
+            try:
+                d["skills_per_day"] = max(5, min(100, int(f.get("skills_per_day") or 25)))
+            except ValueError:
+                pass
+            if "my_skills" in f:
+                from . import skills as sk
+                sk.save_mine(settings, sk.parse_lines(str(f.get("my_skills") or "")))
         if "limits_form" in f:
             d["prep_enabled"], d["drafts_enabled"] = bool(f.get("prep_enabled")), bool(f.get("drafts_enabled"))
         try:
@@ -494,6 +516,17 @@ def make_app(settings, db: DB) -> FastAPI:
             d.setdefault("tests", {})[name] = {**r, "at": datetime.now().strftime("%b %-d, %-I:%M %p"), "model": pr.model(name)}
             pr.save()
             msg = ""
+        elif verb == "skills" and name in ("build", "tag"):
+            from . import skills as sk
+            try:
+                if name == "build":
+                    n = await run_in_threadpool(sk.build_from_resume, settings, pr, db)
+                    msg = f"Drafted {n} skills from your resume. Check and edit the list, then Save."
+                else:
+                    r = await run_in_threadpool(sk.tag, db, settings, pr, None)
+                    msg = r.get("skipped") or f"Listed skills for {r['tagged']} of {r['roles']} roles."
+            except Exception as e:
+                msg = f"Skill matching: {str(e)[:160]}"
         elif verb == "sort":
             from .cli import _review
             r = await run_in_threadpool(_review, settings, db)

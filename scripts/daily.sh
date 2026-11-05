@@ -27,6 +27,8 @@ fi
 progress "syncing email and searching job boards"
 autoapply sync-email --days 3 >/dev/null 2>&1 || autoapply log-run sync-email fail "sync failed; see data/cron.log" || true
 autoapply find >/dev/null 2>&1 || true
+# Optional AI skill matching (Settings > Daily run). Does nothing unless you turned it on.
+autoapply skills tag >/dev/null 2>&1 || true
 
 today=data/daily/$(date +%F).md
 if [ "$trigger" = manual ]; then echo "
