@@ -65,9 +65,9 @@
 <details class="card mt help-box"><summary><h2 style="margin:0">Good to know, and help people often miss</h2><span class="muted">taxes, waiting week, severance, RESEA, health coverage, SNAP, 211, legal aid</span></summary>
  {% if general %}<ul class="general">{% for g in general %}<li>{{ g }}</li>{% endfor %}</ul>{% endif %}
  <div class="grid g3 res" style="margin-top:12px">{% for name, what, url in resources %}<a class="res-item" href="{{ url }}" target="_blank" rel="noopener"><b>{{ name }}</b><span>{{ what }}</span></a>{% endfor %}</div></details>
-<style>.thisweek{display:flex;gap:24px;align-items:stretch;margin-bottom:16px;border-color:color-mix(in srgb,var(--accent) 30%,var(--line))}
+<style>.thisweek{display:flex;gap:24px;align-items:stretch;margin-bottom:16px;border-color:color-mix(in srgb,var(--sun) 55%,var(--line));box-shadow:var(--shadow-lg)}
 .thisweek .tw-main{flex:1.4;min-width:0}.thisweek .tw-side{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;align-items:flex-start;border-left:1px solid var(--line);padding-left:24px}
-.thisweek .lbl{font-size:12px;font-weight:600;color:var(--ink-2);text-transform:uppercase;letter-spacing:.05em}.thisweek .num{font-size:30px;font-weight:700;margin:2px 0 6px;font-variant-numeric:tabular-nums}
+.thisweek .lbl{font-size:13.5px;font-weight:700;color:var(--ink-2)}.thisweek .num{font-size:40px;line-height:1.1;font-weight:700;margin:2px 0 6px;font-variant-numeric:tabular-nums}
 .thisweek .num small{font-size:13px;font-weight:500;color:var(--ink-2)}.thisweek .sub{font-size:13px;color:var(--ink-2);margin-top:6px}.thisweek .t{font-weight:600}.thisweek .btn{margin-top:auto}
 @media (max-width:700px){.thisweek{flex-direction:column;gap:14px}.thisweek .tw-side{border-left:0;padding-left:0;border-top:1px solid var(--line);padding-top:12px}}
 .help-box summary{list-style:none;cursor:pointer;display:flex;flex-direction:column;gap:2px}.help-box summary::-webkit-details-marker{display:none}.help-box summary h2::after{content:" ▸";color:var(--ink-3)}.help-box[open] summary h2::after{content:" ▾"}.help-box[open] summary{margin-bottom:10px}.help-box summary .muted{font-size:12.5px}

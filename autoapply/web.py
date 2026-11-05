@@ -75,6 +75,8 @@ def work_search(settings) -> tuple[str, int]:
 
 def make_app(settings, db: DB) -> FastAPI:
     app = FastAPI()
+    from fastapi.staticfiles import StaticFiles
+    app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
     shots = settings.data_dir / "screenshots"
     headless = settings.raw.get("browser", {}).get("headless", True)
 
@@ -83,7 +85,7 @@ def make_app(settings, db: DB) -> FastAPI:
         # Optional shared secret: open /?t=TOKEN once, then a cookie carries it. Read on every request,
         # because the Setup page can create it.
         token = os.environ.get("AUTOAPPLY_TOKEN")
-        if token:
+        if token and not request.url.path.startswith("/static/"):  # fonts only; nothing private lives there
             given = request.query_params.get("t") or request.cookies.get("aa")
             if given != token:
                 return HTMLResponse("forbidden", status_code=403)
