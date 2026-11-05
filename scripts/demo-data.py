@@ -45,5 +45,26 @@ leads.set_status(db,leads.key("Lumen Works","Analytics Engineering Manager"),"st
 leads.set_status(db,leads.key("Maple Insurance","Senior BI Developer"),"dismissed")
 for kind in ["daily","find","sync-email","brief"]:
     db.log_run(kind, True, "demo")
-(root/"config.yaml").write_text("data_dir: ./data\nreview: {host: 127.0.0.1, port: 8799}\nwork_search: {label: Work search, weekly_minimum: 3}\n")
-(root/"profile.yaml").write_text((Path(__file__).resolve().parents[1] / "profile.example.yaml").read_text())
+# A set-up demo user, so screenshots show the app in use rather than the first-run Setup prompts.
+import yaml
+start=(now-timedelta(weeks=7)).date()
+(root/"config.yaml").write_text(yaml.safe_dump({"data_dir":"./data","review":{"host":"127.0.0.1","port":8799},
+ "search":{"title_keywords":["analytics engineer","data engineer","head of data"],"exclude_keywords":["intern","junior"],"us_only":True},
+ "boards":[{"ats":"greenhouse","slug":s} for s in ("harborai","pinecrest","cobaltlabs","gridpoint","juniperdata")]+[{"ats":"ashby","slug":s} for s in ("kestrel","nimbus","orchard")],
+ "feeds":["remoteok","remotive","hn_whos_hiring","themuse","himalayas"],
+ "work_search":{"label":"Work search","weekly_minimum":3,"state":"MA","claim_start":start.isoformat(),"weekly_benefit":"812","weeks_allowed":"26","certify_day":"Sunday"}},sort_keys=False))
+prof=yaml.safe_load((Path(__file__).resolve().parents[1] / "profile.example.yaml").read_text())
+prof.update({"first_name":"Alex","last_name":"Morgan","email":"alex.morgan@example.org"})
+(root/"profile.yaml").write_text(yaml.safe_dump(prof,sort_keys=False))
+(root/"materials").mkdir(exist_ok=True); (root/"materials"/"Morgan Resume - Base.docx").write_bytes(b"")
+(root/"data"/"sources.json").write_text(json.dumps({"at":now.strftime("%Y-%m-%d %H:%M"),"sources":{
+ "remoteok":{"fetched":96,"matched":4,"new":2,"error":""},"remotive":{"fetched":14,"matched":1,"new":0,"error":""},
+ "hn_whos_hiring":{"fetched":212,"matched":6,"new":3,"error":""},"themuse":{"fetched":118,"matched":3,"new":1,"error":""},
+ "himalayas":{"fetched":100,"matched":2,"new":1,"error":""}}}))
+from autoapply import benefits
+benefits.add_resea(db, "MA")
+for n,(tid,) in enumerate(db.conn.execute("select id from ui_tasks where kind = 'resea' order by id").fetchall()):
+    db.conn.execute("update ui_tasks set due = ?, done = ? where id = ?", ((now+timedelta(days=[-3,6,20][min(n,2)])).date().isoformat(), int(n == 0), tid))
+db.conn.commit()
+benefits.add_task(db, "Upload ID to the claim portal", (now+timedelta(days=9)).date().isoformat())
+
