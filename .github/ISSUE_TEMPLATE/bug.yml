@@ -1,0 +1,32 @@
+name: Something isn't working
+description: A bug in the dashboard, the daily run, email sorting or the form filler.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Before posting, remove anything personal:** your name, email, resume text, company names you applied to, recruiter details, API keys, tokens or your server's address. Logs often contain these.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where
+      options: [Dashboard, Daily run, Email sorting, Form filler, Setup or install, Work search page, Other]
+    validations:
+      required: true
+  - type: input
+    id: setup
+    attributes:
+      label: How you run it
+      placeholder: e.g. Ubuntu 24.04 with venv and cron, or Docker; Claude Code or Codex
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error or log lines (with personal details removed)
+      render: text

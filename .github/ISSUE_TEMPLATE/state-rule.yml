@@ -1,0 +1,31 @@
+name: My state's rule is wrong or out of date
+description: Fix a state's work-search rule, benefit amounts, waiting week or RESEA details.
+title: "State rule: "
+labels: [state-rules]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping keep this right for everyone. **Please don't include your name, claim number, letters from your agency or anything else personal.** The official page is all we need.
+  - type: input
+    id: state
+    attributes:
+      label: State or territory
+      placeholder: e.g. Ohio
+    validations:
+      required: true
+  - type: textarea
+    id: wrong
+    attributes:
+      label: What's wrong
+      description: What the Work search page says, and what it should say.
+    validations:
+      required: true
+  - type: input
+    id: source
+    attributes:
+      label: Official source
+      description: A link to the state agency's own page (not a news article or forum post).
+      placeholder: https://
+    validations:
+      required: true

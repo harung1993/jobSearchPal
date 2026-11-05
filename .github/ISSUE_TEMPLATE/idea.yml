@@ -1,0 +1,11 @@
+name: Idea or request
+description: Something that would make the job search or the unemployment paperwork easier.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help
+      description: The problem first, then any idea for how to solve it.
+    validations:
+      required: true
