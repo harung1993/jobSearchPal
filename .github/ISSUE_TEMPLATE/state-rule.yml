@@ -1,0 +1,19 @@
+name: A state's rule is wrong or out of date
+description: The work-search rule, waiting week, benefits or RESEA steps for a state don't match the agency's own site.
+labels: [state-rules]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks. Rules change often, and corrections like this keep people's benefits safe. Please don't include anything about your own claim.
+  - type: input
+    id: state
+    attributes: {label: State or territory, placeholder: e.g. Massachusetts}
+    validations: {required: true}
+  - type: textarea
+    id: wrong
+    attributes: {label: What's wrong, description: "Which field (weekly minimum, waiting week, registration...) and what it should say."}
+    validations: {required: true}
+  - type: input
+    id: source
+    attributes: {label: Official link, description: "The agency page (a .gov site or the state's unemployment site) that shows the correct rule."}
+    validations: {required: true}
