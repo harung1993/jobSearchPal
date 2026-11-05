@@ -4,6 +4,18 @@
 {% block body %}
 <div class="ph"><div><h1>{{ ws_label }} log</h1>
  <div class="sub">Sunday to Saturday weeks, in a work-search log's columns. Each zip has the week's CSV plus the original emails and submit screenshots.</div></div></div>
+{% set cur = weeks|selectattr('current')|first if weeks else none %}
+{% set open_tasks = tasks|rejectattr('done')|selectattr('due')|sort(attribute='due')|list %}
+<section class="card thisweek" aria-label="This week">
+ <div class="tw-main"><div class="lbl">This week{% if cur %} · {{ cur.start.strftime("%b %-d") }} – {{ cur.end.strftime("%b %-d") }}{% endif %}</div>
+  <div class="num">{{ cur.count if cur else 0 }}<small> / {{ floor }} activities</small></div>
+  <div class="meter {% if cur and cur.count >= floor %}ok{% endif %}"><span style="width:{{ [100, (100 * (cur.count if cur else 0) / (floor or 1))|round]|min }}%"></span></div>
+  <div class="sub">{% if cur and cur.count >= floor %}Minimum met for this week.{% else %}{{ floor - (cur.count if cur else 0) }} more needed{% if cur %} by Saturday ({{ (cur.end - today).days }} day{{ '' if (cur.end - today).days == 1 else 's' }} left){% endif %}.{% endif %}</div></div>
+ <div class="tw-side">{% if open_tasks %}<div class="lbl">Next deadline</div><div class="t">{{ open_tasks[0].title }}</div>
+   <div class="sub">{{ open_tasks[0].due }}{% if open_tasks|length > 1 %} · {{ open_tasks|length - 1 }} more below{% endif %}</div>
+  {% else %}<div class="lbl">Next deadline</div><div class="sub">None yet. Add seminars, RESEA meetings or documents below.</div>{% endif %}
+  {% if cur %}<a class="btn sm" href="/dua/{{ cur.start.isoformat() }}.zip">Download this week's proof</a>{% endif %}</div>
+</section>
 {% if rule %}<section class="card" style="margin-bottom:16px"><h2><span>{{ rule.name }}'s rule</span>
   <span class="pill {{ 'rejected' if rule.confidence == 'low' else ('submitted' if rule.source == 'official' else 'waiting') }}" style="text-transform:none">{% if rule.confidence == 'low' %}not confirmed · {% endif %}checked {{ rule.checked }}</span></h2>
  {% if rule.agency %}<p class="muted" style="margin:-6px 0 8px;font-size:12.5px">{{ rule.agency }}</p>{% endif %}
@@ -50,10 +62,17 @@
   {% for e in letters %}<div class="ink2" style="font-size:13px;padding:3px 0">{{ e.at[5:10]|replace('-', '/') }} · {{ e.subject|truncate(70) }}{% if e.proof %} · <a href="/proof/{{ e.proof.split('/')[-2] }}/{{ e.proof.split('/')[-1] }}" target="_blank">open</a>{% endif %}</div>{% endfor %}{% endif %}
 </section></div>
 
-{% if general %}<section class="card mt"><h2>Good to know, in every state</h2><ul class="general">{% for g in general %}<li>{{ g }}</li>{% endfor %}</ul></section>{% endif %}
-<section class="card mt" style="margin-bottom:16px"><h2>Help people often miss</h2>
- <div class="grid g3 res">{% for name, what, url in resources %}<a class="res-item" href="{{ url }}" target="_blank" rel="noopener"><b>{{ name }}</b><span>{{ what }}</span></a>{% endfor %}</div></section>
-<style>.benefits{margin-bottom:16px;align-items:start}.runway .num{font-size:28px;font-weight:700}.runway .num small{font-size:13px;font-weight:500;color:var(--ink-2)}
+<details class="card mt help-box"><summary><h2 style="margin:0">Good to know, and help people often miss</h2><span class="muted">taxes, waiting week, severance, RESEA, health coverage, SNAP, 211, legal aid</span></summary>
+ {% if general %}<ul class="general">{% for g in general %}<li>{{ g }}</li>{% endfor %}</ul>{% endif %}
+ <div class="grid g3 res" style="margin-top:12px">{% for name, what, url in resources %}<a class="res-item" href="{{ url }}" target="_blank" rel="noopener"><b>{{ name }}</b><span>{{ what }}</span></a>{% endfor %}</div></details>
+<style>.thisweek{display:flex;gap:24px;align-items:stretch;margin-bottom:16px;border-color:color-mix(in srgb,var(--accent) 30%,var(--line))}
+.thisweek .tw-main{flex:1.4;min-width:0}.thisweek .tw-side{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px;align-items:flex-start;border-left:1px solid var(--line);padding-left:24px}
+.thisweek .lbl{font-size:12px;font-weight:600;color:var(--ink-2);text-transform:uppercase;letter-spacing:.05em}.thisweek .num{font-size:30px;font-weight:700;margin:2px 0 6px;font-variant-numeric:tabular-nums}
+.thisweek .num small{font-size:13px;font-weight:500;color:var(--ink-2)}.thisweek .sub{font-size:13px;color:var(--ink-2);margin-top:6px}.thisweek .t{font-weight:600}.thisweek .btn{margin-top:auto}
+@media (max-width:700px){.thisweek{flex-direction:column;gap:14px}.thisweek .tw-side{border-left:0;padding-left:0;border-top:1px solid var(--line);padding-top:12px}}
+.help-box summary{list-style:none;cursor:pointer;display:flex;flex-direction:column;gap:2px}.help-box summary::-webkit-details-marker{display:none}.help-box summary h2::after{content:" ▸";color:var(--ink-3)}.help-box[open] summary h2::after{content:" ▾"}.help-box[open] summary{margin-bottom:10px}.help-box summary .muted{font-size:12.5px}
+.section-h{font-size:15px;margin:22px 0 10px}.older>summary{cursor:pointer;margin:16px 0 0;font-weight:600;color:var(--ink-2)}
+.benefits{margin-bottom:16px;align-items:start}.runway .num{font-size:28px;font-weight:700}.runway .num small{font-size:13px;font-weight:500;color:var(--ink-2)}
 .runway .sub{font-size:12.5px;color:var(--ink-3);margin:6px 0 12px}.claim-form .actions{margin-top:8px}
 .task{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--line)}.task form{margin:0}.task .body{flex:1;min-width:0}
 .task .t{font-weight:600;font-size:14px}.task.done .t{text-decoration:line-through;color:var(--ink-3)}
@@ -62,15 +81,16 @@
 .add-task{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}.add-task input[type=text]{flex:1;min-width:160px}.add-task input[type=date]{width:auto}
 .general{margin:0;padding-left:18px;font-size:13.5px;color:var(--ink-2)}.general li{margin:3px 0}.res{gap:10px}.res-item{display:flex;flex-direction:column;gap:3px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;color:inherit}
 .res-item:hover{text-decoration:none;background:var(--surface-2)}.res-item span{font-size:12.5px;color:var(--ink-2)}</style>
-{% for w in weeks %}
-<section class="card {% if not loop.first %}mt{% endif %}">
+{% macro week_card(w, first) %}<section class="card {% if not first %}mt{% endif %}">
  <h2><span>{{ w.start.strftime("%b %-d") }} – {{ w.end.strftime("%b %-d, %Y") }}{% if w.current %} <span class="pill filled" style="margin-left:6px">this week</span>{% endif %}
    <span class="pill {{ 'submitted' if w.count >= floor else 'waiting' }}" style="margin-left:6px">{{ w.count }} / {{ floor }} activities</span></span>
   <a class="btn sm" href="/dua/{{ w.start.isoformat() }}.zip">Download proof (.zip)</a></h2>
  <table><thead><tr><th>Date</th><th class="hide-sm">Activity</th><th>Company</th><th class="hide-sm">Position</th><th>Result</th><th>Proof</th></tr></thead><tbody>
  {% for r in w.rows %}<tr><td class="ink2" style="white-space:nowrap">{{ r.date.strftime("%a %-m/%-d") }}</td><td class="hide-sm">{{ r.type }}</td>
   <td><b style="font-weight:600">{{ co(r.company) }}</b></td><td class="hide-sm ink2">{{ r.position }}</td><td><span class="pill {{ r.result|lower }}">{{ r.result }}</span></td>
-  <td>{% for p in r.proof %}<a href="/proof/{{ w.start.isoformat() }}/{{ p.split('/')[-1] }}" target="_blank">{{ 'screenshot' if p.endswith('.png') else 'email' }}</a>{% if not loop.last %}, {% endif %}{% else %}<span class="muted">none</span>{% endfor %}</td></tr>{% endfor %}
- </tbody></table></section>
-{% else %}<p class="empty">No activities yet.</p>{% endfor %}
+  <td>{% for p in r.proof %}<a href="/proof/{{ w.start.isoformat() }}/{{ p.split('/')[-1] }}" target="_blank">{{ 'screenshot' if p.endswith('.png') else 'email' }}</a>{% if not loop.last %}, {% endif %}{% else %}<span class="muted" title="No saved email or screenshot for this one">—</span>{% endfor %}</td></tr>{% endfor %}
+ </tbody></table></section>{% endmacro %}
+<h2 class="section-h">Weekly log</h2>
+{% for w in weeks[:4] %}{{ week_card(w, loop.first) }}{% else %}<p class="empty">No activities yet. Applications, recruiter contacts and interviews show up here as they happen.</p>{% endfor %}
+{% if weeks|length > 4 %}<details class="older"><summary>Show {{ weeks|length - 4 }} older weeks</summary>{% for w in weeks[4:] %}{{ week_card(w, false) }}{% endfor %}</details>{% endif %}
 {% endblock %}

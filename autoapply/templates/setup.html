@@ -249,4 +249,14 @@ input[type=file]{font:inherit;font-size:13px;max-width:100%}
 .notice{margin:12px 0 0}
 .step{scroll-margin-top:16px} .sub3{font-size:13px;font-weight:650;margin:20px 0 6px} code.sel{user-select:all;word-break:break-all}
 </style>
+
+<style>.step.collapsed>*:not(h2){display:none}.step.collapsed{padding-bottom:14px}.step h2{cursor:pointer}
+.step h2 .edit{display:none;font-size:12.5px;font-weight:600;color:var(--accent-ink);margin-left:10px}.step.collapsed h2 .edit{display:inline}
+.step.collapsed h2 .count{display:none}</style>
+<script>(()=>{const steps=[...document.querySelectorAll("section.step")];const target=location.hash.slice(1);
+ steps.forEach(sec=>{const h=sec.querySelector("h2");if(!h)return;const e=document.createElement("span");e.className="edit";e.textContent="Edit";h.firstElementChild.appendChild(e);
+  if(sec.querySelector("h2 .n.done")&&sec.id!==target)sec.classList.add("collapsed");
+  h.addEventListener("click",ev=>{if(ev.target.closest("a,button,input,select,label"))return;sec.classList.toggle("collapsed")})});
+ addEventListener("hashchange",()=>{const s=document.getElementById(location.hash.slice(1));if(s)s.classList.remove("collapsed")});
+ document.querySelectorAll('a[href^="#"]').forEach(a=>a.addEventListener("click",()=>{const s=document.getElementById(a.getAttribute("href").slice(1));if(s)s.classList.remove("collapsed")}));})();</script>
 {% endblock %}

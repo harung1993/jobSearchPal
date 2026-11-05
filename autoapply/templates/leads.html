@@ -2,8 +2,11 @@
 {% block title %}Leads{% endblock %}
 {% block body %}
 <div class="ph"><div><h1>Leads</h1>
- <div class="sub">Every role from your LinkedIn, Indeed and other job-alert emails. Each email sync looks the best ones up on the company's own job board (Greenhouse, Lever, Ashby, Workable; no AI) and
-  adds matches to the roles it can tailor. Star others you want: the next run searches the web for them. Auto apply does that for one role right away (it uses credits). Score is a rough fit from your titles and resume.</div></div></div>
+ <div class="sub">Every role from your LinkedIn, Indeed and other job-alert emails, best fit first.</div>
+ <details class="how"><summary>How leads work</summary><p>After each email sync, the top leads are looked up on the company's own job board
+  (Greenhouse, Lever, Ashby, Workable; no AI). Matches join the roles the daily run can tailor. <b>Star</b> a lead and the next run searches the web for it;
+  <b>Auto apply</b> does that for one role right away and uses credits. <b>Score</b> is a rough fit from your titles and resume.</p></details></div></div>
+<style>.how{margin-top:6px;font-size:13px;color:var(--ink-2)}.how summary{cursor:pointer;color:var(--accent-ink);font-weight:600}.how p{margin:6px 0 0;max-width:760px}</style>
 
 {% if running %}<p class="notice" style="margin:0 0 14px"><span class="grow">A run is going{% if running.at %} (since {{ running.at }}){% endif %}{% if running.step %}: {{ running.step }}{% endif %}. Auto apply is available again when it finishes.</span></p>
  <script>setTimeout(()=>location.reload(),20000)</script>{% endif %}
