@@ -124,6 +124,7 @@ def main(argv=None):
     a = sub.add_parser("scan"); a.add_argument("url"); a.add_argument("--ats")
     a = sub.add_parser("fill"); a.add_argument("plan"); a.add_argument("--job")
     a = sub.add_parser("brief"); a.add_argument("--send", action="store_true")
+    a = sub.add_parser("skills"); a.add_argument("action", choices=["tag", "build", "show"]); a.add_argument("--limit", type=int)
     sub.add_parser("serve")
     sub.add_parser("setup-check")
     a = sub.add_parser("finish"); a.add_argument("job_id"); a.add_argument("--server", default=os.environ.get("AUTOAPPLY_SERVER", ""))
@@ -468,6 +469,19 @@ def main(argv=None):
             print(f"sent: {subject}")
         else:
             print(subject + "\n\n" + text)
+    elif args.cmd == "skills":
+        from . import skills
+        from .prefs import Prefs
+        pr = Prefs(s.data_dir, s.raw)
+        if args.action == "tag":
+            r = skills.tag(db, s, pr, args.limit)
+            if "tagged" in r:
+                db.log_run("skills", not r["failed_calls"], f"{r['tagged']} of {r['roles']} roles tagged")
+            _out(r)
+        elif args.action == "build":
+            _out({"skills": skills.build_from_resume(s, pr, db)})
+        else:
+            _out({"enabled": skills.enabled(pr), "estimate": skills.estimate(pr), "mine": skills.mine(s)})
     elif args.cmd == "serve":
         import uvicorn
         from .web import make_app

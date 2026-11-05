@@ -21,8 +21,8 @@ def _words(text: str) -> list[str]:
     return [w for w in re.findall(r"[a-z][a-z0-9+#.]{1,30}", (text or "").lower()) if w not in STOP and not w.endswith(".")]
 
 
-def profile_terms(root: Path, limit: int = 120) -> set[str]:
-    """The most frequent meaningful words in your base resume and notes."""
+def profile_text(root: Path) -> str:
+    """Your base resume and notes as plain text."""
     from .setup import base_resume
     texts = []
     r = base_resume(root)
@@ -39,11 +39,16 @@ def profile_terms(root: Path, limit: int = 120) -> set[str]:
             texts.append(p.read_text()[:20000])
         except OSError:
             pass
-    c = Counter(_words("\n".join(texts)))
+    return "\n".join(texts)
+
+
+def profile_terms(root: Path, limit: int = 120) -> set[str]:
+    """The most frequent meaningful words in your base resume and notes."""
+    c = Counter(_words(profile_text(root)))
     return {w for w, _ in c.most_common(limit)}
 
 
-def score(job: dict, search: dict, terms: set[str], now: datetime | None = None) -> float:
+def score(job: dict, search: dict, terms: set[str], now: datetime | None = None, my_skills: list | None = None) -> float:
     title = (job.get("title") or "").lower()
     s = 3.0 * sum(1 for k in search.get("title_keywords") or [] if k in title)
     if re.search(r"\b(senior|sr\.?|staff|lead|principal|head|manager|director)\b", title):
@@ -58,6 +63,11 @@ def score(job: dict, search: dict, terms: set[str], now: datetime | None = None)
         pass
     if job.get("ats") == "feed":
         s -= 0.5  # needs a hop to the real posting
+    if my_skills:  # optional AI skill matching (skills.py): the posting's must-haves you have count most
+        from .skills import for_job
+        m = for_job(job, my_skills)
+        if m:
+            s += 5.0 * m["ratio"] + 1.0 * m["nice_ratio"]
     return round(s, 2)
 
 
@@ -97,14 +107,17 @@ def candidates(db, settings, limit: int = 12, desc_chars: int = 1200) -> list[di
     from .prefs import Prefs
     search = settings.raw.get("search") or {}
     terms = profile_terms(settings.root)
-    applied = Applied(db, int(Prefs(settings.data_dir, settings.raw).data.get("reapply_after_days", 90) or 0))
+    prefs = Prefs(settings.data_dir, settings.raw)
+    applied = Applied(db, int(prefs.data.get("reapply_after_days", 90) or 0))
+    from . import skills
+    my = skills.mine(settings) if skills.enabled(prefs) else []
     rows = []
     for j in db.by_status("new"):
         why = applied.why(j["company"])
         if why:
             db.update(j["id"], status="skipped", error=why)
             continue
-        sc = score(j, search, terms)
+        sc = score(j, search, terms, my_skills=my)
         rows.append((sc, j))
         if j.get("score") != sc:
             db.update(j["id"], score=sc)
@@ -114,7 +127,8 @@ def candidates(db, settings, limit: int = 12, desc_chars: int = 1200) -> list[di
         d = re.sub(r"\s+", " ", j.get("description") or "").strip()
         out.append({"id": j["id"], "score": sc, "company": j["company"], "title": j["title"], "location": j["location"],
                     "ats": j["ats"], "url": j["url"], "found_at": j["found_at"],
-                    "description": d[:desc_chars] + ("…" if len(d) > desc_chars else "")})
+                    "description": d[:desc_chars] + ("…" if len(d) > desc_chars else ""),
+                    **({"skills": skills.summary(skills.for_job(j, my))} if my and j.get("skills_json") else {})})
     return out
 
 

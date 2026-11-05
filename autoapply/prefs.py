@@ -71,7 +71,9 @@ class Prefs:
                 # Cost controls: what the daily run may do per day, and a cap on money spent on paid APIs.
                 "picks_per_day": 2, "prep_enabled": True, "prep_per_day": 2, "drafts_enabled": True,
                 "drafts_per_day": 5, "monthly_api_budget": 5.0,
-                "reapply_after_days": 90}  # don't spend a run on a company you applied to more recently than this
+                "reapply_after_days": 90,
+                # Optional AI skill matching (skills.py). Off by default: it spends tokens on every role it reads.
+                "skills_enabled": False, "skills_via": "openrouter", "skills_model": "", "skills_per_day": 25}  # don't spend a run on a company you applied to more recently than this
         base.update(_legacy(raw or {}) if not saved else {})
         base.update(saved)
         base["order"] = [p for p in base["order"] if p in PROVIDERS] + [p for p in DEFAULT_ORDER if p not in base["order"]]

@@ -47,7 +47,7 @@ create table if not exists usage (   -- one row per call to an email-sorting mod
 """
 
 # Columns added after v0.1; ALTERed into older databases on open.
-MIGRATIONS = {"pay": "text", "outcome": "text", "outcome_at": "text"}
+MIGRATIONS = {"pay": "text", "outcome": "text", "outcome_at": "text", "skills_json": "text"}
 
 STATUSES = ["new", "skipped", "filled", "submitted", "failed"]
 

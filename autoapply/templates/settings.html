@@ -201,6 +201,55 @@
  </div>
  <div class="actions"><button class="btn primary" name="action" value="save">Save</button></div>
 </section>
+
+<section class="card mt" id="skills">
+ <input type="hidden" name="skills_form" value="1">
+ <h2>Skill matching <span class="count">optional · {{ 'on' if p.skills_enabled else 'off' }}</span></h2>
+ <p class="muted" style="font-size:14.5px;margin:-4px 0 12px">The built-in ranking only counts words your resume shares with a posting, so
+  "Looker" and "LookML", or "BI" and "business intelligence", never meet. With this on, a model lists each new role's must-have
+  and nice-to-have skills, and they're matched against <b>your skills list</b> below, synonyms included. Roles that need what you
+  have rank higher, and the dashboard shows "4 of 5 must-haves · missing Looker".</p>
+ <label class="switch"><input type="checkbox" name="skills_enabled" value="1" {% if p.skills_enabled %}checked{% endif %}><b>Turn on skill matching</b></label>
+
+ <div class="tokens {{ 'on' if p.skills_enabled }}">
+  <b>What it uses, honestly:</b> about {{ "{:,}".format(skills_est.tokens_day) }} tokens a day
+  ({{ skills_est.per_day }} roles in {{ skills_est.calls }} call{{ '' if skills_est.calls == 1 else 's' }}), roughly
+  {{ "{:,}".format(skills_est.tokens_month // 100000 * 100000) if skills_est.tokens_month >= 100000 else "{:,}".format(skills_est.tokens_month) }} a month on weekdays.
+  {% if skills_est.via == 'claude' %}{{ skills_est.note }} Most of it is Claude Code's own overhead on each call, so OpenRouter with a small model is far lighter.
+  {% elif skills_est.cash_month is not none %}With {{ skills_est.model }} that's about ${{ '%.2f'|format(skills_est.cash_month) }} a month. {{ skills_est.note }}
+  {% else %}{{ skills_est.note }}{% endif %}
+  Adding a skill or synonym to your list re-scores everything for free; roles are only read once.
+  {% if skills_usage[0] %}<br>Last 30 days: {{ skills_usage[3] }} roles in {{ skills_usage[0] }} calls, {{ "{:,}".format(skills_usage[1]) }} tokens{% if skills_usage[2] %}, ${{ '%.3f'|format(skills_usage[2]) }} billed{% endif %}
+   (<a href="/settings?tab=costs">Costs &amp; limits</a>).{% endif %}
+ </div>
+
+ <h3 class="sub3">Which model reads the postings</h3>
+ <div class="agents">
+  <label class="agent {% if p.skills_via != 'claude' %}on{% endif %}"><input type="radio" name="skills_via" value="openrouter" {% if p.skills_via != 'claude' %}checked{% endif %}>
+   <span><b>OpenRouter, a small model</b> · recommended<br><span class="ink2">Cents a month with google/gemini-2.5-flash-lite.
+    Needs an OpenRouter key; stops at your monthly budget.</span><br><span class="dot {{ 'ok' if key_hint != 'not set' else 'no' }}">OpenRouter key {{ key_hint }}</span></span></label>
+  <label class="agent {% if p.skills_via == 'claude' %}on{% endif %}"><input type="radio" name="skills_via" value="claude" {% if p.skills_via == 'claude' %}checked{% endif %}>
+   <span><b>Your Claude subscription</b> (Haiku)<br><span class="ink2">No extra cost, but every call carries Claude Code's overhead
+    and counts toward your plan's limits.</span></span></label>
+ </div>
+ <div class="grid g2 mt">
+  <label class="fld"><span>Model</span>
+   <input type="text" name="skills_model" value="{{ p.skills_model }}" list="or-quick" placeholder="{{ 'haiku' if p.skills_via == 'claude' else 'google/gemini-2.5-flash-lite' }}">
+   <small class="muted">Blank uses the one shown. For Claude: haiku, sonnet or opus.</small></label>
+  <label class="fld"><span>Roles to read per day</span>
+   <input type="number" name="skills_per_day" value="{{ p.skills_per_day }}" min="5" max="100">
+   <small class="muted">The best-scored new roles each morning. Tokens grow with this number.</small></label>
+ </div>
+
+ <h3 class="sub3">Your skills</h3>
+ <label class="fld"><textarea name="my_skills" rows="8" placeholder="dbt = data build tool&#10;Snowflake&#10;Power BI = PowerBI, BI&#10;Python">{{ skills_text }}</textarea>
+  <small class="muted">One per line. Add other names after "=", separated by commas. Only list what's true: it decides what counts as a match.</small></label>
+ <div class="actions">
+  <button class="btn primary" name="action" value="save">Save</button>
+  <button class="btn" name="action" value="skills:build" title="One call: about 20,000 tokens on Claude, far fewer on OpenRouter">{{ 'Redraft from my resume' if skills_text else 'Draft from my resume' }}</button>
+  {% if p.skills_enabled %}<button class="btn ghost" name="action" value="skills:tag" title="Uses tokens now">Read today's new roles now</button>{% endif %}
+ </div>
+</section>
 {% endif %}
 </form>
 
@@ -226,5 +275,6 @@
 .actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
 .sub3{font-size:14px;font-weight:650;color:var(--ink-2);margin:18px 0 8px}
 .notice{margin:12px 0 0}
+.tokens{margin:12px 0 4px;padding:10px 12px;border-radius:10px;background:var(--warn-soft);color:var(--ink);font-size:14.5px}.tokens.on{background:var(--surface-2)}
 </style>
 {% endblock %}

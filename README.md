@@ -173,6 +173,15 @@ filling stay with the agent and its main model, since they need many tool turns 
 To spend less: choose Sonnet or Haiku for the daily run, tailor one role a day, and keep email sorting on
 Haiku or a local model.
 
+**Skill matching (optional, off by default).** The built-in ranking only counts words your resume shares with a
+posting, so "Looker" and "LookML" or "BI" and "business intelligence" never meet. Turn on skill matching
+(Settings > Daily run) and a model reads each new role's must-have and nice-to-have skills and checks them against
+your own editable skills list (with synonyms; it can draft the list from your resume once). Roles that need what you
+have rank higher, and the dashboard shows "4 of 5 must-haves · missing Looker". It costs tokens on every role it
+reads, and the Settings page says how many before you turn it on. Measured: 8 roles in one call took about 26,000
+tokens through Claude Code (most of it Claude Code's own overhead); a small OpenRouter model reads 25 roles a day for
+roughly 10 cents a month.
+
 ### Settings page
 
 Four tabs. The menu's Settings item opens **Setup** first, with a badge while a required step is missing.
