@@ -143,6 +143,9 @@ def test_job_sites_feeds_and_keys(fresh, tmp_path, monkeypatch):
     assert os.environ["ADZUNA_APP_KEY"] == "secretkey123"
     page = c.get("/setup").text
     assert "HigherEdJobs: IR | https://www.higheredjobs.com" in page and "secretkey123" not in page
+    # A key without its sign-up email names the empty field.
+    r = c.post("/setup/interests", data={"titles": "data engineer", "feed::usajobs": "1", "USAJOBS_API_KEY": "k123"})
+    assert "USAJOBS (needs its sign-up email)" in r.text and "needs its key" not in r.text
 
 
 def test_settings_tabs(fresh):

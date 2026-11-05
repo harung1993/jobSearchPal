@@ -572,7 +572,7 @@ def make_app(settings, db: DB) -> FastAPI:
         if r["bad"]:
             msg += " Couldn't read: " + "; ".join(r["bad"][:5]) + ". Use a careers-page URL, 'greenhouse slug', or a feed URL."
         if r["missing_keys"]:
-            msg += " Turned on without a key, so skipped until you add one: " + ", ".join(r["missing_keys"]) + "."
+            msg += " Skipped until you fill in the free API keys box: " + ", ".join(r["missing_keys"]) + "."
         return _back(msg, "about")
 
     @app.post("/setup/resume")

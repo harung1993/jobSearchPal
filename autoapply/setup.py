@@ -248,8 +248,15 @@ def save_interests(settings, form: dict) -> dict:
         elif line.strip():
             bad.append(line.strip()[:120])
     cfg["rss_feeds"] = feeds[:50]
-    missing = [EXTRA[f][1] for f in cfg["feeds"] if f in EXTRA and EXTRA[f][2]
-               and not all(form.get(k) or __import__("os").environ.get(k) for k in EXTRA[f][2])]
+    import os
+    names = {"ADZUNA_APP_ID": "app ID", "ADZUNA_APP_KEY": "app key", "USAJOBS_API_KEY": "key",
+             "USAJOBS_EMAIL": "sign-up email"}
+    missing = []
+    for f in cfg["feeds"]:
+        if f in EXTRA and EXTRA[f][2]:
+            lack = [names.get(k, k) for k in EXTRA[f][2] if not (str(form.get(k) or "").strip() or os.environ.get(k))]
+            if lack:  # say which field is empty: USAJOBS needs the sign-up email as well as the key
+                missing.append(f"{EXTRA[f][1].split(' (')[0]} (needs its {' and '.join(lack)})")
     ws = cfg.setdefault("work_search", {"label": "Work search", "weekly_minimum": 3})
     if "ws_state" in form:
         from .web import state_rules
