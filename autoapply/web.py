@@ -249,9 +249,34 @@ def make_app(settings, db: DB) -> FastAPI:
         return page("stats.html", s=stats.detail(db, floor=work_search(settings)[1]), nav="stats")
 
     @app.get("/skills")
-    def skills_page():
+    def skills_page(msg: str = ""):
         from . import skills
-        return page("skills.html", g=skills.gaps(db, settings), nav="skills")
+        from .prefs import Prefs
+        prefs = Prefs(settings.data_dir, settings.raw)
+        return page("skills.html", g=skills.gaps(db, settings), nav="skills", ai_on=skills.ai_on(prefs),
+                    ai_per_day=skills.ai_per_day(prefs), est=skills.estimate(db, prefs), msg=msg)
+
+    @app.post("/skills/ai")
+    def skills_ai(action: str = Form(...), per_day: str = Form("")):
+        """Turn the optional model reading on or off, or start reading now (in the background)."""
+        from . import skills
+        from .prefs import Prefs
+        prefs = Prefs(settings.data_dir, settings.raw)
+        if action in ("on", "off"):
+            prefs.data["skills_ai"] = action == "on"
+            if per_day.isdigit():
+                prefs.data["skills_ai_per_day"] = max(1, min(200, int(per_day)))
+            prefs.save()
+            return RedirectResponse("/skills?msg=" + ("on" if action == "on" else "off"), status_code=303)
+        if action == "run" and skills.ai_on(prefs):
+            import subprocess
+            import sys
+            log = open(settings.data_dir / "cron.log", "a")
+            subprocess.Popen([sys.executable, "-c", "from autoapply.cli import main; main()", "--config",
+                              str(settings.root / "config.yaml"), "skills", "--ai"], cwd=settings.root,
+                             stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL, start_new_session=True)
+            return RedirectResponse("/skills?msg=running", status_code=303)
+        return RedirectResponse("/skills", status_code=303)
 
     @app.post("/skills/mark")
     def skills_mark(skill: str = Form(...), mark: str = Form(...)):

@@ -96,6 +96,8 @@ def main(argv=None):
     ap.add_argument("--config", default="config.yaml")
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("find")
+    a = sub.add_parser("skills"); a.add_argument("--ai", action="store_true", help="read new jobs' skills with a model, if turned on")
+    a.add_argument("--limit", type=int, default=None)
     a = sub.add_parser("board"); a.add_argument("action", choices=["add", "list"]); a.add_argument("ats", nargs="?", choices=sorted(finder.FETCHERS)); a.add_argument("slug", nargs="?")
     a = sub.add_parser("alerts"); a.add_argument("--days", type=int, default=1)
     a = sub.add_parser("sync-email"); a.add_argument("--days", type=int, default=60); a.add_argument("--rebuild", action="store_true"); a.add_argument("--no-review", action="store_true")
@@ -154,6 +156,20 @@ def main(argv=None):
         failed = [k for k, v in stats.items() if v["error"]]
         db.log_run("find", True, f"{len(new)} new roles from {len(stats)} sources" + (f"; {len(failed)} failed" if failed else ""))
         _out([{k: j[k] for k in ("id", "company", "title", "location", "url")} for j in new])
+    elif args.cmd == "skills":
+        from . import skills
+        from .prefs import Prefs
+        if args.ai:
+            prefs = Prefs(s.data_dir, s.raw)
+            if not skills.ai_on(prefs):
+                print("off (turn it on from the Skills page)")
+                return
+            r = skills.tag_jobs(db, prefs, args.limit)
+            db.log_run("skills", not r["error"], f"{r['read']} jobs read, {r['left']} left" + (f"; {r['error']}" if r["error"] else ""))
+            _out(r)
+        else:
+            g = skills.gaps(db, s)
+            _out([{k: i[k] for k in ("name", "count", "required", "notes")} for i in g["gaps"][:20]])
     elif args.cmd == "log-run":
         db.log_run(args.kind, args.result == "ok", args.msg)
     elif args.cmd == "board":

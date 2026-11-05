@@ -9,7 +9,7 @@
 <li class="sk">
  <div class="sk-bar" aria-hidden="true"><span style="width:{{ [i.pct, 3]|max }}%"></span></div>
  <div class="sk-main"><div class="sk-t"><b>{{ i.name }}</b> <span class="muted">· {{ i.area }}</span></div>
-  <div class="m">{% if i.count %}Asked for in {{ i.count }} role{{ '' if i.count == 1 else 's' }} ({{ i.pct }}%){% if i.applied %}, {{ i.applied }} you applied to{% endif %}{% endif %}{% if i.notes %}{% if i.count %} · {% endif %}flagged as a gap in {{ i.notes }} tailoring note{{ '' if i.notes == 1 else 's' }}{% endif %}</div>
+  <div class="m">{% if i.count %}Asked for in {{ i.count }} role{{ '' if i.count == 1 else 's' }} ({{ i.pct }}%){% if i.required %}, required in {{ i.required }}{% endif %}{% if i.applied %}, {{ i.applied }} you applied to{% endif %}{% endif %}{% if i.notes %}{% if i.count %} · {% endif %}flagged as a gap in {{ i.notes }} tailoring note{{ '' if i.notes == 1 else 's' }}{% endif %}</div>
   {% if i.examples %}<div class="m">{% for e in i.examples %}<a href="/job/{{ e.id|urlencode }}">{{ e.label }}</a>{{ ", " if not loop.last }}{% endfor %}</div>{% endif %}</div>
  <div class="acts">{% if i.url %}<a class="btn sm" href="{{ i.url }}" target="_blank" rel="noopener noreferrer">Learn</a>{% endif %}{{ actions }}</div>
 </li>{% endmacro %}
@@ -22,6 +22,34 @@
  {% if g.gaps %}<ul class="sk-list">{% for i in g.gaps[:12] %}{{ row(i, mark(i, "Learning", "learning", "") ~ mark(i, "I have this", "have") ~ mark(i, "Hide", "hidden")) }}{% endfor %}</ul>
  {% if g.gaps|length > 12 %}<details class="more"><summary>Show {{ g.gaps|length - 12 }} more</summary><ul class="sk-list">{% for i in g.gaps[12:] %}{{ row(i, mark(i, "Learning", "learning", "") ~ mark(i, "I have this", "have") ~ mark(i, "Hide", "hidden")) }}{% endfor %}</ul></details>{% endif %}
  {% else %}<div class="empty-state"><b>Nothing missing.</b><span>Your resume covers everything these roles ask for.</span></div>{% endif %}
+</section>
+
+{% set e = est %}
+<section class="card mt" id="ai" aria-labelledby="ai-h"><h2 id="ai-h">Read skills with AI <span class="pill {{ 'submitted' if ai_on else '' }}" style="text-transform:none">{{ "on" if ai_on else "off, optional" }}</span></h2>
+ {% if msg == "on" %}<div class="notice ok" style="margin:0 0 12px">Turned on. New jobs are read after each morning's search{% if e.backlog %}; press Read now for the {{ e.backlog }} already found{% endif %}.</div>
+ {% elif msg == "off" %}<div class="notice" style="margin:0 0 12px">Turned off. Skills already read are kept; new jobs use keywords again.</div>
+ {% elif msg == "running" %}<div class="notice ok" style="margin:0 0 12px">Reading in the background. Refresh in a minute or two.</div>{% endif %}
+ <p class="ink2">Keywords (the default) only know the list above and can't tell "required" from "nice to have". With this on, a model reads each
+  job once and lists every skill it asks for, marked required or nice to have, including ones that aren't on the list.
+  {% if g.read_by_ai %}{{ g.read_by_ai }} of the {{ g.jobs }} jobs here have been read so far.{% endif %}</p>
+ <div class="ai-cost">
+  <div><div class="lbl">Per job</div><div class="v">~{{ "{:,}".format(e.per_job) }} tokens</div></div>
+  <div><div class="lbl">A day (~{{ e.per_day }} new jobs)</div><div class="v">~{{ "{:,}".format(e.tokens_day) }} tokens</div></div>
+  <div><div class="lbl">A month</div><div class="v">~{{ "{:,}".format(e.tokens_month) }} tokens</div></div>
+  <div><div class="lbl">Jobs already found, once</div><div class="v">~{{ "{:,}".format(e.backlog_tokens) }} tokens <small class="muted">({{ e.backlog }} jobs)</small></div></div>
+ </div>
+ <p class="ink2">{% if not e.source %}<b>No model is set up yet.</b> It uses the same model as email sorting: turn one on under <a href="/settings">Settings &gt; Email sorting</a>.
+  {% elif e.source == "openrouter" %}It would use <b>OpenRouter, {{ e.model }}</b>, billed per token{% if e.price_job is not none %}: about <b>${{ "%.4f"|format(e.price_job) }} a job</b>, ${{ "%.2f"|format(e.price_job * e.per_day * 30) }} a month at this pace{% else %} (price not known for this model){% endif %}. It counts toward your monthly API budget and stops when that's reached.
+  {% elif e.source == "claude" %}It would use your <b>Claude subscription ({{ e.model }})</b>. There's no bill, but it uses the same usage limits as the daily run, and Claude Code adds its own instructions to each call, so these numbers are rough.
+  {% elif e.source == "codex" %}It would use your <b>ChatGPT subscription through Codex</b>. There's no bill, but it uses the same usage limits as the daily run, and Codex adds its own instructions to each call, so these numbers are rough.
+  {% elif e.source == "ollama" %}It would use <b>Ollama ({{ e.model }})</b> on your server: free, but slow without a GPU.{% endif %}
+  These are estimates from your own jobs' lengths; once it runs, real use is logged and shown here. Only job postings are sent to the model, nothing about you.</p>
+ {% if e.used.jobs %}<p class="muted">Last 30 days: {{ e.used.jobs }} jobs read, {{ "{:,}".format(e.used.tokens) }} tokens{% if e.used.cost %}, ${{ "%.4f"|format(e.used.cost) }} billed{% endif %}{% if e.used.est %} (about ${{ "%.2f"|format(e.used.est) }} at API prices){% endif %}.</p>{% endif %}
+ <form method="post" action="/skills/ai" class="ai-form">
+  <label class="ink2">At most <input type="text" name="per_day" value="{{ ai_per_day }}" inputmode="numeric" size="3"> jobs a day</label>
+  {% if ai_on %}<button class="btn" name="action" value="off">Turn off</button>{% if e.backlog and e.source %}<button class="btn primary" name="action" value="run">Read now ({{ [e.backlog, ai_per_day]|min }} jobs)</button>{% endif %}
+  {% else %}<button class="btn primary" name="action" value="on"{% if not e.source %} disabled{% endif %}>Turn on</button>{% endif %}
+ </form>
 </section>
 
 {% if g.learning %}<section class="card mt" aria-labelledby="learn-h"><h2 id="learn-h">Learning now <span class="count">{{ g.learning|length }}</span></h2>
@@ -42,7 +70,7 @@
  <ul class="feed">{% for req, n in g.other_notes %}<li><span>{{ req }}</span><span class="when">{{ n }} role{{ '' if n == 1 else 's' }}</span></li>{% endfor %}</ul></section>{% endif %}
 {% endif %}
 
-<p class="muted mt" style="font-size:14px">Counted from job descriptions with a fixed list of about 90 skills, so a skill it doesn't know won't show. "Your resume" means your base resume, CLAUDE.local.md and notes about you.</p>
+<p class="muted mt" style="font-size:14px">{% if g.read_by_ai %}Jobs read by AI use the skills the model found; the rest are{% else %}Counted{% endif %} matched against a fixed list of about 90 skills, so a skill that isn't on it won't show for those. "Your resume" means your base resume, CLAUDE.local.md and notes about you.</p>
 
 <style>
 .lead-p{margin:0 0 6px}.inline{display:inline;margin:0}.chips{display:flex;flex-wrap:wrap;gap:6px}.chips .pill{text-transform:none}
@@ -51,6 +79,10 @@ ul.sk-list{list-style:none;margin:0;padding:0}
 .sk:last-child{border-bottom:0}.sk-t b{font-size:16.5px}.sk .m{font-size:14px;color:var(--ink-3)}
 .sk-bar{height:8px;border-radius:4px;background:var(--surface-2);overflow:hidden}.sk-bar span{display:block;height:100%;background:var(--sun);border-radius:4px}
 .sk .acts{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.ai-cost{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:4px 0 12px}.ai-cost>div{background:var(--surface-2);border-radius:var(--r-ctl);padding:10px 12px}
+.ai-cost .lbl{font-size:13.5px;color:var(--ink-3);font-weight:600}.ai-cost .v{font-weight:700;font-size:16.5px}
+.ai-form{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.ai-form input{width:3.5em}
+@media (max-width:860px){.ai-cost{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:640px){.sk{grid-template-columns:minmax(0,1fr)}.sk-bar{width:120px}.sk .acts{justify-content:flex-start}}
 </style>
 {% endblock %}

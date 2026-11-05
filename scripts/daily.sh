@@ -27,6 +27,7 @@ fi
 progress "syncing email and searching job boards"
 autoapply sync-email --days 3 >/dev/null 2>&1 || autoapply log-run sync-email fail "sync failed; see data/cron.log" || true
 autoapply find >/dev/null 2>&1 || true
+autoapply skills --ai >/dev/null 2>&1 || true   # only if turned on (Skills page): a model reads new jobs' skills
 
 today=data/daily/$(date +%F).md
 if [ "$trigger" = manual ]; then echo "
