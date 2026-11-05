@@ -74,7 +74,7 @@ def test_null_location_does_not_crash(monkeypatch, tmp_path):
 
 RSS = b"""<?xml version="1.0"?><rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/"><channel><title>HigherEdJobs</title>
 <item><title>Data Engineer, Institutional Research</title><link>https://www.higheredjobs.com/admin/details.cfm?JobCode=1</link>
-<description>&lt;p&gt;Northeastern University - Boston, MA&lt;/p&gt;</description><guid>1</guid><dc:creator>Northeastern University</dc:creator></item>
+<description>&lt;p&gt;Riverside State University - Boston, MA&lt;/p&gt;</description><guid>1</guid><dc:creator>Riverside State University</dc:creator></item>
 <item><title>Professor of History</title><link>https://www.higheredjobs.com/faculty/details.cfm?JobCode=2</link><guid>2</guid></item>
 </channel></rss>"""
 ATOM = b"""<feed xmlns="http://www.w3.org/2005/Atom"><title>Jobs</title><entry><title>Senior Data Engineer</title>
@@ -96,7 +96,7 @@ def test_rss_and_atom_feeds(monkeypatch, tmp_path):
     new = finder.run(s, DB(tmp_path / "t.db"), stats)
     assert sorted(j["title"] for j in new) == ["Data Engineer, Institutional Research", "Senior Data Engineer"]
     hej = next(j for j in new if "higheredjobs" in j["url"])
-    assert hej["company"] == "Northeastern University" and "Boston, MA" in hej["description"]
+    assert hej["company"] == "Riverside State University" and "Boston, MA" in hej["description"]
     assert stats["rss:HEJ"] == {"fetched": 2, "matched": 1, "new": 1, "error": ""}
 
 

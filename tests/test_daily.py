@@ -200,7 +200,7 @@ def test_manual_run_only_picks_and_applies(tmp_path, capsys, monkeypatch):
 
 
 def test_one_pick_per_company_and_shortlist(tmp_path, capsys):
-    """11/4: both of the day's picks were the same company (two Samsara roles). One per company; the dashboard's
+    """11/4: both of the day's picks were the same company (two roles at one company). One per company; the dashboard's
     shortlist also shows one per company and skips companies you applied to."""
     s, db, cfg = make(tmp_path)
     db.upsert_job({"id": "gh:a:9", "ats": "greenhouse", "company": "ACME", "title": "Director, Analytics Engineering",

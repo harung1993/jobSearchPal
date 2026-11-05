@@ -51,7 +51,7 @@ def page_texts(path: Path) -> list[str]:
 
 
 def base_dates(root: Path) -> list[str]:
-    """Date ranges from the base resume (e.g. 'Jul 2020 - Oct 2026'): the tailored one must keep every one."""
+    """Date ranges from the base resume (e.g. 'Mar 2019 - Sep 2026'): the tailored one must keep every one."""
     from .setup import base_resume
     b = base_resume(root)
     if not b:
