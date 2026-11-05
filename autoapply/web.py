@@ -248,6 +248,17 @@ def make_app(settings, db: DB) -> FastAPI:
     def stats_page():
         return page("stats.html", s=stats.detail(db, floor=work_search(settings)[1]), nav="stats")
 
+    @app.get("/skills")
+    def skills_page():
+        from . import skills
+        return page("skills.html", g=skills.gaps(db, settings), nav="skills")
+
+    @app.post("/skills/mark")
+    def skills_mark(skill: str = Form(...), mark: str = Form(...)):
+        from . import skills
+        skills.set_mark(settings.data_dir, skill, mark)
+        return RedirectResponse("/skills", status_code=303)
+
     @app.get("/job/{job_id:path}")
     def job_page(job_id: str):
         job, plan, report = load(job_id)

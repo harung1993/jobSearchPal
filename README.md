@@ -23,6 +23,7 @@ and writes an interview prep pack when an interview comes in.
 
 ![Work-search log](docs/work-search.png)
 ![Leads and job sources](docs/leads.png)
+![Skills to learn](docs/skills.png)
 ![Stats](docs/stats-dark.png)
 ![Emails](docs/emails.png)
 ![Settings](docs/settings.png)
@@ -198,6 +199,11 @@ Choices are saved in `data/settings.json`. Nothing on the page needs a restart.
   (documents present and current, required answers filled, consents confirmed) keep Submit locked until they pass.
 - **Stats:** response and interview rates, median time to reply, funnels, results by application
   platform, reply-time buckets, weeks at your work-search minimum, and pipeline trends.
+- **Skills:** what the roles you matched keep asking for that your resume doesn't show, most asked first,
+  with the roles that ask and a link to each skill's own docs or free course. The tailoring notes' fit/gap
+  tables count double, since they're roles you applied to. Mark a skill **I have this** (then put it on
+  your resume), **Learning**, or **Hide**. No model is involved: it's a fixed list of about 90 skills
+  matched against the job descriptions. It also points to free WIOA training through your state's career center.
 - **Emails:** see above.
 - **Settings:** Setup, Email sorting, Daily run, and Costs & limits tabs (above).
 - **Work search:** see [Unemployment help](#unemployment-help).

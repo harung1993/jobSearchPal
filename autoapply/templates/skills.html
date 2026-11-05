@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Skills{% endblock %}
+{% block body %}
+<div class="ph"><div><h1>Skills to learn</h1>
+ <div class="sub">What the {{ g.jobs }} roles matched in the last {{ g.days }} days ask for that your resume and notes don't show yet, most asked first.</div></div></div>
+
+{% macro mark(i, label, value, cls="ghost") %}<form method="post" action="/skills/mark" class="inline"><input type="hidden" name="skill" value="{{ i.name }}"><input type="hidden" name="mark" value="{{ value }}"><button class="btn sm {{ cls }}">{{ label }}</button></form>{% endmacro %}
+{% macro row(i, actions) %}
+<li class="sk">
+ <div class="sk-bar" aria-hidden="true"><span style="width:{{ [i.pct, 3]|max }}%"></span></div>
+ <div class="sk-main"><div class="sk-t"><b>{{ i.name }}</b> <span class="muted">· {{ i.area }}</span></div>
+  <div class="m">{% if i.count %}Asked for in {{ i.count }} role{{ '' if i.count == 1 else 's' }} ({{ i.pct }}%){% if i.applied %}, {{ i.applied }} you applied to{% endif %}{% endif %}{% if i.notes %}{% if i.count %} · {% endif %}flagged as a gap in {{ i.notes }} tailoring note{{ '' if i.notes == 1 else 's' }}{% endif %}</div>
+  {% if i.examples %}<div class="m">{% for e in i.examples %}<a href="/job/{{ e.id|urlencode }}">{{ e.label }}</a>{{ ", " if not loop.last }}{% endfor %}</div>{% endif %}</div>
+ <div class="acts">{% if i.url %}<a class="btn sm" href="{{ i.url }}" target="_blank" rel="noopener noreferrer">Learn</a>{% endif %}{{ actions }}</div>
+</li>{% endmacro %}
+
+{% if not g.jobs %}
+<section class="card"><div class="empty-state"><b>Nothing to count yet.</b><span>After a daily run finds roles with full descriptions, the skills they ask for show up here.</span></div></section>
+{% else %}
+<section class="card hero" aria-labelledby="gap-h"><h2 id="gap-h">Not on your resume yet <span class="count">{{ g.gaps|length }}</span></h2>
+ <p class="muted lead-p">Some of these you may already know: mark them <b>I have this</b> and add them to your resume, which helps more than any course. For the rest, start at the top.</p>
+ {% if g.gaps %}<ul class="sk-list">{% for i in g.gaps[:12] %}{{ row(i, mark(i, "Learning", "learning", "") ~ mark(i, "I have this", "have") ~ mark(i, "Hide", "hidden")) }}{% endfor %}</ul>
+ {% if g.gaps|length > 12 %}<details class="more"><summary>Show {{ g.gaps|length - 12 }} more</summary><ul class="sk-list">{% for i in g.gaps[12:] %}{{ row(i, mark(i, "Learning", "learning", "") ~ mark(i, "I have this", "have") ~ mark(i, "Hide", "hidden")) }}{% endfor %}</ul></details>{% endif %}
+ {% else %}<div class="empty-state"><b>Nothing missing.</b><span>Your resume covers everything these roles ask for.</span></div>{% endif %}
+</section>
+
+{% if g.learning %}<section class="card mt" aria-labelledby="learn-h"><h2 id="learn-h">Learning now <span class="count">{{ g.learning|length }}</span></h2>
+ <ul class="sk-list">{% for i in g.learning %}{{ row(i, mark(i, "Done, I have this", "have", "") ~ mark(i, "Stop", "clear")) }}{% endfor %}</ul></section>{% endif %}
+
+<section class="grid g11 mt">
+ <div class="card"><h2>Free training while you're unemployed</h2>
+  <p class="ink2">Your state's career center (American Job Centers, like MassHire in Massachusetts) can often pay for training in an in-demand skill through the federal WIOA program, and approved training can excuse or count toward your work search in many states. Ask at your next appointment, or find your center at <a href="https://www.careeronestop.org/LocalHelp/AmericanJobCenters/find-american-job-centers.aspx" target="_blank" rel="noopener noreferrer">CareerOneStop</a>.</p>
+  <p class="muted">Check with your state's unemployment agency before starting a course, so it doesn't affect your benefits.</p></div>
+ <div class="card"><h2>Already on your resume <span class="count">{{ g.have|length }}</span></h2>
+  <p class="muted">Most asked first. Keep these near the top of every tailored resume.</p>
+  <p class="chips">{% for i in g.have[:24] %}<span class="pill">{{ i.name }}{% if i.count %} · {{ i.count }}{% endif %}</span>{% endfor %}</p>
+  {% if g.hidden %}<details><summary class="muted">Hidden ({{ g.hidden|length }})</summary><p class="chips">{% for i in g.hidden %}{{ mark(i, "Show " ~ i.name, "clear") }}{% endfor %}</p></details>{% endif %}</div>
+</section>
+
+{% if g.other_notes %}<section class="card mt"><h2>Other gaps from your tailoring notes</h2>
+ <p class="muted">Requirements the fit/gap tables marked as a gap that aren't in the skills list above.</p>
+ <ul class="feed">{% for req, n in g.other_notes %}<li><span>{{ req }}</span><span class="when">{{ n }} role{{ '' if n == 1 else 's' }}</span></li>{% endfor %}</ul></section>{% endif %}
+{% endif %}
+
+<p class="muted mt" style="font-size:14px">Counted from job descriptions with a fixed list of about 90 skills, so a skill it doesn't know won't show. "Your resume" means your base resume, CLAUDE.local.md and notes about you.</p>
+
+<style>
+.lead-p{margin:0 0 6px}.inline{display:inline;margin:0}.chips{display:flex;flex-wrap:wrap;gap:6px}.chips .pill{text-transform:none}
+ul.sk-list{list-style:none;margin:0;padding:0}
+.sk{display:grid;grid-template-columns:72px minmax(0,1fr) auto;gap:14px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.sk:last-child{border-bottom:0}.sk-t b{font-size:16.5px}.sk .m{font-size:14px;color:var(--ink-3)}
+.sk-bar{height:8px;border-radius:4px;background:var(--surface-2);overflow:hidden}.sk-bar span{display:block;height:100%;background:var(--sun);border-radius:4px}
+.sk .acts{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+@media (max-width:640px){.sk{grid-template-columns:minmax(0,1fr)}.sk-bar{width:120px}.sk .acts{justify-content:flex-start}}
+</style>
+{% endblock %}
