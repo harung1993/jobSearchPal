@@ -23,6 +23,8 @@ from .fillers import fill, submit
 
 env = Environment(loader=FileSystemLoader(Path(__file__).parent / "templates"), autoescape=True)
 env.globals["ws_label"] = "Work search"
+env.globals["strptime"] = lambda s: datetime.strptime(str(s)[:10], "%Y-%m-%d").date()
+env.filters["hue"] = lambda s: sum(ord(c) * (i + 7) for i, c in enumerate((s or "?").lower())) % 360  # a steady colour per company
 # "confirmed" (the stored kind) read as a confirmed interview; it only means the application was received.
 env.filters["label"] = lambda k: {"confirmed": "received"}.get(k, k)
 
@@ -44,7 +46,8 @@ def state_rules() -> dict:
     data = yaml.safe_load((Path(__file__).parent / "work_search_states.yaml").read_text())
     for r in data["states"].values():
         ww = r.get("waiting_week")  # text in the checked data ("One unpaid week...", "None"), a bool in older files
-        r["waiting_week_note"] = ww if isinstance(ww, str) and not ww.strip().lower().startswith("none") else ""
+        r["waiting_week_note"] = (ww if isinstance(ww, str) and not ww.strip().lower().startswith("none")
+                                  else (r.get("waiting_week_note") or "") if ww is True else "")
         r["waiting_week"] = bool(r["waiting_week_note"]) if isinstance(ww, str) else bool(ww)
         r["checked"] = str(r.get("checked") or data["checked"])
         r.setdefault("source", data["source"])
@@ -116,7 +119,8 @@ def make_app(settings, db: DB) -> FastAPI:
         from .rank import shortlist
         s = stats.compute(db, floor=work_search(settings)[1])
         more = shortlist(db, settings, SHORTLIST - len(s["ready"]), skip_companies=[j["company"] for j in s["ready"]])
-        return page("index.html", s=s, shortlist=more, decline_reasons=DECLINE_REASONS,
+        s["now_hour"] = datetime.now().hour
+        return page("index.html", s=s, shortlist=more, decline_reasons=DECLINE_REASONS, first_name=(settings.profile or {}).get("first_name", ""),
                     interviews=prep.interviews(db, settings.data_dir)[:6],
                     todo=todo, nav="dashboard", running=run_state(), picks_default=Prefs(settings.data_dir, settings.raw).limits()["picks_per_day"])
 

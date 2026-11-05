@@ -12,7 +12,7 @@
   <div class="meter {% if cur and cur.count >= floor %}ok{% endif %}"><span style="width:{{ [100, (100 * (cur.count if cur else 0) / (floor or 1))|round]|min }}%"></span></div>
   <div class="sub">{% if cur and cur.count >= floor %}Minimum met for this week.{% else %}{{ floor - (cur.count if cur else 0) }} more needed{% if cur %} by Saturday ({{ (cur.end - today).days }} day{{ '' if (cur.end - today).days == 1 else 's' }} left){% endif %}.{% endif %}</div></div>
  <div class="tw-side">{% if open_tasks %}<div class="lbl">Next deadline</div><div class="t">{{ open_tasks[0].title }}</div>
-   <div class="sub">{{ open_tasks[0].due }}{% if open_tasks|length > 1 %} · {{ open_tasks|length - 1 }} more below{% endif %}</div>
+   <div class="sub">{% set dd = (open_tasks[0].due|string)[:10] %}{% set left = (strptime(dd) - today).days %}{{ strptime(dd).strftime("%a %b %-d") }}{% if left > 1 %}, in {{ left }} days{% elif left == 1 %}, tomorrow{% elif left == 0 %}, today{% else %}, overdue{% endif %}{% if open_tasks|length > 1 %} · {{ open_tasks|length - 1 }} more below{% endif %}</div>
   {% else %}<div class="lbl">Next deadline</div><div class="sub">None yet. Add seminars, RESEA meetings or documents below.</div>{% endif %}
   {% if cur %}<a class="btn sm" href="/dua/{{ cur.start.isoformat() }}.zip">Download this week's proof</a>{% endif %}</div>
 </section>

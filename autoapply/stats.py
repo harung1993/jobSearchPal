@@ -46,7 +46,8 @@ def compute(db: DB, today: date | None = None, weeks: int = 12, floor: int = 3) 
     return {
         "today": today,
         "applied": len(applied),
-        "this_week": per_week.get(this_week, 0),
+        # Work-search activities (applications, recruiter contacts, interviews, RESEA), as the work-search log counts them.
+        "this_week": next((w["count"] for w in dua_weeks(db, today) if w["start"] == this_week), 0),
         "this_week_start": this_week,
         "dua_floor": floor,
         "series": series,
