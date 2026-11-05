@@ -348,7 +348,7 @@ def test_decline_and_prepare_from_dashboard(tmp_path, base_url, pdfs, monkeypatc
     db.conn.execute("insert into leads (key, title, company, status, job_id) values ('acme|ae', 'AE', 'Acme', 'tracked', 'manual:gh')")
     db.conn.commit()
     html = c.get("/").text
-    assert "Review" in html and "Decline" in html and "Prepare this one" in html and "Globex" in html and "already applied" in html
+    assert "Review" in html and "Decline" in html and "Prepare" in html and "Shortlist" in html and "Globex" in html and "already applied" in html
     c.post("/decline/manual:gh", data={"reason": "location"})
     job = db.get("manual:gh")
     assert job["status"] == "skipped" and job["error"] == "Declined (location)" and json.loads(job["plan_json"])["answers"]

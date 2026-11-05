@@ -17,7 +17,8 @@
 .decline .pop{position:absolute;right:0;top:calc(100% + 6px);z-index:5;display:flex;flex-direction:column;align-items:stretch;gap:4px;
  background:var(--surface);border:1px solid var(--line-2);border-radius:10px;padding:8px;box-shadow:0 8px 24px rgba(0,0,0,.12);min-width:150px}
 .decline .pop span{font-size:12px;padding:0 4px 2px}.decline .pop .btn{justify-content:flex-start;text-align:left}
-.avatar.todo-av{opacity:.55}@media (max-width:600px){.ready{flex-wrap:wrap}.ready .acts{width:100%;justify-content:flex-start;padding-left:50px}.decline .pop{right:auto;left:0}}</style>
+.avatar.todo-av{opacity:.55}.group-h{display:flex;flex-direction:column;gap:2px;margin:14px 0 2px;padding-top:10px;border-top:1px solid var(--line)}.group-h:first-of-type{border-top:0;padding-top:0;margin-top:4px}
+.group-h b{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-2)}.group-h span{font-size:12.5px;color:var(--ink-3)}@media (max-width:600px){.ready{flex-wrap:wrap}.ready .acts{width:100%;justify-content:flex-start;padding-left:50px}.decline .pop{right:auto;left:0}}</style>
 <script>document.addEventListener("submit",e=>{const f=e.target;if(!f.matches("form.prepare"))return;
  if(!confirm("Prepare: "+f.dataset.role+"\n\nThis runs the agent now: it tailors your resume and cover letter and fills the form. "+
   "It uses credits, roughly 1M tokens of your Claude plan (or OpenRouter credit, if the daily run uses it). Nothing is submitted until you press Submit."))e.preventDefault()});
@@ -35,17 +36,19 @@ document.addEventListener("click",e=>{document.querySelectorAll("details.decline
  <form method="post" action="/decline/{{ j.id|urlencode }}" class="pop" aria-label="Why decline {{ j.company }}?"><span class="ink2">Why?</span>
   {% for k, label in decline_reasons.items() %}<button class="btn ghost sm" name="reason" value="{{ k }}">{{ label }}</button>{% endfor %}</form></details>{% endmacro %}
 <section class="card hero" aria-labelledby="ready-h"><h2 id="ready-h">Ready for you <span class="count">{{ s.ready|length + shortlist|length }}</span></h2>
+ {% if s.ready %}<div class="group-h"><b>Ready to submit</b><span>Filled in and waiting for your review. Nothing is sent until you press Submit.</span></div>
  {% for j in s.ready %}<div class="ready"><div class="avatar" aria-hidden="true">{{ (j.company or '?')[:1]|upper }}</div>
   <div class="body"><div class="t">{{ co(j.company) }} · {{ j.title }}</div>
    <div class="m">{{ j.location or "Location not listed" }}{% if j.pay %} · {{ j.pay }}{% endif %}{% if j.error %} · <span style="color:var(--bad)">{{ j.error|truncate(80) }}</span>{% endif %}</div></div>
   <div class="acts">{{ decline(j) }}<a class="btn primary sm" href="/job/{{ j.id|urlencode }}">Review</a></div></div>
- {% endfor %}
- {% for j in shortlist %}<div class="ready"><div class="avatar todo-av" aria-hidden="true">{{ (j.company or '?')[:1]|upper }}</div>
-  <div class="body"><div class="t">{{ co(j.company) }} · <a href="/job/{{ j.id|urlencode }}">{{ j.title }}</a> <span class="pill waiting">not prepared</span></div>
-   <div class="m">{{ j.location or "Location not listed" }}{% if j.why %} · {{ j.why|truncate(90) }}{% else %} · score {{ '%.1f'|format(j.score or 0) }}{% endif %}</div></div>
+ {% endfor %}{% endif %}
+ {% if shortlist %}<div class="group-h"><b>Shortlist</b><span>Good matches from today's search, not tailored yet. Prepare the ones you want, decline the rest.</span></div>
+ {% for j in shortlist %}<div class="ready short"><div class="avatar todo-av" aria-hidden="true">{{ (j.company or '?')[:1]|upper }}</div>
+  <div class="body"><div class="t">{{ co(j.company) }} · {{ j.title }}</div>
+   <div class="m">{{ j.location or "Location not listed" }}{% if j.pay %} · {{ j.pay }}{% endif %}{% if j.why %} · {{ j.why|truncate(90) }}{% endif %} · <a href="/job/{{ j.id|urlencode }}">details</a></div></div>
   <div class="acts">{{ decline(j) }}{% if not running %}<form method="post" action="/prepare/{{ j.id|urlencode }}" class="prepare" data-role="{{ j.company }} · {{ j.title }}">
-   <button class="btn sm" title="Tailor and fill this one now. Uses credits.">Prepare this one</button></form>{% endif %}</div></div>
- {% endfor %}
+   <button class="btn sm" title="Tailor and fill this one now. Uses credits.">Prepare</button></form>{% endif %}</div></div>
+ {% endfor %}{% endif %}
  {% if not s.ready and not shortlist %}<div class="empty-state"><b>You're all caught up.</b><span>The next daily run finds and prepares more roles.</span></div>{% endif %}
  {% for r in interviews %}<div class="ready"><div class="avatar iv" aria-hidden="true">{{ (r.job.company or '?')[:1]|upper }}</div>
   <div class="body"><div class="t">{{ co(r.job.company) }} · {{ r.job.title }} <span class="pill interview">interview</span></div>
