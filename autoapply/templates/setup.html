@@ -4,7 +4,7 @@
 <style>.ws-rule{background:var(--surface-2);border-radius:10px;padding:10px 12px;font-size:15px}.ws-rule p{margin:0 0 4px}.ws-rule p:last-child{margin:0}</style>
 {% set s = st.steps %}
 {% set req_done = 4 - st.left|length %}
-{% set tab_sub = "Everything UnemploymentPal needs to know about you and your search. Come back and change any of it." %}
+{% set tab_sub = "Everything unemploymentPal needs to know about you and your search. Come back and change any of it." %}
 {% include "_tabs.html" %}
 
 <div class="setup-top">
@@ -192,7 +192,7 @@
 
 <section class="card mt step" id="gmail">
  <h2><span><span class="n {{ 'done' if s.gmail.done }}">{{ "✓" if s.gmail.done else "6" }}</span> Gmail</span><span class="count">{{ s.gmail.note }}</span></h2>
- <p class="lead">Lets UnemploymentPal read job-alert emails (LinkedIn, Indeed and others), sort replies from companies, remind you to
+ <p class="lead">Lets unemploymentPal read job-alert emails (LinkedIn, Indeed and others), sort replies from companies, remind you to
   follow up, and email you a morning brief. It reads only, never marks anything read, and never sends anything except the brief to you.</p>
  <form method="post" action="/setup/gmail">
   <div class="grid g3">
