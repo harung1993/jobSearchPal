@@ -4,7 +4,7 @@
 <style>.finish{background:var(--accent-soft);border:1px solid color-mix(in srgb,var(--accent) 40%,transparent)} .finish h2{font-size:17px;color:var(--accent-ink)}
 .finish .why{margin:-4px 0 10px;font-weight:600} .finish .steps{margin:0 0 12px;padding-left:20px;display:grid;gap:10px}
 .finish .cmd{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:8px 0 4px;padding:10px 12px;background:var(--surface);border-radius:12px;border:1px solid var(--line-2)}
-.finish .cmd code{font-size:14px;background:none;padding:0;user-select:all;word-break:break-all;flex:1;min-width:0}
+.finish .cmd code{font-size:15.5px;background:none;padding:0;user-select:all;word-break:break-all;flex:1;min-width:0}
 .finish small{color:var(--ink-2)}</style>
 <a class="crumb" href="/">← Dashboard</a>
 <header class="top"><div><h1>{{ job.company|title if job.company.islower() else job.company }} · {{ job.title }}</h1>
@@ -63,8 +63,8 @@
   {% if bad %}<ul class="checks">{% for c in bad %}<li class="{{ 'fail' if c.hard else 'warnc' }}"><b>{{ c.group }}:</b> {{ c.name }}{% if c.detail %} <span class="ink2">· {{ c.detail }}</span>{% endif %}</li>{% endfor %}</ul>{% endif %}
   <details><summary>All checks</summary><ul class="checks">{% for c in checks %}<li class="{{ 'okc' if c.ok else ('fail' if c.hard else 'warnc') }}"><b>{{ c.group }}:</b> {{ c.name }}{% if c.detail %} <span class="ink2">· {{ c.detail }}</span>{% endif %}</li>{% endfor %}</ul></details>
  </section>
- <style>.pre h2{font-size:15px}.pre.stop{border-color:color-mix(in srgb,var(--bad-dot) 45%,var(--line))}.pre.go h2{color:var(--good)}
-  .checks{list-style:none;margin:4px 0 8px;padding:0;display:grid;gap:6px;font-size:13px}
+ <style>.pre h2{font-size:16.5px}.pre.stop{border-color:color-mix(in srgb,var(--bad-dot) 45%,var(--line))}.pre.go h2{color:var(--good)}
+  .checks{list-style:none;margin:4px 0 8px;padding:0;display:grid;gap:6px;font-size:14.5px}
   .checks li{display:flex;gap:8px;align-items:baseline}.checks li::before{flex:none;font-weight:700;width:14px}
   .checks .okc::before{content:"✓";color:var(--good)}.checks .fail::before{content:"✕";color:var(--bad)}.checks .warnc::before{content:"!";color:var(--warn)}</style>
  {% endif %}
@@ -80,7 +80,7 @@
   {% else %}<input type="text" name="held::{{ h.label }}" value="{{ cur }}">{% endif %}</td></tr>{% endfor %}</table></section>
  <style>.check-these{background:var(--warn-soft);border:1px solid color-mix(in srgb,var(--warn-dot) 45%,transparent)} .check-these h2{color:var(--warn)}
   .check-these td{border-bottom-color:color-mix(in srgb,var(--warn-dot) 35%,transparent)} .check-these tbody tr:hover td,.check-these tr:hover td{background:transparent}
-  .tag{display:inline-block;margin-left:6px;font-size:11px;font-weight:700;padding:1px 7px;border-radius:999px;background:var(--warn-dot);color:#1a1200}
+  .tag{display:inline-block;margin-left:6px;font-size:12.5px;font-weight:700;padding:1px 7px;border-radius:999px;background:var(--warn-dot);color:#1a1200}
   .tag.none{background:var(--bad-soft);color:var(--bad)}</style>{% endif %}
 
  {% if report.unanswered %}<section class="card mt" id="unanswered"><h2>Still unanswered <span class="count">{{ report.unanswered|length }}</span></h2>
@@ -116,15 +116,15 @@
 .bar{position:sticky;top:0;z-index:4;display:flex;gap:10px 18px;align-items:center;justify-content:space-between;flex-wrap:wrap;
  background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:10px 12px 10px 16px;margin:8px 0 16px;box-shadow:var(--shadow)}
 .chips{display:flex;gap:6px;flex-wrap:wrap}
-.chip{font-size:12.5px;font-weight:600;padding:4px 10px;border-radius:999px;background:var(--surface-2);color:var(--ink-2)}
+.chip{font-size:14px;font-weight:600;padding:4px 10px;border-radius:999px;background:var(--surface-2);color:var(--ink-2)}
 .chip:hover{text-decoration:none;filter:brightness(.97)} .chip.warn{background:var(--warn-soft);color:var(--warn)} .chip.bad{background:var(--bad-soft);color:var(--bad)} .chip.ok{background:var(--good-soft);color:var(--good)}
 .act{display:flex;gap:8px;align-items:center;flex-wrap:wrap} .act .sep{width:1px;height:24px;background:var(--line);margin:0 4px}
-.menu{position:relative} .menu summary{list-style:none} .menu summary::-webkit-details-marker{display:none} .menu summary::after{content:"▾";font-size:10px;margin-left:2px}
+.menu{position:relative} .menu summary{list-style:none} .menu summary::-webkit-details-marker{display:none} .menu summary::after{content:"▾";font-size:11.5px;margin-left:2px}
 .menu-list{position:absolute;right:0;top:40px;z-index:6;display:grid;min-width:180px;padding:6px;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-lg)}
 .menu-list .btn{justify-content:flex-start;width:100%}
-.tick{font-size:13px;display:inline-flex;gap:6px;align-items:center} .tick.warn{color:var(--warn)}
+.tick{font-size:14.5px;display:inline-flex;gap:6px;align-items:center} .tick.warn{color:var(--warn)}
 .ptabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:-6px 0 12px}
-.ptabs button{font:inherit;font-size:13px;font-weight:600;border:0;background:none;color:var(--ink-2);padding:8px 10px;border-bottom:2px solid transparent;cursor:pointer}
+.ptabs button{font:inherit;font-size:14.5px;font-weight:600;border:0;background:none;color:var(--ink-2);padding:8px 10px;border-bottom:2px solid transparent;cursor:pointer}
 .ptabs button[aria-selected="true"]{color:var(--accent-ink);border-bottom-color:var(--accent)}
 .side-tabs{position:sticky;top:16px} .side-tabs .doc{height:calc(100vh - 120px);min-height:520px}
 #preflight,#check,#unanswered,#problems,#answers{scroll-margin-top:90px}

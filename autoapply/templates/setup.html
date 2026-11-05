@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Setup · Settings{% endblock %}
 {% block body %}
-<style>.ws-rule{background:var(--surface-2);border-radius:10px;padding:10px 12px;font-size:13.5px}.ws-rule p{margin:0 0 4px}.ws-rule p:last-child{margin:0}</style>
+<style>.ws-rule{background:var(--surface-2);border-radius:10px;padding:10px 12px;font-size:15px}.ws-rule p{margin:0 0 4px}.ws-rule p:last-child{margin:0}</style>
 {% set s = st.steps %}
 {% set req_done = 4 - st.left|length %}
 {% set tab_sub = "Everything UnemploymentPal needs to know about you and your search. Come back and change any of it." %}
@@ -63,7 +63,7 @@
 
   <input type="hidden" name="standing_form" value="1">
   <h3 class="sub3" id="standing">Consents and self-ID: your standing answers</h3>
-  <p class="muted" style="font-size:12.5px;margin:0 0 10px">The agent never answers these. Whatever you save here is pre-filled on
+  <p class="muted" style="font-size:14px;margin:0 0 10px">The agent never answers these. Whatever you save here is pre-filled on
    each form and shown in a highlighted <b>Check these</b> box on the review page, so you confirm it every time before Submit.
    Leave a line blank to answer it yourself on each application.</p>
   <div class="grid g3">
@@ -106,7 +106,7 @@
    <small class="muted">LinkedIn, Indeed, HigherEdJobs, ZipRecruiter and others also come in through their job-alert emails once Gmail is connected (step 6).</small></fieldset>
 
   <details class="mt" {% if keys.ADZUNA_APP_ID != 'not set' or keys.USAJOBS_API_KEY != 'not set' %}open{% endif %}><summary>Free API keys for Adzuna and USAJOBS</summary>
-   <p class="muted" style="font-size:12.5px">Adzuna indexes a large share of US postings; get an app id and key at
+   <p class="muted" style="font-size:14px">Adzuna indexes a large share of US postings; get an app id and key at
     <a href="https://developer.adzuna.com/" target="_blank" rel="noopener noreferrer">developer.adzuna.com</a>. USAJOBS covers federal jobs; request a key at
     <a href="https://developer.usajobs.gov/" target="_blank" rel="noopener noreferrer">developer.usajobs.gov</a>. Saved in <code>data/secrets.json</code>.</p>
    <div class="grid g11">
@@ -167,7 +167,7 @@
     {% else %}<input type="text" name="{{ k }}" value="{{ about.get(k, '') }}" placeholder="{{ hint }}">{% endif %}</label>
   {% endfor %}
   </div>
-  <p class="muted" style="font-size:12.5px">For more detail, add your own Markdown notes in <code>materials/context/</code> (projects, past
+  <p class="muted" style="font-size:14px">For more detail, add your own Markdown notes in <code>materials/context/</code> (projects, past
    wins, a brag doc) or a <code>CLAUDE.local.md</code> in the folder. The agent reads all of them.</p>
   <div class="actions"><button class="btn primary">Save</button></div>
  </form>
@@ -187,7 +187,7 @@
    <small class="muted">On a server with no browser, sign in on your laptop and copy <code>~/.codex/auth.json</code> over
     (see the README). Then pick Codex on the <a href="/settings?tab=daily">Daily run</a> tab.</small></div>
  </div>
- <p class="muted" style="font-size:12.5px">Reload this page after signing in.</p>
+ <p class="muted" style="font-size:14px">Reload this page after signing in.</p>
 </section>
 
 <section class="card mt step" id="gmail">
@@ -201,7 +201,7 @@
      placeholder="{{ 'set in .env' if gmail_env else ('saved; leave blank to keep' if s.gmail.done else '16 letters') }}"></label>
    <label class="fld"><span>Send the brief to (optional)</span><input type="text" name="brief_to" inputmode="email" placeholder="same address"></label>
   </div>
-  <p class="muted" style="font-size:12.5px">An app password is not your normal password. Turn on 2-step verification, then create one at
+  <p class="muted" style="font-size:14px">An app password is not your normal password. Turn on 2-step verification, then create one at
    <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener noreferrer">myaccount.google.com/apppasswords</a>.
    It's saved in <code>data/secrets.json</code> on this server, readable only by you, and never shown again.</p>
   <div class="actions"><button class="btn primary" name="action" value="save">Test and save</button>
@@ -225,33 +225,33 @@
 
 <style>
 .setup-top{display:flex;gap:12px 24px;align-items:center;flex-wrap:wrap;margin-top:14px}
-.prog{min-width:180px;font-size:13px;color:var(--ink-2)} .prog b{color:var(--ink);font-size:15px} .prog .meter{margin-top:6px}
+.prog{min-width:180px;font-size:14.5px;color:var(--ink-2)} .prog b{color:var(--ink);font-size:16.5px} .prog .meter{margin-top:6px}
 .rail{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 0}
-.rail a{display:inline-flex;align-items:center;gap:8px;padding:6px 12px 6px 6px;border-radius:999px;background:var(--surface);border:1px solid var(--line);color:var(--ink-2);font-size:13px;font-weight:600}
+.rail a{display:inline-flex;align-items:center;gap:8px;padding:6px 12px 6px 6px;border-radius:999px;background:var(--surface);border:1px solid var(--line);color:var(--ink-2);font-size:14.5px;font-weight:600}
 .rail a:hover{text-decoration:none;background:var(--surface-2)}
-.rail i{font-style:normal;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:var(--surface-2);font-size:12px}
+.rail i{font-style:normal;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:var(--surface-2);font-size:13.5px}
 .rail a.done i{background:var(--good-soft);color:var(--good)} .rail small{font-weight:500;color:var(--ink-3)}
-.step h2>span:first-child{display:flex;align-items:center;gap:10px;font-size:15px}
-.n{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent-ink);font-size:13px}
+.step h2>span:first-child{display:flex;align-items:center;gap:10px;font-size:16.5px}
+.n{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent-ink);font-size:14.5px}
 .n.done{background:var(--good-soft);color:var(--good)}
 .lead{color:var(--ink-2);margin:-4px 0 14px;max-width:760px}
-.fld{display:grid;gap:5px;border:0;margin:0;padding:0;min-width:0}.fld>span{font-size:12.5px;font-weight:600;color:var(--ink-2)}.fld small{font-size:12px;line-height:1.45}
+.fld{display:grid;gap:5px;border:0;margin:0;padding:0;min-width:0}.fld>span{font-size:14px;font-weight:600;color:var(--ink-2)}.fld small{font-size:13.5px;line-height:1.45}
 .fld.wide{grid-column:1/-1}
 textarea{resize:vertical}
-input[type=file]{font:inherit;font-size:13px;max-width:100%}
-.check{display:inline-flex;gap:8px;align-items:center;font-size:13.5px;cursor:pointer}.check input{width:16px;height:16px;accent-color:var(--accent)}
-.checks{display:flex;gap:6px 18px;flex-wrap:wrap} .check small{font-size:11.5px} small.bad,.bad{color:var(--bad)}
+input[type=file]{font:inherit;font-size:14.5px;max-width:100%}
+.check{display:inline-flex;gap:8px;align-items:center;font-size:15px;cursor:pointer}.check input{width:16px;height:16px;accent-color:var(--accent)}
+.checks{display:flex;gap:6px 18px;flex-wrap:wrap} .check small{font-size:13px} small.bad,.bad{color:var(--bad)}
 .add-rss{margin:4px 4px 0 0}
 .actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
 .opt{border:1px solid var(--line-2);border-radius:14px;padding:14px;display:grid;gap:8px;min-width:0}
-.opt pre{margin:0;font:12.5px ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--surface-2);padding:8px 10px;border-radius:8px;overflow-x:auto}
+.opt pre{margin:0;font:14px ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--surface-2);padding:8px 10px;border-radius:8px;overflow-x:auto}
 .card.good{border-color:color-mix(in srgb,var(--good-dot) 40%,var(--line-2))} .card.good p{margin:0 0 8px}
 .notice{margin:12px 0 0}
-.step{scroll-margin-top:16px} .sub3{font-size:13px;font-weight:650;margin:20px 0 6px} code.sel{user-select:all;word-break:break-all}
+.step{scroll-margin-top:16px} .sub3{font-size:14.5px;font-weight:650;margin:20px 0 6px} code.sel{user-select:all;word-break:break-all}
 </style>
 
 <style>.step.collapsed>*:not(h2){display:none}.step.collapsed{padding-bottom:14px}.step h2{cursor:pointer}
-.step h2 .edit{display:none;font-size:12.5px;font-weight:600;color:var(--accent-ink);margin-left:10px}.step.collapsed h2 .edit{display:inline}
+.step h2 .edit{display:none;font-size:14px;font-weight:600;color:var(--accent-ink);margin-left:10px}.step.collapsed h2 .edit{display:inline}
 .step.collapsed h2 .count{display:none}</style>
 <script>(()=>{const steps=[...document.querySelectorAll("section.step")];const target=location.hash.slice(1);
  steps.forEach(sec=>{const h=sec.querySelector("h2");if(!h)return;const e=document.createElement("span");e.className="edit";e.textContent="Edit";h.firstElementChild.appendChild(e);
