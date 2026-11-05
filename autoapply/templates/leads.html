@@ -8,6 +8,7 @@
   <b>Auto apply</b> does that for one role right away and uses credits. <b>Score</b> is a rough fit from your titles and resume.</p></details></div></div>
 <style>.how{margin-top:6px;font-size:14.5px;color:var(--ink-2)}.how summary{cursor:pointer;color:var(--accent-ink);font-weight:600}.how p{margin:6px 0 0;max-width:760px}</style>
 
+{% with open=src_open %}{% include "_sources.html" %}{% endwith %}
 {% if running %}<p class="notice" style="margin:0 0 14px"><span class="grow">A run is going{% if running.at %} (since {{ running.at }}){% endif %}{% if running.step %}: {{ running.step }}{% endif %}. Auto apply is available again when it finishes.</span></p>
  <script>setTimeout(()=>location.reload(),20000)</script>{% endif %}
 <nav class="tabs" aria-label="Filter">

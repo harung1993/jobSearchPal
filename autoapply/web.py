@@ -120,7 +120,9 @@ def make_app(settings, db: DB) -> FastAPI:
         s = stats.compute(db, floor=work_search(settings)[1])
         more = shortlist(db, settings, SHORTLIST - len(s["ready"]), skip_companies=[j["company"] for j in s["ready"]])
         s["now_hour"] = datetime.now().hour
-        return page("index.html", s=s, shortlist=more, decline_reasons=DECLINE_REASONS, first_name=(settings.profile or {}).get("first_name", ""),
+        from . import jobsources
+        src = jobsources.overview(settings, db)
+        return page("index.html", s=s, shortlist=more, decline_reasons=DECLINE_REASONS, src_on=src["on"], src_total=src["total"], first_name=(settings.profile or {}).get("first_name", ""),
                     interviews=prep.interviews(db, settings.data_dir)[:6],
                     todo=todo, nav="dashboard", running=run_state(), picks_default=Prefs(settings.data_dir, settings.raw).limits()["picks_per_day"])
 
@@ -217,8 +219,10 @@ def make_app(settings, db: DB) -> FastAPI:
                   "dismissed": [r for r in every if r["status"] == "dismissed"], "all": every}
         show = show if show in groups else "open"
         tabs = [("open", "To look at"), ("starred", "Starred"), ("tracked", "Tracked"), ("dismissed", "Dismissed"), ("all", "All")]
+        from . import jobsources
+        src = jobsources.overview(settings, db)
         return page("leads.html", rows=groups[show][:500], tabs=[(k, l, len(groups[k])) for k, l in tabs], show=show, nav="leads",
-                    running=run_state())
+                    running=run_state(), src=src, src_open=src["on"] < src["total"] // 2 or not every)
 
     @app.post("/leads/apply")
     def lead_apply(key: str = Form(...)):
