@@ -338,7 +338,7 @@ One image has Python, Playwright's Chromium, LibreOffice and both agent CLIs, so
 installed on the host. Your files stay in the repo folder, which is mounted into the containers.
 
 ```
-git clone https://github.com/harung1993/jobSearchPal.git ~/auto-apply && cd ~/auto-apply
+git clone https://github.com/harung1993/unemploymentPal.git ~/auto-apply && cd ~/auto-apply
 docker compose up -d --build                # dashboard + the daily scheduler
 docker compose run --rm web claude          # sign in to Claude Code and trust /app (or: codex login)
 ```
