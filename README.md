@@ -21,6 +21,17 @@ it yourself.
 
 The screenshots use fictional demo data (`scripts/demo-data.py`).
 
+## At a glance
+
+- **Runs on its own.** Cron (or the Docker scheduler) starts the run at 6:30am on weekdays on your server.
+  Your laptop, Claude desktop and any chat app can be closed; they're only for setup and fixes.
+- **Prepares, never sends.** Each morning you get one or two applications tailored and filled in, drafted
+  follow-up replies, and a brief by email. You read them on the dashboard and press Submit yourself.
+- **Your AI, your order.** Pick the models on the Settings page: your Claude or ChatGPT subscription first,
+  then pay-per-token sources (Jev, any OpenRouter model) or a local Ollama model as backups.
+- **Your data stays with you.** Everything lives in one folder on your server. Nothing is sent anywhere
+  except to the models you turn on.
+
 ## How it works
 
 ```
@@ -88,7 +99,42 @@ sees, set up several daily alerts with tight filters in LinkedIn (Jobs → set a
 "analytics engineer · Remote · United States · past 24 hours" or "staff data engineer · Boston ·
 Hybrid". Send them to the inbox the sync reads. Each alert you add shows up in the next morning's run.
 
+How LinkedIn roles flow through a run:
+
+1. The run reads the alert emails (from `jobalerts-noreply@linkedin.com` and `jobs-noreply@linkedin.com`)
+   in the inbox the sync uses.
+2. It lists the roles in them that fit your interests.
+3. For each good one it looks up the same posting on the company's own careers page (Greenhouse, Lever,
+   Ashby and so on) and prepares the application there. Roles it couldn't match to a company page yet
+   are listed in the brief as runners-up "from LinkedIn alerts (need ATS links)".
+
 ### Email sorting
+
+**What each status means.** Every job email is filed as one of these, and the application takes the
+latest one:
+
+| Status | Means | Example |
+|---|---|---|
+| Confirmed | the company received your application; you're still waiting | "Thank you for applying to …" auto-replies |
+| Interview | a person asked to schedule a call or interview | a scheduling link, "are you free Tuesday?" |
+| Rejected | they said no, including "the position has been filled" | "we've decided to move forward with other candidates" |
+| Offer | an offer | |
+| Recruiter | a real person reaching out about a role | an agency or in-house recruiter's email |
+| Not job-related | alerts, newsletters, account and bank email | job-alert digests, sign-in links, statements |
+
+An application with no reply beyond the confirmation for 30 days shows as **No reply**.
+
+**A good order on the Settings page.** Sources are tried top to bottom, so put what you already pay for
+first and pay-per-token last:
+
+1. **Claude subscription** (Haiku is plenty for sorting) or **ChatGPT subscription** (Codex CLI). No extra cost.
+2. **Jev** (needs an OpenRouter key): a classifier that returns a label with a probability. Anything below
+   the minimum confidence moves on.
+3. **OpenRouter**, any cheap chat model (for example `google/gemini-2.5-flash-lite`), for what's left.
+4. **Ollama** if you run one, so nothing leaves the server.
+
+Whatever no source is sure about waits for you on the Emails page. At typical volumes (50 to 100 job
+emails a month) the paid sources cost well under a dollar a month.
 
 - **Sources, in your order.** On the Settings page, turn on any of: your **Claude subscription**
   (Claude Code, run with no tools), your **ChatGPT subscription** (Codex CLI, read-only sandbox),
@@ -189,6 +235,30 @@ Choices are saved in `data/settings.json`. Nothing on the page needs a restart.
   proof and a weekly zip in work-search-log columns.
 
 Light and dark mode, and it works on a phone.
+
+## FAQ
+
+**Does it apply to jobs for me?** It finds roles, tailors your resume and cover letter, and fills in the
+real form, then stops. You press Submit on the dashboard, or with `autoapply-finish` on your laptop when
+the site sends a verification code.
+
+**Does my computer, or Claude desktop, need to be on?** No. The daily run is started by cron (or the
+Docker scheduler) on the server and runs the agent CLI there, headless. Your laptop is only needed for
+`autoapply-finish`.
+
+**Does it watch LinkedIn?** Through your LinkedIn job-alert emails only (see
+[Where jobs come from](#where-jobs-come-from)). Add more alerts with tight filters to widen it.
+
+**Which AI does it use, and what does it cost?** Whatever you turn on in Settings: your Claude or ChatGPT
+subscription covers the daily run and email sorting at no extra cost (it does count toward your plan's
+usage limits). Jev, OpenRouter models and a monthly budget cap are optional.
+
+**A reply was filed wrong.** Change it on the Emails page. Your choice is kept through later syncs and
+`sync-email --rebuild`.
+
+**How do I update?** `git pull`, then restart the dashboard (see Setup or Docker below). Your
+`config.yaml`, `profile.yaml`, `.env`, `CLAUDE.local.md`, `materials/` and `data/` are gitignored, so an update
+never touches them.
 
 ## What it will not do
 
