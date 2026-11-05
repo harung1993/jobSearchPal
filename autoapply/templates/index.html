@@ -9,16 +9,16 @@
   <label class="ink2" for="picks">Roles</label><select id="picks" name="picks">{% for n in range(1, 6) %}<option {% if n == picks_default %}selected{% endif %}>{{ n }}</option>{% endfor %}</select>
   <button class="btn" title="Find, tailor and fill more roles now. Nothing is submitted.">Run now</button></form>{% endif %}</div></div>
 <style>.ph-acts{display:flex;gap:8px;align-items:center}.runnow{display:flex;gap:6px;align-items:center;margin:0}.runnow select{width:auto;min-width:60px}
-.running{display:inline-flex;gap:8px;align-items:center;font-size:13px;color:var(--ink-2);background:var(--accent-soft);border-radius:999px;padding:6px 12px}
+.running{display:inline-flex;gap:8px;align-items:center;font-size:14.5px;color:var(--ink-2);background:var(--accent-soft);border-radius:999px;padding:6px 12px}
 .running i{width:8px;height:8px;border-radius:50%;background:var(--accent);animation:pulse 1.2s ease-in-out infinite}
 @keyframes pulse{50%{opacity:.3}}@media (prefers-reduced-motion:reduce){.running i{animation:none}}
 .ready .acts{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}.ready .acts form{margin:0}
 .decline{position:relative}.decline summary{list-style:none;cursor:pointer}.decline summary::-webkit-details-marker{display:none}
 .decline .pop{position:absolute;right:0;top:calc(100% + 6px);z-index:5;display:flex;flex-direction:column;align-items:stretch;gap:4px;
  background:var(--surface);border:1px solid var(--line-2);border-radius:10px;padding:8px;box-shadow:0 8px 24px rgba(0,0,0,.12);min-width:150px}
-.decline .pop span{font-size:12px;padding:0 4px 2px}.decline .pop .btn{justify-content:flex-start;text-align:left}
+.decline .pop span{font-size:13.5px;padding:0 4px 2px}.decline .pop .btn{justify-content:flex-start;text-align:left}
 .avatar.todo-av{opacity:.55}.group-h{display:flex;flex-direction:column;gap:2px;margin:14px 0 2px;padding-top:10px;border-top:1px solid var(--line)}.group-h:first-of-type{border-top:0;padding-top:0;margin-top:4px}
-.group-h b{font-size:14px;color:var(--ink)}.group-h span{font-size:12.5px;color:var(--ink-3)}@media (max-width:600px){.ready{flex-wrap:wrap}.ready .acts{width:100%;justify-content:flex-start;padding-left:50px}.decline .pop{right:auto;left:0}}</style>
+.group-h b{font-size:15.5px;color:var(--ink)}.group-h span{font-size:14px;color:var(--ink-3)}@media (max-width:600px){.ready{flex-wrap:wrap}.ready .acts{width:100%;justify-content:flex-start;padding-left:50px}.decline .pop{right:auto;left:0}}</style>
 <script>document.addEventListener("submit",e=>{const f=e.target;if(!f.matches("form.prepare"))return;
  if(!confirm("Prepare: "+f.dataset.role+"\n\nThis runs the agent now: it tailors your resume and cover letter and fills the form. "+
   "It uses credits, roughly 1M tokens of your Claude plan (or OpenRouter credit, if the daily run uses it). Nothing is submitted until you press Submit."))e.preventDefault()});
@@ -84,9 +84,9 @@ document.addEventListener("click",e=>{document.querySelectorAll("details.decline
  {% if todo|length > 4 %}<details class="more"><summary>Show {{ todo|length - 4 }} more</summary>{% for n in todo[4:] %}{{ todo_row(n) }}{% endfor %}</details>{% endif %}
 </section>
 <style>.todo{display:grid;grid-template-columns:88px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}.todo:last-child,.todo:last-of-type{border-bottom:0}
-.todo .pill{justify-self:start}.todo .t{font-weight:600}.todo .m{font-size:12.5px;color:var(--ink-3)}.todo .acts{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;align-items:center}.todo form{display:flex;gap:2px;margin:0}
+.todo .pill{justify-self:start}.todo .t{font-weight:600}.todo .m{font-size:14px;color:var(--ink-3)}.todo .acts{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;align-items:center}.todo form{display:flex;gap:2px;margin:0}
 details.more{border-top:1px solid var(--line);padding-top:10px}details.more[open] summary{margin-bottom:4px}
-pre.draft{white-space:pre-wrap;font:inherit;font-size:13px;background:var(--surface-2);border-radius:var(--r-ctl);padding:10px 12px;margin:6px 0}
+pre.draft{white-space:pre-wrap;font:inherit;font-size:14.5px;background:var(--surface-2);border-radius:var(--r-ctl);padding:10px 12px;margin:6px 0}
 @media (max-width:640px){.todo{grid-template-columns:minmax(0,1fr)}.todo .acts{justify-content:flex-start}}</style>{% endif %}
 
 <section class="grid g2 mt">
@@ -95,7 +95,7 @@ pre.draft{white-space:pre-wrap;font:inherit;font-size:13px;background:var(--surf
   {% else %}<li class="empty">No replies synced yet. Run <code>autoapply sync-email</code> once the Gmail app password is set.</li>{% endfor %}</ul>
  </div>
  <div class="card"><h2>Recruiters <span class="count">{{ s.recruiter_count }}</span></h2>
-  <ul class="feed">{% for r in s.recruiters[:6] %}<li><div style="min-width:0"><div class="who">{{ r.sender.split(" <")[0] }}{% if r.count > 1 %} <span class="muted">· {{ r.count }} emails</span>{% endif %}</div><div class="ink2" style="font-size:12.5px">{{ r.subject|truncate(70) }}</div></div><span class="when">{{ r.last_at[5:10]|replace('-', '/') }}</span></li>
+  <ul class="feed">{% for r in s.recruiters[:6] %}<li><div style="min-width:0"><div class="who">{{ r.sender.split(" <")[0] }}{% if r.count > 1 %} <span class="muted">· {{ r.count }} emails</span>{% endif %}</div><div class="ink2" style="font-size:14px">{{ r.subject|truncate(70) }}</div></div><span class="when">{{ r.last_at[5:10]|replace('-', '/') }}</span></li>
   {% else %}<li class="empty">No recruiter emails synced yet.</li>{% endfor %}</ul>
  </div>
 </section>

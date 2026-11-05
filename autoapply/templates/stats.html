@@ -21,20 +21,20 @@
 <section class="grid g11 mt">
  <div class="card"><h2>Funnel</h2>
   {{ hbars(s.funnel, conv=True) }}
-  <h2 class="mt" style="font-size:12.5px;color:var(--ink-2)">Roles autoapply found</h2>
+  <h2 class="mt" style="font-size:14px;color:var(--ink-2)">Roles autoapply found</h2>
   {{ hbars(s.pipeline_funnel, conv=True) }}
-  <p class="muted" style="font-size:12px;margin:10px 0 0">Small numbers show each step as a share of the one above.</p>
+  <p class="muted" style="font-size:13.5px;margin:10px 0 0">Small numbers show each step as a share of the one above.</p>
  </div>
  <div class="card"><h2>Where applications stand</h2>
   {{ hbars(s.states) }}
-  <p class="muted" style="font-size:12px;margin:10px 0 0">"No reply" means more than 30 days without an answer.</p>
+  <p class="muted" style="font-size:13.5px;margin:10px 0 0">"No reply" means more than 30 days without an answer.</p>
  </div>
 </section>
 
 <section class="grid g11 mt">
  <div class="card"><h2>Time to first reply</h2>
   {{ hbars(s.reply_times) }}
-  <p class="muted" style="font-size:12px;margin:10px 0 0">Interviews, offers and rejections, measured from the day you applied.</p>
+  <p class="muted" style="font-size:13.5px;margin:10px 0 0">Interviews, offers and rejections, measured from the day you applied.</p>
  </div>
  <div class="card"><h2>{{ ws_label }} weeks <a href="/dua">Details</a></h2>
   {{ week_bars(s.work_weeks, 'activity', ws_label ~ ' activities per week for the last 12 weeks, with the minimum of ' ~ s.dua_floor, floor=s.dua_floor, floor_label='Minimum ' ~ s.dua_floor, H=170) }}
@@ -46,7 +46,7 @@
  {% for p in s.platforms %}<tr><td><b style="font-weight:600">{{ p.name }}</b></td><td class="num">{{ p.applied }}</td><td class="num">{{ p.responded }}</td><td class="num hide-sm">{{ p.interviews }}</td>
   <td><div class="hbars" style="margin:0"><div class="row" style="grid-template-columns:minmax(0,1fr) 44px;margin:0" data-tip="{{ p.name }}: {{ p.rate }}% of {{ p.applied }}"><div class="track"><div class="fill" style="width:{{ p.rate }}%"></div></div><span class="v">{{ p.rate }}%</span></div></div></td></tr>
  {% else %}<tr><td colspan="5" class="empty">No applications yet.</td></tr>{% endfor %}</tbody></table>
- {% if s.platforms|length > 1 %}<p class="muted" style="font-size:12px;margin:10px 0 0">Small counts swing a lot: one reply on two applications reads as 50%.</p>{% endif %}
+ {% if s.platforms|length > 1 %}<p class="muted" style="font-size:13.5px;margin:10px 0 0">Small counts swing a lot: one reply on two applications reads as 50%.</p>{% endif %}
 </section>
 
 <section class="grid g11 mt">

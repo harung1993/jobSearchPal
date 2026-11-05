@@ -13,7 +13,7 @@
 <input type="hidden" name="sources_form" value="1">
 <section class="card mt">
  <h2>Email sorting <span class="count">tried top to bottom</span></h2>
- <p class="muted" style="font-size:13px;margin:-4px 0 14px">Each new email goes to the first source that's on. If it fails, or isn't
+ <p class="muted" style="font-size:14.5px;margin:-4px 0 14px">Each new email goes to the first source that's on. If it fails, or isn't
   sure, the email goes to the next one. Anything no source can sort waits for you on the <a href="/emails">Emails</a> page.
   {% if pending %}<b>{{ pending }} waiting now.</b>{% endif %}</p>
 
@@ -98,12 +98,12 @@
   <td class="ink2">{{ r.models or '' }}</td><td class="num">{{ r.n }}</td><td class="num">{{ '{:,}'.format(r.tokens|int) }}</td>
   <td class="num">{{ '{:,}'.format((r.tokens / (r.n or 1))|int) }}</td><td class="num">${{ '%.2f'|format(r.est) }}</td><td class="num">${{ '%.2f'|format(r.cost) }}</td></tr>{% endfor %}
  </tbody></table>
- <p class="muted" style="font-size:12.5px;margin:6px 0 0">Tokens include cached re-reads of the conversation, which are most of the count and are cheap.
+ <p class="muted" style="font-size:14px;margin:6px 0 0">Tokens include cached re-reads of the conversation, which are most of the count and are cheap.
   Each step starts fresh, so a long step doesn't make the next one heavier.</p>{% endif %}
  {% if costs.by_day %}<details class="mt"><summary>By day</summary><table><thead><tr><th>Day</th><th class="num">Runs</th><th class="num">Tokens</th><th class="num">At API prices</th><th class="num">Billed</th></tr></thead><tbody>
   {% for r in costs.by_day|reverse %}<tr><td>{{ r.day }}</td><td class="num">{{ r.runs }}</td><td class="num">{{ '{:,}'.format((r.tokens or 0)|int) }}</td><td class="num">${{ '%.2f'|format(r.est or 0) }}</td><td class="num">${{ '%.4f'|format(r.cost or 0) }}</td></tr>{% endfor %}
  </tbody></table></details>{% endif %}
- <p class="muted" style="font-size:12.5px;margin:12px 0">Claude and Codex runs use your subscription, so "at API prices" is a gauge, not a bill: it shows
+ <p class="muted" style="font-size:14px;margin:12px 0">Claude and Codex runs use your subscription, so "at API prices" is a gauge, not a bill: it shows
   which steps are heavy. Your plan's usage limits are what you'd hit first; a smaller model or fewer roles per day goes further.</p>
  <div class="grid g4">
   <label class="fld"><span>Roles to tailor per day</span><input type="text" name="picks_per_day" value="{{ p.picks_per_day }}" inputmode="numeric">
@@ -136,9 +136,9 @@
 {% endif %}{% if tab == 'daily' %}
 <section class="card mt">
  <h2>Daily run <span class="count">finds roles, tailors, fills forms</span></h2>
- <p class="muted" style="font-size:13px;margin:-4px 0 10px">Runs as short steps, each in a fresh session: email sync and job search (no AI), then
+ <p class="muted" style="font-size:14.5px;margin:-4px 0 10px">Runs as short steps, each in a fresh session: email sync and job search (no AI), then
   prep packs, follow-up drafts, find and rank (light model), then one session per application (main model).</p>
- <p class="muted" style="font-size:13px;margin:-4px 0 14px">This needs an agent that can run commands and write files, so it runs on a
+ <p class="muted" style="font-size:14.5px;margin:-4px 0 14px">This needs an agent that can run commands and write files, so it runs on a
   subscription CLI. Both follow the same rules (AGENTS.md) and neither can submit: the tool has no submit command.</p>
  <div class="agents">
  {% for key, label in daily_agents.items() %}{% set st = status[key] %}
@@ -214,17 +214,17 @@
 .src.on .rank{background:var(--accent-soft);color:var(--accent-ink)}
 .src .top{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
 .switch{display:flex;gap:8px;align-items:center;cursor:pointer}.switch input{width:18px;height:18px;accent-color:var(--accent)}
-.dot{font-size:12.5px;color:var(--ink-2);display:inline-flex;align-items:center;gap:6px}
+.dot{font-size:14px;color:var(--ink-2);display:inline-flex;align-items:center;gap:6px}
 .dot::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--ink-3)}.dot.ok::before{background:var(--good-dot)}.dot.no::before{background:var(--warn-dot)}
 .row2{display:flex;gap:10px;align-items:flex-end;margin-top:10px;flex-wrap:wrap}.row2 .fld{flex:1;min-width:220px}
 .btns{display:flex;gap:6px}.btn.icon{width:34px;justify-content:center;padding-left:0;padding-right:0}
-.facts{display:flex;gap:6px 16px;flex-wrap:wrap;margin-top:10px;font-size:12.5px;color:var(--ink-2)}.facts .bad{color:var(--bad)}
-.test{margin-top:8px;font-size:12.5px;padding:7px 10px;border-radius:9px}.test.ok{background:var(--good-soft);color:var(--good)}.test.bad{background:var(--bad-soft);color:var(--bad)}
+.facts{display:flex;gap:6px 16px;flex-wrap:wrap;margin-top:10px;font-size:14px;color:var(--ink-2)}.facts .bad{color:var(--bad)}
+.test{margin-top:8px;font-size:14px;padding:7px 10px;border-radius:9px}.test.ok{background:var(--good-soft);color:var(--good)}.test.bad{background:var(--bad-soft);color:var(--bad)}
 .agents{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px}
 .agent{display:flex;gap:10px;align-items:flex-start;border:1px solid var(--line-2);border-radius:14px;padding:12px 14px;cursor:pointer}
 .agent.on{border-color:color-mix(in srgb,var(--accent) 45%,var(--line-2));background:var(--accent-soft)}.agent input{margin-top:3px;accent-color:var(--accent)}
 .actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
-.sub3{font-size:12.5px;font-weight:650;color:var(--ink-2);margin:18px 0 8px}
+.sub3{font-size:14px;font-weight:650;color:var(--ink-2);margin:18px 0 8px}
 .notice{margin:12px 0 0}
 </style>
 {% endblock %}

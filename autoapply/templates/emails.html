@@ -15,7 +15,7 @@
   <td class="ink2" style="white-space:nowrap">{{ e.at[5:10]|replace('-', '/') }}</td>
   <td style="min-width:0"><details><summary><b style="font-weight:600;color:var(--ink)">{{ e.sender.split(" <")[0] }}</b>
     <span class="ink2">· {{ e.subject }}</span></summary>
-    <div class="ink2" style="font-size:12px;margin:6px 0 4px">{{ e.sender }}{% if e.guess and not e.reviewed %} · keyword guess: {{ e.guess }}{% endif %}{% if e.manual %} · set by you{% elif e.sorted_by %} · sorted by {{ e.sorted_by }}{% if e.confidence %} ({{ (100 * e.confidence)|round|int }}% sure){% endif %}{% endif %}</div>
+    <div class="ink2" style="font-size:13.5px;margin:6px 0 4px">{{ e.sender }}{% if e.guess and not e.reviewed %} · keyword guess: {{ e.guess }}{% endif %}{% if e.manual %} · set by you{% elif e.sorted_by %} · sorted by {{ e.sorted_by }}{% if e.confidence %} ({{ (100 * e.confidence)|round|int }}% sure){% endif %}{% endif %}</div>
     <pre class="body">{{ (e.body or "No text saved for this email.")[:3000] }}</pre></details></td>
   <td colspan="2"><form method="post" action="/emails/{{ e.id|urlencode }}" class="eform">
     <input type="hidden" name="show" value="{{ show }}">
@@ -32,11 +32,11 @@
  </tbody></table>
 </section>
 <style>
-.tabs{display:flex;gap:6px;flex-wrap:wrap}.tabs a{padding:6px 12px;border-radius:999px;border:1px solid var(--line-2);color:var(--ink-2);font-size:13px;font-weight:600}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}.tabs a{padding:6px 12px;border-radius:999px;border:1px solid var(--line-2);color:var(--ink-2);font-size:14.5px;font-weight:600}
 .tabs a:hover{text-decoration:none;background:var(--surface-2)}.tabs a[aria-current]{background:var(--accent-soft);color:var(--accent-ink);border-color:transparent}
 .emails td{vertical-align:top}.emails summary{list-style:none;font-weight:400}.emails summary::-webkit-details-marker{display:none}
-.eform{display:grid;grid-template-columns:190px minmax(0,1fr);gap:8px}.eform select{padding:6px 8px;font-size:13px}
-pre.body{white-space:pre-wrap;word-break:break-word;font:inherit;font-size:12.5px;background:var(--surface-2);border-radius:10px;padding:10px 12px;max-height:320px;overflow:auto;margin:0}
+.eform{display:grid;grid-template-columns:190px minmax(0,1fr);gap:8px}.eform select{padding:6px 8px;font-size:14.5px}
+pre.body{white-space:pre-wrap;word-break:break-word;font:inherit;font-size:14px;background:var(--surface-2);border-radius:10px;padding:10px 12px;max-height:320px;overflow:auto;margin:0}
 @media (max-width:640px){.eform{grid-template-columns:minmax(0,1fr)}.emails th:nth-child(3){width:auto}}
 </style>
 {% endblock %}
