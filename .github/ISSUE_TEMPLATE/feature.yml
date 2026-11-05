@@ -1,0 +1,8 @@
+name: Idea or request
+description: A new job source, ATS form filler, email provider, or anything that would help your search.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: idea
+    attributes: {label: What would help, description: The problem first, then the idea.}
+    validations: {required: true}

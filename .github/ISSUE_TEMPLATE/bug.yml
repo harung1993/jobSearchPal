@@ -1,0 +1,23 @@
+name: Something isn't working
+description: A bug in the dashboard, the daily run, email sorting or the form filler.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: "**Keep personal data out:** no names, emails, phone numbers, resumes, email bodies, tokens or keys. Use made-up examples, or reproduce it with `scripts/demo-data.py`."
+  - type: textarea
+    id: what
+    attributes: {label: What happened, description: What you did, what you expected, and what happened instead.}
+    validations: {required: true}
+  - type: input
+    id: where
+    attributes: {label: Where, placeholder: "e.g. Dashboard, Review page, daily run (data/cron.log), email sorting, Greenhouse form"}
+  - type: textarea
+    id: logs
+    attributes: {label: Error output, description: "The relevant lines from data/cron.log or the terminal, with anything personal removed.", render: text}
+  - type: input
+    id: version
+    attributes: {label: Version, description: "Output of: git log --oneline -1", placeholder: e.g. 13cba57}
+  - type: dropdown
+    id: install
+    attributes: {label: Install, options: [Docker, install.sh and cron, Other]}
