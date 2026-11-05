@@ -2,24 +2,34 @@
 
 Your job search, and the unemployment paperwork that comes with it.
 
-A self-hosted job application assistant. Every weekday morning, an AI agent on your own subscription,
-[Claude Code](https://claude.com/claude-code) or OpenAI's [Codex CLI](https://github.com/openai/codex), runs headless
-on a small always-on server. It finds new roles, picks the best fits, tailors your
-resume and cover letter, and fills the real application forms with Playwright, PDF uploads
-included. **It never presses Submit.** You review each application on a private dashboard and send
-it yourself.
+A self-hosted assistant for people looking for work, especially while collecting unemployment. It runs on a
+small always-on computer you own and does two jobs:
+
+- **The job search.** Every weekday morning an AI agent on your own subscription
+  ([Claude Code](https://claude.com/claude-code) or OpenAI's [Codex CLI](https://github.com/openai/codex)) finds new
+  roles, picks the best fits, tailors your resume and cover letter, and fills in the real application form, PDFs
+  included. **It never presses Submit.** You review each application on a private dashboard and send it yourself.
+- **The unemployment paperwork.** It keeps your state's work-search log as you go (every application, recruiter
+  contact and interview, with the original emails and submit screenshots as proof), knows your state's weekly
+  rule, and reminds you about claim day, RESEA meetings and other deadlines. Rules for all 50 states, DC,
+  Puerto Rico and the US Virgin Islands are built in.
+
+It reads your job email (read-only), files every reply, reminds you who to follow up with and drafts the reply,
+and writes an interview prep pack when an interview comes in.
 
 ![Dashboard](docs/dashboard.png)
 
-<details><summary>Stats, Settings and Emails pages, and the phone layout</summary>
+<details><summary>Work-search log, job sources, stats, emails, settings and the phone layout</summary>
 
+![Work-search log](docs/work-search.png)
+![Leads and job sources](docs/leads.png)
 ![Stats](docs/stats-dark.png)
-![Settings](docs/settings.png)
 ![Emails](docs/emails.png)
+![Settings](docs/settings.png)
 <img src="docs/dashboard-phone.png" width="300" alt="Dashboard on a phone">
 </details>
 
-The screenshots use fictional demo data (`scripts/demo-data.py`).
+The screenshots use fictional demo data (`scripts/demo-data.py`; regenerate them with `scripts/screenshots.py`).
 
 ## How it works
 
@@ -70,14 +80,15 @@ you ─► dashboard ─► check answers, decide consents ─► Submit
 - **Any RSS or Atom job feed** (`rss_feeds` in `config.yaml`, or the Setup page): We Work Remotely, jobs.ac.uk and
   many others have them. Sites that answer automated requests with a bot check (HigherEdJobs does) are
   left to their job-alert emails; unemploymentPal doesn't try to get around those checks.
-- **Job-alert emails** (LinkedIn, Indeed, Built In, Glassdoor and others): every role in them is saved on the
-  **Leads** page with its location, salary when given, source and a rough fit score, even though only a couple
-  a day get tailored. Sort and filter them, dismiss the misses, and star the ones you want: the next run looks
-  each starred role up on the company's own site and adds it to the roles it can tailor. Parsing is plain
-  Python (no model), from the "View job" blocks these emails use.
-- **Your job-alert emails** from LinkedIn, Built In, Indeed, Glassdoor, Wellfound, HigherEdJobs (Job Agent emails), ZipRecruiter and Dice. For each good
-  role, the agent finds the same posting on the company's own careers page and applies there, since
-  aggregator listings are often stale.
+- **Job-alert emails** from LinkedIn, Indeed (including its job-match emails), HigherEdJobs (Job Agent emails), Built In,
+  Glassdoor, Wellfound, ZipRecruiter and Dice. Every role in them is saved on the **Leads** page with its location,
+  salary when given, source and a rough fit score. After each email sync the top leads are looked up on the
+  company's own job board (no AI) and join the roles the daily run can tailor; star others and the next run
+  searches the web for them. Parsing is plain Python, from the "View job" blocks these emails use.
+
+**See every source in one place.** The Leads page opens with *Where your jobs come from*: each source marked on,
+off or "needs a step" (a missing key, Gmail not connected), how many roles it brought in, and a one-line how-to
+for the ones you haven't set up. The dashboard nudges you when fewer than half are on.
 
 Each run saves what every source returned to `data/sources.json`; the Setup page shows the counts, and a
 source that failed, next to its name.
@@ -178,17 +189,44 @@ Choices are saved in `data/settings.json`. Nothing on the page needs a restart.
 
 ### Dashboard pages
 
-- **Dashboard:** a to-do list of follow-ups, what's ready for you, interviews with their prep packs, latest replies, recruiters, applications per week, the full
-  application list, and when each job (search, email sync, sorting, brief) last ran.
+- **Dashboard:** what's **ready to submit** and a **shortlist** of today's best untailored matches (Prepare or
+  Decline, with a reason), your work-search count for the week, a to-do list (replies owed, follow-ups, claim day,
+  RESEA and other deadlines), interviews with their prep packs, latest replies, recruiters, applications per week
+  and the full application list. **Run now** starts another batch any time.
+- **Leads:** every role from your job-alert emails, plus *Where your jobs come from* (see above).
+- **Review page:** the filled answers, your tailored documents and a screenshot of the form. Pre-submit checks
+  (documents present and current, required answers filled, consents confirmed) keep Submit locked until they pass.
 - **Stats:** response and interview rates, median time to reply, funnels, results by application
   platform, reply-time buckets, weeks at your work-search minimum, and pipeline trends.
 - **Emails:** see above.
 - **Settings:** Setup, Email sorting, Daily run, and Costs & limits tabs (above).
-- **Work-search log:** if you claim unemployment benefits, every application and recruiter contact
-  is grouped by Sunday-to-Saturday week, with the original emails and submit screenshots saved as
-  proof and a weekly zip in work-search-log columns.
+- **Work search:** see [Unemployment help](#unemployment-help).
 
 Light and dark mode, and it works on a phone.
+
+## Unemployment help
+
+Pick your state on the Setup page and the **Work search** page becomes your unemployment desk:
+
+- **This week at a glance:** activities so far against your state's weekly minimum, days left until Saturday,
+  your next deadline, and a one-click download of the week's proof.
+- **Your state's rule, in plain English:** the weekly number and what counts, how it's reported, required job-bank
+  registration, how long to keep records, common exemptions, the waiting week, how much part-time pay is allowed,
+  and the weekly benefit range and maximum weeks. Each of the 53 entries in
+  [`autoapply/work_search_states.yaml`](autoapply/work_search_states.yaml) was checked against the state agency's
+  own site and links to it, with the date it was checked and a confidence level. Rules change: the notice your
+  state sends you always wins, and corrections are welcome as pull requests.
+- **The log itself:** applications, recruiter contacts, interviews and RESEA meetings grouped by Sunday-to-Saturday
+  week, in a work-search log's columns, with the original emails and submit screenshots saved as proof. Each week
+  downloads as a zip with a CSV.
+- **Your claim:** enter the start date, weekly benefit and weeks allowed from your monetary determination letter to
+  see the weeks and money left, and get a claim-day reminder.
+- **RESEA and deadlines:** if you're selected for RESEA (Reemployment Services and Eligibility Assessment), add its
+  steps in one click and put in the dates from your notice; they show on the dashboard's To do with a countdown,
+  next to any other deadline you add. Letters from your state's agency are filed separately so you don't miss them.
+- **Good to know:** the things people learn too late (benefits are taxable, keep filing during the waiting week,
+  severance can delay benefits) and help people often miss (health coverage, SNAP, 211, your career center, free
+  legal help).
 
 ## What it will not do
 
@@ -381,11 +419,32 @@ tests/                   local fixture forms and tests
 python3 -m venv .venv && .venv/bin/pip install -e ".[dev]" && .venv/bin/playwright install chromium
 .venv/bin/pytest
 python3 scripts/demo-data.py /tmp/demo && cd /tmp/demo && autoapply serve   # http://127.0.0.1:8799
+python3 scripts/screenshots.py                                              # refresh docs/*.png
 ```
 
 The filler is tested against local copies of each ATS's form layout (`tests/fixtures/`). Real
 forms change, so expect to tweak labels and selectors in `autoapply/fillers/`. Issues and pull
 requests are welcome, especially new ATS fillers and better reply classification.
+
+## Status and limits
+
+unemploymentPal is young: it's used daily by its author and has been tested from a clean Docker install, but expect
+rough edges. Known limits today:
+
+- **You need a small always-on computer** (a home server, a mini PC, a cheap cloud VM) and are comfortable running a
+  few terminal commands once. Day to day, everything happens in the browser.
+- **Email is Gmail only** (an app password, read-only). Other providers are on the list.
+- **US-focused.** Job filters lean US, and the unemployment rules cover US states and territories.
+- **Some sites need you.** Workday and other account-based sites get materials prepared and are marked "apply by
+  hand"; captchas and emailed codes are finished by you (`autoapply-finish` opens the filled form in Chrome).
+- **AI usage is real.** A full morning run is roughly 1-2 million tokens on your subscription; caps and a monthly
+  budget for paid APIs are on Settings > Costs & limits.
+
+## Contributing
+
+Issues and pull requests are welcome, especially: corrections to a state's rules (with the agency link), new ATS
+form fillers, other email providers, and reply-sorting mistakes (share the subject and sender, never the body).
+Please keep personal data out of issues, tests and screenshots; use `scripts/demo-data.py`.
 
 ## License
 
