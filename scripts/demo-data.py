@@ -21,9 +21,17 @@ for i,c in enumerate(cos*2):
     rows.append([random.choice(["Senior Analytics Engineer","Staff Data Engineer","Analytics Engineering Manager","Data Platform Lead"]), c+("" if i<16 else " Group"), "Remote", f"{d.month}/{d.day}/2026", "$150K–$190K", "", random.choice(plat), note])
 history.import_rows(db, rows)
 now = datetime.now()
+descs = [  # fictional postings, so the Skills page has something to count
+    "Build ELT pipelines with dbt and Snowflake, orchestrated in Airflow. Python and SQL. Looker dashboards for stakeholders.",
+    "Own our lakehouse on Databricks (Spark, Delta Lake). Terraform and Kubernetes experience a plus. Mentor junior engineers.",
+    "SQL, Python, dbt, BigQuery. Partner with cross-functional teams; experience with A/B testing and Looker.",
+    "Data platform on AWS: Kafka streaming, Spark, Airflow, Docker and Kubernetes. Manage a team of 4 engineers.",
+    "Analytics engineering with dbt, Snowflake and Tableau. Strong data modeling (Kimball). CI/CD with GitHub Actions.",
+    "LLM features: RAG with vector search, Python, AWS. Experience with Databricks or Spark preferred.",
+]
 for k in range(40):
     jid=f"greenhouse:demo:{k}"
-    db.upsert_job({"id":jid,"ats":"greenhouse","company":random.choice(cos),"title":"Analytics Engineer","location":"Remote (US)","url":"https://example.com","apply_url":"https://example.com","description":""})
+    db.upsert_job({"id":jid,"ats":"greenhouse","company":random.choice(cos),"title":"Analytics Engineer","location":"Remote (US)","url":"https://example.com","apply_url":"https://example.com","description":descs[k % len(descs)]})
     db.update(jid, found_at=(now-timedelta(days=random.randint(0,120))).strftime("%Y-%m-%d %H:%M"))
 for k,(c,t,p) in enumerate([("Harbor AI","Senior Analytics Engineer","$170K–$200K"),("Pinecrest","Staff Data Engineer, Platform","$185K–$215K")]):
     jid=f"greenhouse:ready:{k}"
@@ -68,3 +76,5 @@ for n,(tid,) in enumerate(db.conn.execute("select id from ui_tasks where kind = 
 db.conn.commit()
 benefits.add_task(db, "Upload ID to the claim portal", (now+timedelta(days=9)).date().isoformat())
 
+(root/"materials"/"context").mkdir(parents=True, exist_ok=True)
+(root/"materials"/"context"/"about.md").write_text("Analytics engineer: SQL, Python, dbt, Snowflake, Tableau, Airflow. Data modeling and stakeholder work.\n")
