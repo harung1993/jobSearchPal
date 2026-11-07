@@ -377,7 +377,16 @@ def _do_submit(page: Page, a: ATS, report: Report, shot_dir: Path, stamp: str):
         report.errors.append({"label": "(submit)", "error": f"{len(report.blocking)} required question(s) still open"})
         return
     before = page.url
-    page.locator(a.submit).first.click()
+    # Only a button you could see: Lever puts a hidden hCaptcha submit button ahead of the real one.
+    button = page.locator(f"{a.submit} >> visible=true").first
+    try:
+        button.click()
+    except Exception:
+        report.errors.append({"label": "(submit)", "error": "couldn't find a Submit button to press; "
+                              "finish this one from the posting link"})
+        report.screenshot = str(shot_dir / f"{a.name}-{stamp}-no-submit.png")
+        page.screenshot(path=report.screenshot, full_page=True)
+        return
     report.submit_clicked = True
     try:
         # Success shows as thank-you text, or as a move to a /confirmation-style URL (newer Greenhouse boards).

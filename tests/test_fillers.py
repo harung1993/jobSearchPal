@@ -158,3 +158,16 @@ def test_setup_saves_standing_answers_and_pronunciation(tmp_path):
     assert setup.standing_values(prof) == {"consent": "yes", "veteran": "I am not a protected veteran"}
     from autoapply.fillers.base import resolve
     assert resolve({"label": "Name Pronunciation", "kind": "text"}, {}, prof) == ("AY-duh", "profile")
+
+
+def test_submit_skips_hidden_captcha_button(base_url, pdfs, tmp_path):
+    # Lever's hidden hCaptcha button matched first and the click timed out into a 500.
+    r = submit({"url": f"{base_url}/lever-hcaptcha", "ats": "lever", "approved_by_user": True}, PROFILE, tmp_path)
+    assert r.submit_clicked and not r.submitted
+    assert any("captcha" in e["error"] for e in r.errors)
+
+
+def test_submit_without_visible_button_reports_instead_of_raising(base_url, pdfs, tmp_path):
+    r = submit({"url": f"{base_url}/no-submit/", "ats": "generic", "approved_by_user": True}, PROFILE, tmp_path)
+    assert not r.submit_clicked and not r.submitted
+    assert any("Submit button" in e["error"] for e in r.errors)
