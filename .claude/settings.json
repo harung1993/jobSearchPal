@@ -11,6 +11,8 @@
       "Bash(autoapply skip:*)",
       "Bash(autoapply scan:*)",
       "Bash(autoapply fill:*)",
+      "Bash(autoapply resume-outline)",
+      "Bash(autoapply build-docs:*)",
       "Bash(autoapply candidates:*)",
       "Bash(soffice --headless --convert-to pdf:*)",
       "Bash(python3:*)",
