@@ -122,6 +122,8 @@ def main(argv=None):
     a.add_argument("--days", type=int, default=14)
     a = sub.add_parser("skip"); a.add_argument("job_id", nargs="+"); a.add_argument("--reason", default="")
     a = sub.add_parser("scan"); a.add_argument("url"); a.add_argument("--ats")
+    sub.add_parser("resume-outline")
+    a = sub.add_parser("build-docs"); a.add_argument("spec", help="docs.json, its folder, or an application slug")
     a = sub.add_parser("fill"); a.add_argument("plan"); a.add_argument("--job")
     a = sub.add_parser("brief"); a.add_argument("--send", action="store_true")
     a = sub.add_parser("skills"); a.add_argument("action", choices=["tag", "build", "show"]); a.add_argument("--limit", type=int)
@@ -441,6 +443,28 @@ def main(argv=None):
             db.update(jid, status="skipped", error=args.reason)
     elif args.cmd == "scan":
         _out(scan(args.url, args.ats, headless=headless))
+    elif args.cmd in ("resume-outline", "build-docs"):
+        from . import docs
+        from .setup import base_resume
+        base = base_resume(s.root)
+        if base is None:
+            sys.exit("No base resume in materials/ (upload one on the Setup page).")
+        if args.cmd == "resume-outline":
+            _out(docs.outline(base))
+            return
+        spec_path = Path(args.spec)
+        if not spec_path.exists():
+            spec_path = s.data_dir / "applications" / args.spec
+        if spec_path.is_dir():
+            spec_path = spec_path / "docs.json"
+        try:
+            r = docs.build(base, json.loads(spec_path.read_text()), spec_path.parent,
+                           last_name=s.profile.get("last_name", ""))
+        except (OSError, ValueError) as e:  # SpecError and bad JSON alike: say what to fix
+            sys.exit(f"build-docs: {e}")
+        _out(r)
+        if r["problems"]:
+            sys.exit(1)
     elif args.cmd == "fill":
         plan = json.loads(Path(args.plan).read_text())
         # Consent answers and the go-ahead only ever come from you on the review page.

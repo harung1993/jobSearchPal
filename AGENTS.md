@@ -32,7 +32,8 @@ agent you are (the file keeps that name for both).
   notes.md files.
 - Each application gets `data/applications/<company-slug>/` with the tailored resume and cover
   letter (.docx and .pdf), `notes.md` (fit/gap table, form answers, pay ask, screen prep) and `plan.json`.
-- Build tailored docx from the base resume with python-docx (keep its structure and styles; no
-  bolded bullets; keep company and date lines), then `soffice --headless --convert-to pdf`.
+- Build the tailored resume and cover letter with `autoapply build-docs <slug>` from a docs.json
+  (start from `autoapply resume-outline`). It keeps the base's structure, styles, company and date
+  lines and makes the PDFs. Don't write python-docx scripts for this.
   Name files `<Last name> Resume - <Company>.pdf` and `<Last name> Cover Letter - <Company>.pdf`
   unless `CLAUDE.local.md` says otherwise.
